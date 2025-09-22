@@ -14,8 +14,12 @@ const fencingRAG = new FencingRAG();
  */
 router.post('/search-knowledge', async (req, res) => {
   try {
+    console.log('\n🎯 ======= VOICE AGENT FUNCTION CALL =======');
+    console.log('🕰️ Timestamp:', new Date().toISOString());
     console.log('🔍 Voice agent knowledge search endpoint called');
     console.log('📝 Request body:', req.body);
+    console.log('🌐 Request headers:', req.headers);
+    console.log('📍 Request URL:', req.url);
     
     const { query } = req.body;
     
@@ -74,6 +78,7 @@ router.post('/search-knowledge', async (req, res) => {
     };
     
     console.log('✅ Sending successful response:', response);
+    console.log('🎉 ======= VOICE AGENT RESPONSE SENT =======\n');
     res.json(response);
     
   } catch (error) {
