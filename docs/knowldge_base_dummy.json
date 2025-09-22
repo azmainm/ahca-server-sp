@@ -1,0 +1,225 @@
+{
+    "knowledge_base": {
+      "company_info": {
+        "name": "SherpaPrompt Fencing Company",
+        "tagline": "Building boundaries, creating security",
+        "established": "2018",
+        "service_areas": ["Denver Metro", "Boulder County", "Jefferson County", "Adams County", "Arapahoe County"],
+        "phone": "(303) 555-FENCE",
+        "email": "info@sherpapromptfencing.com",
+        "website": "www.sherpapromptfencing.com",
+        "address": "1234 Fence Line Drive, Denver, CO 80202",
+        "hours": {
+          "monday_friday": "7:00 AM - 6:00 PM",
+          "saturday": "8:00 AM - 4:00 PM",
+          "sunday": "Closed",
+          "emergency": "24/7 emergency repairs available"
+        }
+      },
+      "services": [
+        {
+          "id": "residential_wood",
+          "category": "Residential Fencing",
+          "name": "Wood Fence Installation",
+          "description": "Custom wood fencing including privacy, picket, and decorative styles. We use premium cedar, pine, and composite materials.",
+          "materials": ["Cedar", "Pine", "Composite", "Pressure-treated lumber"],
+          "styles": ["Privacy fence", "Picket fence", "Split rail", "Shadowbox", "Board-on-board"],
+          "price_range": "$25-45 per linear foot",
+          "warranty": "5 years on installation, varies by material",
+          "installation_time": "2-5 days depending on project size"
+        },
+        {
+          "id": "vinyl_fencing",
+          "category": "Residential Fencing",
+          "name": "Vinyl Fence Installation",
+          "description": "Low-maintenance vinyl fencing in various colors and styles. Perfect for homeowners wanting durability without upkeep.",
+          "materials": ["PVC vinyl", "Reinforced vinyl"],
+          "styles": ["Privacy", "Semi-privacy", "Picket", "Ranch rail"],
+          "colors": ["White", "Tan", "Gray", "Almond"],
+          "price_range": "$30-55 per linear foot",
+          "warranty": "25-year manufacturer warranty",
+          "installation_time": "1-3 days depending on project size"
+        },
+        {
+          "id": "chain_link",
+          "category": "Commercial & Residential",
+          "name": "Chain Link Fence Installation",
+          "description": "Durable and cost-effective chain link fencing for residential and commercial properties.",
+          "materials": ["Galvanized steel", "Vinyl-coated steel"],
+          "heights": ["4 feet", "5 feet", "6 feet", "8 feet", "Custom heights available"],
+          "colors": ["Silver/galvanized", "Black", "Green", "Brown"],
+          "price_range": "$15-28 per linear foot",
+          "warranty": "10 years against rust and defects",
+          "installation_time": "1-2 days for most projects"
+        },
+        {
+          "id": "ornamental_iron",
+          "category": "Decorative Fencing",
+          "name": "Ornamental Iron & Aluminum",
+          "description": "Elegant wrought iron and aluminum fencing for enhanced curb appeal and security.",
+          "materials": ["Wrought iron", "Aluminum", "Steel"],
+          "styles": ["Traditional scrollwork", "Modern geometric", "Spear top", "Flat top"],
+          "price_range": "$40-80 per linear foot",
+          "warranty": "15 years against rust with proper coating",
+          "installation_time": "3-7 days depending on complexity"
+        },
+        {
+          "id": "commercial_security",
+          "category": "Commercial Fencing",
+          "name": "Commercial Security Fencing",
+          "description": "High-security fencing solutions for businesses, including anti-climb features and access control integration.",
+          "features": ["Anti-climb design", "Barbed wire options", "Electric gate compatibility", "Security camera mounts"],
+          "heights": ["6 feet", "8 feet", "10 feet", "12 feet"],
+          "price_range": "$35-65 per linear foot",
+          "warranty": "10 years on materials and installation",
+          "installation_time": "5-14 days depending on scope"
+        },
+        {
+          "id": "gate_installation",
+          "category": "Gates & Access",
+          "name": "Gate Installation & Automation",
+          "description": "Custom gates with manual or automatic operation, including access control systems.",
+          "types": ["Swing gates", "Sliding gates", "Pedestrian gates", "Double gates"],
+          "automation": ["Electric operators", "Remote control", "Keypad entry", "Card readers"],
+          "price_range": "$800-3500 per gate",
+          "warranty": "3 years on automation, 5 years on gate structure",
+          "installation_time": "1-2 days per gate"
+        },
+        {
+          "id": "repairs_maintenance",
+          "category": "Maintenance",
+          "name": "Fence Repair & Maintenance",
+          "description": "Professional repair services for all fence types, including storm damage and general wear.",
+          "services": ["Panel replacement", "Post repair", "Gate adjustment", "Hardware replacement", "Staining/painting"],
+          "emergency_services": "24/7 emergency repairs for security breaches",
+          "price_range": "$75-200 per repair (labor + materials)",
+          "warranty": "1 year on all repair work"
+        }
+      ],
+      "faqs": [
+        {
+          "question": "How long does fence installation typically take?",
+          "answer": "Installation time varies by project size and type. Most residential wood or vinyl fences take 2-5 days. Chain link can be completed in 1-2 days. Complex ornamental iron projects may take up to a week. Weather conditions can affect timeline.",
+          "category": "Installation"
+        },
+        {
+          "question": "Do I need a permit for fence installation?",
+          "answer": "Permit requirements vary by city and county. We handle all permit applications for our customers. Most residential fences under 6 feet don't require permits, but HOA approval may be needed. Commercial projects typically require permits.",
+          "category": "Permits"
+        },
+        {
+          "question": "What's the difference between wood and vinyl fencing?",
+          "answer": "Wood fencing offers natural beauty and is initially less expensive but requires regular maintenance (staining/sealing every 2-3 years). Vinyl fencing costs more upfront but is virtually maintenance-free and comes with a 25-year warranty.",
+          "category": "Materials"
+        },
+        {
+          "question": "How do you determine property lines?",
+          "answer": "We recommend having a property survey done before installation. We can work with your surveyor or recommend trusted local surveyors. Installing on property lines requires neighbor agreement. We can install fences 1-2 feet inside your property line to avoid disputes.",
+          "category": "Property Lines"
+        },
+        {
+          "question": "What maintenance does my fence need?",
+          "answer": "Wood fences need staining or sealing every 2-3 years. Vinyl and aluminum need only occasional washing. Chain link may need rust touch-ups. All fences benefit from annual inspections to check for loose hardware or damage.",
+          "category": "Maintenance"
+        },
+        {
+          "question": "Can you match an existing fence style?",
+          "answer": "Yes, we can match most existing fence styles and colors. We keep samples of common materials and can custom-order specific matches. Bring photos or samples for the most accurate matching.",
+          "category": "Customization"
+        },
+        {
+          "question": "What happens if my fence gets damaged in a storm?",
+          "answer": "We offer 24/7 emergency repair services for security issues. Most homeowner's insurance covers storm damage to fences. We can work directly with your insurance company and provide detailed estimates for claims.",
+          "category": "Storm Damage"
+        },
+        {
+          "question": "Do you offer financing options?",
+          "answer": "Yes, we offer financing through approved credit. Options include 0% interest for 12 months or longer-term financing with competitive rates. We also accept all major credit cards and can set up payment plans for larger projects.",
+          "category": "Financing"
+        }
+      ],
+      "policies": {
+        "scheduling": {
+          "free_estimates": "All estimates are free and typically scheduled within 2-3 business days",
+          "estimate_validity": "Written estimates are valid for 30 days",
+          "scheduling_notice": "Installation typically scheduled 1-2 weeks after contract signing",
+          "weather_policy": "Installation may be delayed due to severe weather. Customers are notified 24 hours in advance when possible."
+        },
+        "pricing": {
+          "estimate_includes": "Material costs, labor, permits, and cleanup",
+          "additional_costs": "Rock/root removal, concrete removal, or utility marking may incur additional charges",
+          "price_guarantee": "Quoted prices are guaranteed for 30 days",
+          "payment_terms": "50% deposit required to start work, balance due upon completion"
+        },
+        "warranty": {
+          "installation_warranty": "All installation work is warrantied for 5 years",
+          "material_warranty": "Material warranties vary by manufacturer (5-25 years)",
+          "warranty_coverage": "Covers defects in workmanship and materials under normal use",
+          "warranty_exclusions": "Does not cover damage from severe weather, vehicle impact, or normal wear"
+        },
+        "customer_service": {
+          "response_time": "Phone calls returned within 4 hours during business hours",
+          "emergency_response": "Emergency repairs responded to within 2 hours",
+          "satisfaction_guarantee": "100% satisfaction guarantee - we'll make it right",
+          "follow_up": "All customers receive follow-up call within one week of completion"
+        }
+      },
+      "seasonal_info": {
+        "spring": {
+          "peak_season": "March-May is our busiest time",
+          "services": "Ideal for new installations and fence repairs after winter",
+          "tips": "Book early for spring installation. Great time for wood fence staining."
+        },
+        "summer": {
+          "peak_season": "June-August continues busy season",
+          "services": "All installation work, irrigation fence coordination",
+          "tips": "Hot weather may affect installation schedule. Early morning starts common."
+        },
+        "fall": {
+          "peak_season": "September-October good for installation",
+          "services": "Last chance for installation before winter, great for repairs",
+          "tips": "Ideal time for wood fence maintenance before winter weather."
+        },
+        "winter": {
+          "peak_season": "November-February is slower season",
+          "services": "Planning phase, emergency repairs, some installation on mild days",
+          "tips": "Great time for planning spring projects. Emergency repairs available 24/7."
+        }
+      },
+      "emergency_procedures": {
+        "security_breach": {
+          "description": "Fence down due to accident, storm, or vandalism creating security issue",
+          "response_time": "Within 2 hours during business hours, 4 hours after hours",
+          "temporary_solution": "Temporary barriers provided while permanent repair scheduled",
+          "priority": "High - same day or next day repair"
+        },
+        "storm_damage": {
+          "description": "Weather-related fence damage",
+          "response_time": "Within 24 hours of storm passing",
+          "documentation": "Photo documentation provided for insurance claims",
+          "priority": "Medium - repair within 3-5 days"
+        },
+        "gate_malfunction": {
+          "description": "Automatic gate not opening/closing properly",
+          "response_time": "Same day for commercial, next day for residential",
+          "temporary_solution": "Manual operation instructions provided",
+          "priority": "Medium-High depending on security needs"
+        }
+      },
+      "competition_info": {
+        "our_advantages": [
+          "25+ years combined experience in Colorado market",
+          "A+ BBB rating with zero unresolved complaints",
+          "Only company in area offering 5-year installation warranty",
+          "24/7 emergency service availability",
+          "In-house installation teams (no subcontractors)",
+          "Free annual fence inspections for first 3 years"
+        ],
+        "typical_objections": {
+          "price_too_high": "We provide detailed breakdowns showing value. Our 5-year warranty and quality materials often make us the better long-term investment.",
+          "too_busy": "We maintain realistic schedules and communicate clearly about timelines. Rush jobs available for emergencies.",
+          "want_multiple_quotes": "We encourage comparing quotes. Make sure to compare warranty terms, material grades, and installation methods - not just price."
+        }
+      }
+    }
+  }
