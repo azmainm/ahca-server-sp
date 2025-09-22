@@ -16,7 +16,25 @@ router.post('/ephemeral-token', async (req, res) => {
       body: JSON.stringify({
         session: {
           type: 'realtime',
-          model: 'gpt-realtime'
+          model: 'gpt-realtime',
+          tools: [
+            {
+              type: 'function',
+              name: 'knowledge_search',
+              description: 'Search the company knowledge base for fencing information',
+              parameters: {
+                type: 'object',
+                properties: {
+                  query: {
+                    type: 'string',
+                    description: 'Search query for fencing-related information'
+                  }
+                },
+                required: ['query']
+              }
+            }
+          ],
+          tool_choice: 'auto'
         }
       }),
     });
@@ -42,6 +60,54 @@ router.post('/ephemeral-token', async (req, res) => {
     res.status(500).json({ 
       error: 'Internal server error',
       message: error.message 
+    });
+  }
+});
+
+/**
+ * Handle tool calls from OpenAI Realtime API
+ * POST /api/openai/tool-call
+ */
+router.post('/tool-call', async (req, res) => {
+  try {
+    const { tool_name, parameters } = req.body;
+    
+    if (tool_name === 'knowledge_search') {
+      const { query } = parameters;
+      
+      // Forward to our knowledge search endpoint
+      const serverUrl = process.env.SERVER_URL;
+      const searchResponse = await fetch(`${serverUrl}/api/voice-tools/search-knowledge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+      
+      const searchResult = await searchResponse.json();
+      
+      return res.json({
+        success: true,
+        result: searchResult.result || 'No information found.',
+        tool_call_id: req.body.tool_call_id
+      });
+    }
+    
+    // Handle other tools if needed
+    res.json({
+      success: false,
+      error: `Unknown tool: ${tool_name}`,
+      tool_call_id: req.body.tool_call_id
+    });
+    
+  } catch (error) {
+    console.error('Error handling tool call:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to execute tool',
+      message: error.message,
+      tool_call_id: req.body.tool_call_id
     });
   }
 });

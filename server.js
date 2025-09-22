@@ -11,6 +11,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/openai', require('./routes/openai'));
+app.use('/api/knowledge', require('./routes/knowledge'));
+app.use('/api/voice-tools', require('./routes/voice-tools'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
