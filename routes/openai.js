@@ -4,9 +4,24 @@ const router = express.Router();
 /**
  * Generate ephemeral token for OpenAI Realtime API
  * This endpoint creates a secure token that the client can use to connect to OpenAI's Realtime API
+ * Supports both gpt-realtime and gpt-4o-mini-realtime-preview models
  */
 router.post('/ephemeral-token', async (req, res) => {
   try {
+    // Get model from request body, default to gpt-realtime for backward compatibility
+    const { model = 'gpt-realtime' } = req.body;
+    
+    // Validate model
+    const supportedModels = ['gpt-realtime', 'gpt-4o-mini-realtime-preview'];
+    if (!supportedModels.includes(model)) {
+      return res.status(400).json({
+        error: 'Invalid model',
+        supportedModels: supportedModels
+      });
+    }
+
+    console.log(`🤖 Creating ephemeral token for model: ${model}`);
+
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
@@ -16,7 +31,7 @@ router.post('/ephemeral-token', async (req, res) => {
       body: JSON.stringify({
         session: {
           type: 'realtime',
-          model: 'gpt-realtime',
+          model: model,
           tools: [
             {
               type: 'function',
@@ -34,7 +49,8 @@ router.post('/ephemeral-token', async (req, res) => {
               }
             }
           ],
-          tool_choice: 'auto'
+          tool_choice: 'auto',
+          instructions: 'You are a professional voice assistant for SherpaPrompt Fencing Company. ALWAYS use the knowledge_search function when customers ask about services, pricing, or company information after collecting their name and email.'
         }
       }),
     });
@@ -50,9 +66,10 @@ router.post('/ephemeral-token', async (req, res) => {
 
     const data = await response.json();
     
-    // Return the ephemeral key directly
+    // Return the ephemeral key and model information
     res.json({
-      apiKey: data.value
+      apiKey: data.value,
+      model: model
     });
 
   } catch (error) {
