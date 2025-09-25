@@ -34,9 +34,12 @@ class EmbeddingService {
    */
   async getDatabase() {
     if (!this.db) {
+      const start = Date.now();
+      console.log(`[EmbeddingService] 🔌 Connecting to MongoDB… uriSet=${!!this.MONGODB_URI}`);
       this.client = new MongoClient(this.MONGODB_URI);
       await this.client.connect();
       this.db = this.client.db(this.DATABASE_NAME);
+      console.log(`[EmbeddingService] ✅ MongoDB connected db="${this.DATABASE_NAME}" in ${Date.now() - start}ms`);
     }
     return this.db;
   }
@@ -45,14 +48,18 @@ class EmbeddingService {
    * Initialize Vector Store for MongoDB Atlas Vector Search
    */
   async getVectorStore() {
+    const start = Date.now();
     const database = await this.getDatabase();
+    console.log(`[EmbeddingService] 📦 Creating MongoDBAtlasVectorSearch on collection="${this.EMBEDDINGS_COLLECTION}" index="${this.VECTOR_INDEX_NAME}"`);
     
-    return new MongoDBAtlasVectorSearch(this.embeddings, {
+    const store = new MongoDBAtlasVectorSearch(this.embeddings, {
       collection: database.collection(this.EMBEDDINGS_COLLECTION),
       indexName: this.VECTOR_INDEX_NAME,
       textKey: "text",
       embeddingKey: "embedding",
     });
+    console.log(`[EmbeddingService] ✅ Vector store ready in ${Date.now() - start}ms`);
+    return store;
   }
 
   /**
@@ -381,11 +388,15 @@ class EmbeddingService {
    */
   async searchSimilarContent(query, maxResults = 5, filter = {}) {
     try {
+      const opId = `${Math.random().toString(36).slice(2, 8)}-${Date.now()}`;
+      const totalStart = Date.now();
       console.log('🔍 Starting vector search with query:', query);
       console.log('🔍 Max results:', maxResults);
       console.log('🔍 Filter:', filter);
       
+      const vsStart = Date.now();
       const vectorStore = await this.getVectorStore();
+      console.log(`[EmbeddingService][${opId}] 🏗️ getVectorStore took ${Date.now() - vsStart}ms`);
       console.log('🔍 Vector store created successfully');
       
       const retriever = vectorStore.asRetriever({
@@ -398,7 +409,9 @@ class EmbeddingService {
       console.log('🔍 Retriever configured');
       
       console.log('🔍 Calling getRelevantDocuments...');
+      const searchStart = Date.now();
       const docs = await retriever.getRelevantDocuments(query);
+      console.log(`[EmbeddingService][${opId}] 🔎 getRelevantDocuments returned ${docs.length} docs in ${Date.now() - searchStart}ms`);
       console.log('🔍 Raw search results count:', docs.length);
       
       if (docs.length > 0) {
@@ -408,7 +421,7 @@ class EmbeddingService {
         });
       }
       
-      return docs.map(doc => ({
+      const mapped = docs.map(doc => ({
         contentId: doc.metadata.contentId,
         category: doc.metadata.category,
         type: doc.metadata.type,
@@ -417,6 +430,8 @@ class EmbeddingService {
         chunkIndex: doc.metadata.chunkIndex || 0,
         sourceSection: doc.metadata.sourceSection
       }));
+      console.log(`[EmbeddingService][${opId}] ✅ total=${mapped.length} totalMs=${Date.now() - totalStart}`);
+      return mapped;
       
     } catch (error) {
       console.error('Error searching similar content:', error);

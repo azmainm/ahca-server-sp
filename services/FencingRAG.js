@@ -75,17 +75,24 @@ Context from relevant knowledge base sections:
    */
   async generateResponse(question, context, conversationHistory = []) {
     try {
+      const opId = `${Math.random().toString(36).slice(2, 8)}-${Date.now()}`;
+      const totalStart = Date.now();
+      const promptPreview = String(question).slice(0, 160).replace(/\n/g, ' ');
+      console.log(`[FencingRAG][${opId}] 🤖 generateResponse start questionPreview="${promptPreview}${question.length > 160 ? '…' : ''}" contextLength=${context ? context.length : 0}`);
       // Use the RAG chain to get string response
+      const invokeStart = Date.now();
       const response = await this.ragChain.invoke({
         question,
         context: context || 'No relevant information found in the knowledge base for this query. Please contact our office at (303) 555-FENCE for assistance.',
       });
+      console.log(`[FencingRAG][${opId}] 🧠 ragChain.invoke took ${Date.now() - invokeStart}ms`);
 
       // Try to parse JSON response if it looks like JSON
       if (typeof response === 'string' && response.trim().startsWith('{')) {
         try {
           const parsed = JSON.parse(response);
           if (parsed.answer) {
+            console.log(`[FencingRAG][${opId}] ✅ Parsed structured response in ${Date.now() - totalStart}ms`);
             return parsed;
           }
         } catch (parseError) {
@@ -94,21 +101,25 @@ Context from relevant knowledge base sections:
       }
 
       // Return structured response from string
-      return {
+      const fallback = {
         answer: typeof response === 'string' ? response : 'I encountered an issue processing your request. Please contact us at (303) 555-FENCE for direct assistance.',
         confidence: 'medium',
         sources_used: [],
         follow_up_questions: []
       };
+      console.log(`[FencingRAG][${opId}] 📝 Returning fallback structured response in ${Date.now() - totalStart}ms`);
+      return fallback;
     } catch (error) {
       console.error('Error in LangChain RAG:', error);
       // Return structured error response
-      return {
+      const errResp = {
         answer: 'I encountered an error while processing your request. Please contact our office at (303) 555-FENCE and one of our fencing experts will be happy to help you.',
         confidence: 'low',
         sources_used: [],
         follow_up_questions: []
       };
+      console.log(`[FencingRAG] ❌ Error response returned`);
+      return errResp;
     }
   }
 

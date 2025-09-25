@@ -14,6 +14,11 @@ const fencingRAG = new FencingRAG();
  */
 router.post('/search-knowledge', async (req, res) => {
   try {
+    const requestId = `${Math.random().toString(36).slice(2, 10)}-${Date.now()}`;
+    const routeStart = Date.now();
+    res.set('x-request-id', requestId);
+    console.log(`[voice-tools][${requestId}] ▶️ /search-knowledge request received`);
+    console.log(`[voice-tools][${requestId}] Meta: method=POST url=${req.originalUrl} ua="${req.headers['user-agent'] || ''}" content-length=${req.headers['content-length'] || 0}`);
     console.log('\n🎯 ======= VOICE AGENT FUNCTION CALL =======');
     console.log('🕰️ Timestamp:', new Date().toISOString());
     console.log('🔍 Voice agent knowledge search endpoint called');
@@ -24,6 +29,7 @@ router.post('/search-knowledge', async (req, res) => {
     const { query } = req.body;
     
     if (!query) {
+      console.log(`[voice-tools][${requestId}] ❌ Validation failed: missing query`);
       console.log('❌ No query provided');
       return res.status(400).json({
         error: 'Query is required',
@@ -31,6 +37,7 @@ router.post('/search-knowledge', async (req, res) => {
       });
     }
     
+    console.log(`[voice-tools][${requestId}] ✅ Validation passed: query="${String(query).slice(0, 120)}${String(query).length > 120 ? '…' : ''}"`);
     console.log(`🔍 Voice agent searching knowledge base for: "${query}"`);
     console.log('🔧 Environment check:');
     console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'MISSING');
@@ -38,10 +45,15 @@ router.post('/search-knowledge', async (req, res) => {
     
     // Search for similar content (fewer results for voice responses)
     console.log('📊 Calling embeddingService.searchSimilarContent...');
+    const searchStart = Date.now();
     const similarContent = await embeddingService.searchSimilarContent(query, 3);
+    const searchMs = Date.now() - searchStart;
+    console.log(`[voice-tools][${requestId}] 📊 Vector search completed in ${searchMs}ms`);
     console.log(`📊 Found ${similarContent.length} similar content items:`, similarContent);
     
     if (similarContent.length === 0) {
+      const totalMs = Date.now() - routeStart;
+      console.log(`[voice-tools][${requestId}] ⚠️ No similar content found. totalMs=${totalMs}`);
       console.log('⚠️ No similar content found in knowledge base');
       return res.json({
         success: true,
@@ -52,13 +64,19 @@ router.post('/search-knowledge', async (req, res) => {
     
     // Generate RAG response optimized for voice
     console.log('🤖 Formatting context and generating AI response...');
+    const formatStart = Date.now();
     const context = fencingRAG.formatContext(similarContent);
+    const formatMs = Date.now() - formatStart;
+    console.log(`[voice-tools][${requestId}] 🧩 Context formatted in ${formatMs}ms (length=${context.length})`);
     console.log('📄 Formatted context length:', context.length);
     
+    const genStart = Date.now();
     const aiResponse = await fencingRAG.generateResponse(
       query + ' (Please provide a concise response suitable for voice conversation)', 
       context
     );
+    const genMs = Date.now() - genStart;
+    console.log(`[voice-tools][${requestId}] 🤖 RAG response generated in ${genMs}ms`);
     console.log('🤖 AI Response:', aiResponse);
     
     // Handle structured response
@@ -77,11 +95,15 @@ router.post('/search-knowledge', async (req, res) => {
       sourcesCount: similarContent.length
     };
     
+    const totalMs = Date.now() - routeStart;
+    console.log(`[voice-tools][${requestId}] ✅ Sending response (totalMs=${totalMs}) summary={ hasInfo: ${response.hasInfo}, sources: ${response.sourcesCount}, categories: ${response.categories.length} }`);
     console.log('✅ Sending successful response:', response);
     console.log('🎉 ======= VOICE AGENT RESPONSE SENT =======\n');
     res.json(response);
     
   } catch (error) {
+    const elapsedMs = typeof routeStart === 'number' ? (Date.now() - routeStart) : 'n/a';
+    console.error(`[voice-tools][error]❌ requestId=${typeof requestId !== 'undefined' ? requestId : 'n/a'} elapsedMs=${elapsedMs}`);
     console.error('❌ Error in voice agent knowledge search:', error);
     console.error('❌ Error stack:', error.stack);
     
