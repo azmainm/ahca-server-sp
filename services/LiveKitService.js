@@ -18,9 +18,9 @@ class LiveKitService {
     // Initialize room service client
     this.roomService = new RoomServiceClient(this.livekitUrl, this.apiKey, this.apiSecret);
     
-    console.log('✅ LiveKit Service initialized');
-    console.log('🔗 LiveKit URL:', this.livekitUrl);
-    console.log('🔑 API Key:', this.apiKey ? 'SET' : 'MISSING');
+    // console.log('✅ LiveKit Service initialized');
+    // console.log('🔗 LiveKit URL:', this.livekitUrl);
+    // console.log('🔑 API Key:', this.apiKey ? 'SET' : 'MISSING');
   }
 
   /**

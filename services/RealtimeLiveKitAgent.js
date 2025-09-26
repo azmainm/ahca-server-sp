@@ -14,7 +14,7 @@ class RealtimeLiveKitAgent {
     // Track active agent sessions
     this.activeSessions = new Map();
     
-    console.log('🤖 Realtime LiveKit Agent initialized');
+    // console.log('🤖 Realtime LiveKit Agent initialized');
   }
 
   /**
