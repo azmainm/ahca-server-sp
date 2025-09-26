@@ -1,0 +1,136 @@
+{
+    "materials": {
+      "cedar_fence_panel_6x8": {
+        "name": "Cedar Fence Panel 6x8",
+        "unit": "ea",
+        "unit_price": 42.00,
+        "description": "6x8 ft pre-assembled cedar fence panel",
+        "category": "fencing"
+      },
+      "cedar_post_4x4x8": {
+        "name": "Cedar Post 4x4x8",
+        "unit": "ea",
+        "unit_price": 18.00,
+        "description": "4x4 in, 8 ft cedar fence post",
+        "category": "fencing"
+      },
+      "cedar_rail_2x4x8": {
+        "name": "Cedar Rail 2x4x8",
+        "unit": "ea",
+        "unit_price": 7.50,
+        "description": "2x4 in, 8 ft cedar rail",
+        "category": "fencing"
+      },
+      "cedar_picket_1x6x6": {
+        "name": "Cedar Picket 1x6x6",
+        "unit": "ea",
+        "unit_price": 2.50,
+        "description": "1x6 in, 6 ft cedar picket",
+        "category": "fencing"
+      },
+      "concrete_bag_60lb": {
+        "name": "Concrete Mix 60lb Bag",
+        "unit": "bag",
+        "unit_price": 5.25,
+        "description": "60 lb bag of Quikrete concrete mix",
+        "category": "foundation"
+      },
+      "gate_hardware_kit": {
+        "name": "Gate Hardware Kit",
+        "unit": "set",
+        "unit_price": 29.99,
+        "description": "Includes hinges, latch, screws for 1 gate",
+        "category": "hardware"
+      },
+      "screws_box_5lb": {
+        "name": "Exterior Deck Screws (5lb box)",
+        "unit": "box",
+        "unit_price": 24.50,
+        "description": "5 lb box of coated exterior deck screws",
+        "category": "hardware"
+      },
+      "stain_gallon": {
+        "name": "Exterior Wood Stain (1 gallon)",
+        "unit": "gal",
+        "unit_price": 39.95,
+        "description": "Protective stain for wood fences",
+        "category": "finishing"
+      }
+    },
+    "labor": {
+      "post_hole_digging": {
+        "name": "Post Hole Digging",
+        "unit": "hr",
+        "hourly_rate": 45.00,
+        "description": "Manual or auger-based post hole digging"
+      },
+      "concrete_pouring": {
+        "name": "Concrete Pouring",
+        "unit": "hr",
+        "hourly_rate": 42.00,
+        "description": "Mixing and pouring concrete for posts"
+      },
+      "panel_installation": {
+        "name": "Fence Panel Installation",
+        "unit": "hr",
+        "hourly_rate": 48.00,
+        "description": "Install panels, align and secure with screws"
+      },
+      "gate_installation": {
+        "name": "Gate Installation",
+        "unit": "hr",
+        "hourly_rate": 50.00,
+        "description": "Install fence gate with hardware kit"
+      },
+      "staining": {
+        "name": "Staining / Sealing",
+        "unit": "hr",
+        "hourly_rate": 40.00,
+        "description": "Apply protective stain to installed fence"
+      }
+    },
+    "assemblies": {
+      "cedar_privacy_fence_linear_ft": {
+        "name": "Cedar Privacy Fence (per linear ft)",
+        "unit": "lf",
+        "unit_price": 29.00,
+        "description": "Includes pickets, rails, posts, screws, and concrete (averaged)",
+        "category": "assembly"
+      },
+      "cedar_gate": {
+        "name": "Cedar Gate (3–4 ft wide)",
+        "unit": "ea",
+        "unit_price": 185.00,
+        "description": "Complete gate assembly with hardware",
+        "category": "assembly"
+      }
+    },
+    "extras": {
+      "haul_away_old_fence": {
+        "name": "Haul Away Old Fence",
+        "unit": "lf",
+        "unit_price": 3.50,
+        "description": "Removal and disposal of old fence material",
+        "category": "disposal"
+      },
+      "permit_fee": {
+        "name": "Permit Fee (average)",
+        "unit": "ea",
+        "unit_price": 75.00,
+        "description": "City building permit fee (flat average)",
+        "category": "permits"
+      },
+      "cleanup": {
+        "name": "Site Cleanup",
+        "unit": "hr",
+        "hourly_rate": 35.00,
+        "description": "Final debris cleanup and site prep"
+      }
+    },
+    "metadata": {
+      "currency": "USD",
+      "last_updated": "2025-09-26",
+      "region": "US-OR-PDX"
+    }
+  }
+  
