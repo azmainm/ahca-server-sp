@@ -95,10 +95,10 @@ router.post('/transcribe', async (req, res) => {
 
   } catch (error) {
     console.error('❌ [STT] Error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Transcription failed',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -125,7 +125,7 @@ router.post('/process', async (req, res) => {
     
     // Add user message to history
     session.conversationHistory.push({
-      role: 'user',
+        role: 'user',
       content: text,
       timestamp: new Date()
     });
@@ -135,17 +135,34 @@ router.post('/process', async (req, res) => {
     let needsRAG = false;
     let assistantResponse = '';
 
-    if (!session.userInfo.collected) {
+    // Check for goodbye/end conversation first (before phase logic)
+    const goodbyePatterns = [
+      /thank you.*no more/i,
+      /that.*all.*need/i,
+      /goodbye/i,
+      /bye/i,
+      /done.*questions/i,
+      /satisfied/i,
+      /that.*help.*needed/i,
+      /that.*all/i
+    ];
+    
+    const isGoodbye = goodbyePatterns.some(pattern => pattern.test(text));
+    
+    if (isGoodbye) {
+      const userName = session.userInfo.name || 'there';
+      assistantResponse = `Thank you, ${userName}! I hope you were satisfied with SherpaPrompt AI's service. Have a great day!`;
+    } else if (!session.userInfo.collected) {
       // Phase 1: Collect name and email
       systemPrompt = `You are a friendly assistant for SherpaPrompt Fencing Company. 
       
-Your task is to extract the user's name and email from their response. Be helpful and conversational.
+Your task is to extract the user's name and email from their response. Be helpful and conversational but concise.
 
-If you get both name and email, respond with: "Thank you [name]! I've recorded your email as [email]. Now, how can I help you with your fencing needs today?"
+If you get both name and email, respond with: "Thanks [name]! I've got your email as [email]. How can I help you today?"
 
-If information is missing, politely ask for what's missing.
+If information is missing, briefly ask for what's missing.
 
-Extract the information and respond naturally.`;
+Keep responses short and natural.`;
 
       // Try to extract name and email
       const extractionPrompt = `Extract name and email from this text: "${text}"
@@ -163,10 +180,10 @@ If missing info, set those fields to null and hasComplete to false.`;
         if (extracted.name) session.userInfo.name = extracted.name;
         if (extracted.email) session.userInfo.email = extracted.email;
         
-        if (extracted.hasComplete && extracted.name && extracted.email) {
-          session.userInfo.collected = true;
-          assistantResponse = `Thank you ${extracted.name}! I've recorded your email as ${extracted.email}. Now, how can I help you with your fencing needs today?`;
-        } else {
+          if (extracted.hasComplete && extracted.name && extracted.email) {
+            session.userInfo.collected = true;
+            assistantResponse = `Thanks ${extracted.name}! I've got your email as ${extracted.email}. How can I help you today?`;
+          } else {
           // Generate response asking for missing info
           const responsePrompt = `The user said: "${text}"
           We have: name="${session.userInfo.name || 'missing'}", email="${session.userInfo.email || 'missing'}"
@@ -186,38 +203,43 @@ If missing info, set those fields to null and hasComplete to false.`;
       // Phase 2: Answer questions using RAG
       needsRAG = true;
       
-      systemPrompt = `You are a knowledgeable assistant for SherpaPrompt Fencing Company. Use the provided context to answer questions about fencing services, materials, installation, maintenance, and costs.
+      systemPrompt = `You are a helpful assistant for SherpaPrompt Fencing Company. Answer questions concisely using the provided context.
 
 User: ${session.userInfo.name} (${session.userInfo.email})
 
-Be helpful, professional, and specific. If you need to search for information, use the search_knowledge function.`;
+Guidelines:
+- Be direct and to-the-point but friendly
+- Answer only what's asked
+- Keep responses conversational but brief
+- Ask a short follow up question asking if there is anything else they would like to know
+- If user says goodbye/no more questions, thank them and mention you hope they were satisfied with SherpaPrompt AI's service`;
 
       // Check if we need to search knowledge base
-      const searchTerms = extractSearchTerms(text);
-      let contextInfo = '';
+        const searchTerms = extractSearchTerms(text);
+        let contextInfo = '';
 
-      if (searchTerms.length > 0) {
-        console.log('🔍 [RAG] Searching for:', searchTerms);
-        const searchResults = await embeddingService.searchSimilarContent(searchTerms.join(' '), 3);
-        
-        if (searchResults && searchResults.length > 0) {
-          contextInfo = fencingRAG.formatContext(searchResults);
-          console.log('📚 [RAG] Found relevant info from', searchResults.length, 'sources');
+        if (searchTerms.length > 0) {
+          console.log('🔍 [RAG] Searching for:', searchTerms);
+          const searchResults = await embeddingService.searchSimilarContent(searchTerms.join(' '), 3);
+          
+          if (searchResults && searchResults.length > 0) {
+            contextInfo = fencingRAG.formatContext(searchResults);
+            console.log('📚 [RAG] Found relevant info from', searchResults.length, 'sources');
+          }
         }
-      }
 
-      // Generate response with context using FencingRAG
-      if (contextInfo) {
-        const ragResponse = await fencingRAG.generateResponse(text, contextInfo, session.conversationHistory);
-        assistantResponse = ragResponse.answer;
-      } else {
-        // Fallback to basic OpenAI response without RAG
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          ...session.conversationHistory.slice(-6), // Last 3 exchanges
-        ];
-        assistantResponse = await callOpenAI(messages);
-      }
+        // Generate response with context using FencingRAG
+        if (contextInfo) {
+          const ragResponse = await fencingRAG.generateResponse(text, contextInfo, session.conversationHistory);
+          assistantResponse = ragResponse.answer;
+        } else {
+          // Fallback to basic OpenAI response without RAG
+          const messages = [
+            { role: 'system', content: systemPrompt },
+            ...session.conversationHistory.slice(-6), // Last 3 exchanges
+          ];
+          assistantResponse = await callOpenAI(messages);
+        }
     }
 
     // Add assistant response to history
@@ -240,10 +262,10 @@ Be helpful, professional, and specific. If you need to search for information, u
 
   } catch (error) {
     console.error('❌ [LLM] Error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Processing failed',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -304,10 +326,10 @@ router.post('/synthesize', async (req, res) => {
 
   } catch (error) {
     console.error('❌ [TTS] Error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Speech synthesis failed',
-      message: error.message 
+      message: error.message
     });
   }
 });
