@@ -15,12 +15,9 @@ app.use(express.json({ limit: '50mb' })); // Increase limit for audio data
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
-app.use('/api/openai', require('./routes/openai'));
 app.use('/api/knowledge', require('./routes/knowledge'));
 app.use('/api/voice-tools', require('./routes/voice-tools'));
 app.use('/api/chained-voice', require('./routes/chained-voice'));
-app.use('/api/livekit', require('./routes/livekit'));
-app.use('/api/realtime-agent', require('./routes/realtime-agent'));
 app.use('/api/estimate', require('./routes/estimate'));
 
 // Health check endpoint
