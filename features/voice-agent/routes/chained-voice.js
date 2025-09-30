@@ -9,8 +9,8 @@ const express = require('express');
 const multer = require('multer');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
-const { EmbeddingService } = require('../services/EmbeddingService');
-const { FencingRAG } = require('../services/FencingRAG');
+const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
+const { FencingRAG } = require('../../../shared/services/FencingRAG');
 
 const router = express.Router();
 

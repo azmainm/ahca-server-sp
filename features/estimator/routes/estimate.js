@@ -73,7 +73,7 @@ function loadCatalog(customCatalogData = null) {
       return customCatalogData;
     }
     
-    const catalogPath = path.join(__dirname, '../data/catalog.json');
+    const catalogPath = path.join(__dirname, '../../../data/catalog.json');
     const catalogData = fs.readFileSync(catalogPath, 'utf8');
     console.log('🗂️ [CATALOG] Using default catalog.json');
     return JSON.parse(catalogData);
