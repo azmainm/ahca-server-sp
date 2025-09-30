@@ -66,10 +66,16 @@ const EstimateSchema = z.object({
 });
 
 // Load catalog data
-function loadCatalog() {
+function loadCatalog(customCatalogData = null) {
   try {
+    if (customCatalogData) {
+      console.log('🗂️ [CATALOG] Using custom catalog data from client');
+      return customCatalogData;
+    }
+    
     const catalogPath = path.join(__dirname, '../data/catalog.json');
     const catalogData = fs.readFileSync(catalogPath, 'utf8');
+    console.log('🗂️ [CATALOG] Using default catalog.json');
     return JSON.parse(catalogData);
   } catch (error) {
     console.error('Error loading catalog:', error);
@@ -139,8 +145,8 @@ async function transcribeAudio(audioFilePath) {
 }
 
 // Generate estimate from transcript using OpenAI
-async function generateEstimate(transcript) {
-  const catalog = loadCatalog();
+async function generateEstimate(transcript, customCatalogData = null) {
+  const catalog = loadCatalog(customCatalogData);
   const catalogText = catalog ? JSON.stringify(catalog, null, 2) : '';
 
   const systemPrompt = `You are a strict JSON extractor and estimator. You MUST output **only valid JSON** that matches the Estimate schema provided below. 
@@ -340,8 +346,8 @@ Return only the corrected JSON.`;
 }
 
 // Apply catalog pricing and compute totals
-function processEstimate(estimate) {
-  const catalog = loadCatalog();
+function processEstimate(estimate, customCatalogData = null) {
+  const catalog = loadCatalog(customCatalogData);
   let subtotal = 0;
 
   estimate.line_items.forEach(item => {
@@ -471,6 +477,17 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
     tempFilePath = req.file.path;
     
+    // Extract custom catalog data if provided
+    let customCatalogData = null;
+    if (req.body.customCatalog) {
+      try {
+        customCatalogData = JSON.parse(req.body.customCatalog);
+        console.log('📋 [SERVER] Custom catalog received from client');
+      } catch (error) {
+        console.warn('⚠️ [SERVER] Invalid custom catalog JSON, using default');
+      }
+    }
+    
     // Rename file with proper extension for OpenAI
     const audioExtension = req.file.originalname?.endsWith('.webm') ? '.webm' : 
                           req.file.mimetype?.includes('webm') ? '.webm' : '.webm';
@@ -500,7 +517,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
     // Step 2: Generate estimate from transcript
     console.log('🤖 [SERVER] Step 2: Generating estimate from transcript...');
-    let estimateJson = await generateEstimate(transcript);
+    let estimateJson = await generateEstimate(transcript, customCatalogData);
     console.log('📊 [SERVER] Raw LLM response received');
 
     // Step 3: Validate estimate
@@ -531,7 +548,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
     // Step 5: Process estimate (apply catalog pricing and compute totals)
     console.log('💰 [SERVER] Step 5: Processing pricing and totals...');
-    const finalEstimate = processEstimate(validationResult.data);
+    const finalEstimate = processEstimate(validationResult.data, customCatalogData);
     console.log('💵 [SERVER] Final totals calculated:', {
       subtotal: finalEstimate.totals?.subtotal,
       tax: finalEstimate.totals?.tax_total,

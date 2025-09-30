@@ -220,11 +220,20 @@ Guidelines:
 
         if (searchTerms.length > 0) {
           console.log('🔍 [RAG] Searching for:', searchTerms);
-          const searchResults = await embeddingService.searchSimilarContent(searchTerms.join(' '), 3);
+          const searchResults = await embeddingService.searchSimilarContent(searchTerms.join(' '), 5);  // Increased from 3 to 5
           
           if (searchResults && searchResults.length > 0) {
             contextInfo = fencingRAG.formatContext(searchResults);
             console.log('📚 [RAG] Found relevant info from', searchResults.length, 'sources');
+          }
+        } else {
+          // If no specific keywords found, try a general search with the full text
+          console.log('🔍 [RAG] No specific keywords found, searching with full text');
+          const searchResults = await embeddingService.searchSimilarContent(text, 3);
+          
+          if (searchResults && searchResults.length > 0) {
+            contextInfo = fencingRAG.formatContext(searchResults);
+            console.log('📚 [RAG] Found relevant info from general search:', searchResults.length, 'sources');
           }
         }
 
@@ -365,15 +374,43 @@ function extractSearchTerms(text) {
   const fencingKeywords = [
     'fence', 'fencing', 'installation', 'repair', 'maintenance', 
     'cost', 'price', 'material', 'wood', 'vinyl', 'chain link',
-    'aluminum', 'steel', 'height', 'permit', 'warranty', 'estimate'
+    'aluminum', 'steel', 'height', 'permit', 'warranty', 'estimate',
+    'gate', 'gates', 'privacy', 'picket', 'ornamental', 'iron',
+    'concrete', 'post', 'rail', 'stain', 'painting', 'hours',
+    'schedule', 'emergency', 'service', 'area', 'financing',
+    'payment', 'quote', 'consultation', 'appointment',
+    // Contact and company info keywords
+    'phone', 'number', 'call', 'contact', 'reach', 'email', 'address',
+    'location', 'office', 'company', 'business', 'hours', 'open',
+    'available', 'speak', 'talk', 'representative', 'website', 'areas'
   ];
   
-  const words = text.toLowerCase().split(/\s+/);
-  return words.filter(word => 
+  // Enhanced extraction that includes context and question words
+  const textLower = text.toLowerCase();
+  const words = textLower.split(/\s+/);
+  
+  // Extract fencing-related keywords
+  const foundKeywords = words.filter(word => 
     fencingKeywords.some(keyword => 
       word.includes(keyword) || keyword.includes(word)
     )
   );
+  
+  // For questions, include the full question context for better search
+  const questionWords = ['how', 'what', 'when', 'where', 'why', 'can', 'do', 'are', 'is', 'will'];
+  const isQuestion = questionWords.some(qw => textLower.includes(qw));
+  
+  if (isQuestion && foundKeywords.length > 0) {
+    // For questions, include more context words
+    const contextWords = words.filter(word => 
+      word.length > 3 && 
+      !['the', 'and', 'for', 'are', 'you', 'your', 'can', 'will', 'this', 'that'].includes(word)
+    );
+    foundKeywords.push(...contextWords.slice(0, 3)); // Add up to 3 context words
+  }
+  
+  // Remove duplicates and return
+  return [...new Set(foundKeywords)];
 }
 
 // Session cleanup

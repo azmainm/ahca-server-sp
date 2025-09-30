@@ -14,9 +14,11 @@ class EmbeddingService {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
+    // Improved text splitter with better parameters for knowledge base content
     this.textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
-      chunkOverlap: 200,
+      chunkSize: 800,  // Smaller chunks for more precise retrieval
+      chunkOverlap: 150,  // Reduced overlap to avoid redundancy
+      separators: ['\n\n', '\n', '. ', '? ', '! ', '; ', ': ', ', ', ' '],  // Better semantic boundaries
     });
 
     this.client = null;
@@ -154,6 +156,24 @@ class EmbeddingService {
   }
 
   /**
+   * Clear all embeddings from the knowledge base collection
+   */
+  async clearAllEmbeddings() {
+    try {
+      const database = await this.getDatabase();
+      const embeddingsCollection = database.collection(this.EMBEDDINGS_COLLECTION);
+      
+      const result = await embeddingsCollection.deleteMany({});
+      
+      console.log(`🗑️ Cleared ${result.deletedCount} total embeddings from collection`);
+      return result.deletedCount;
+    } catch (error) {
+      console.error('Error clearing all embeddings:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Process a structured knowledge base object into embeddings
    * @param {Object} knowledgeBase - Structured knowledge base object
    * @param {string} contentId - Unique identifier for this knowledge base
@@ -214,28 +234,58 @@ class EmbeddingService {
   extractTextFromKnowledgeBase(knowledgeBase) {
     const chunks = [];
 
-    // Process company info
+    // Process company info with enhanced searchability
     if (knowledgeBase.company_info) {
       const companyInfo = knowledgeBase.company_info;
-      let companyText = `Company: ${companyInfo.name}\nTagline: ${companyInfo.tagline}\n`;
-      companyText += `Established: ${companyInfo.established}\n`;
-      companyText += `Service Areas: ${companyInfo.service_areas.join(', ')}\n`;
-      companyText += `Phone: ${companyInfo.phone}\nEmail: ${companyInfo.email}\n`;
-      companyText += `Website: ${companyInfo.website}\nAddress: ${companyInfo.address}\n`;
+      let companyText = `COMPANY CONTACT INFORMATION\n\n`;
+      companyText += `Company Name: ${companyInfo.name}\n`;
+      companyText += `Tagline: ${companyInfo.tagline}\n`;
+      companyText += `Established: ${companyInfo.established}\n\n`;
+      
+      companyText += `CONTACT DETAILS:\n`;
+      companyText += `Phone Number: ${companyInfo.phone}\n`;
+      companyText += `Call us at: ${companyInfo.phone}\n`;
+      companyText += `Email: ${companyInfo.email}\n`;
+      companyText += `Website: ${companyInfo.website}\n`;
+      companyText += `Address: ${companyInfo.address}\n\n`;
+      
+      companyText += `SERVICE AREAS:\n`;
+      companyText += `We serve: ${companyInfo.service_areas.join(', ')}\n\n`;
       
       if (companyInfo.hours) {
-        companyText += `Hours: Monday-Friday ${companyInfo.hours.monday_friday}, `;
-        companyText += `Saturday ${companyInfo.hours.saturday}, Sunday ${companyInfo.hours.sunday}\n`;
+        companyText += `BUSINESS HOURS:\n`;
+        companyText += `Monday-Friday: ${companyInfo.hours.monday_friday}\n`;
+        companyText += `Saturday: ${companyInfo.hours.saturday}\n`;
+        companyText += `Sunday: ${companyInfo.hours.sunday}\n`;
         companyText += `Emergency Service: ${companyInfo.hours.emergency}`;
       }
 
       chunks.push({
         id: 'company_info',
         category: 'company',
-        type: 'basic_info',
+        type: 'contact_info',
         sourceSection: 'company_info',
-        title: 'Company Information',
+        title: 'Company Contact Information',
         content: companyText
+      });
+      
+      // Create a separate chunk specifically for contact information to improve retrieval
+      let contactText = `CONTACT INFORMATION\n\n`;
+      contactText += `To reach SherpaPrompt Fencing Company:\n\n`;
+      contactText += `Phone: ${companyInfo.phone}\n`;
+      contactText += `Call us directly at: ${companyInfo.phone}\n`;
+      contactText += `Email: ${companyInfo.email}\n`;
+      contactText += `Website: ${companyInfo.website}\n`;
+      contactText += `Office Address: ${companyInfo.address}\n\n`;
+      contactText += `For immediate assistance, call ${companyInfo.phone}`;
+      
+      chunks.push({
+        id: 'contact_details',
+        category: 'contact',
+        type: 'phone_email',
+        sourceSection: 'company_info',
+        title: 'Phone Number and Contact Details',
+        content: contactText
       });
     }
 
@@ -279,43 +329,46 @@ class EmbeddingService {
       });
     }
 
-    // Process FAQ
-    if (knowledgeBase.faq) {
-      knowledgeBase.faq.forEach((faqItem, index) => {
-        const faqText = `Question: ${faqItem.question}\nAnswer: ${faqItem.answer}`;
+    // Process FAQ with enhanced metadata for better retrieval
+    if (knowledgeBase.faqs) {
+      knowledgeBase.faqs.forEach((faqItem, index) => {
+        const faqText = `Question: ${faqItem.question}\n\nAnswer: ${faqItem.answer}`;
         
         chunks.push({
           id: `faq_${index}`,
           category: 'faq',
           type: 'question_answer',
-          sourceSection: 'faq',
+          sourceSection: 'faqs',
           title: faqItem.question,
+          faqCategory: faqItem.category || 'general',
           content: faqText
         });
       });
     }
 
-    // Process pricing
-    if (knowledgeBase.pricing) {
-      Object.keys(knowledgeBase.pricing).forEach(key => {
-        const pricingInfo = knowledgeBase.pricing[key];
-        let pricingText = `${key.replace(/_/g, ' ').toUpperCase()}\n`;
+    // Process policies section with detailed breakdown
+    if (knowledgeBase.policies) {
+      Object.keys(knowledgeBase.policies).forEach(policyCategory => {
+        const policyData = knowledgeBase.policies[policyCategory];
+        let policyText = `${policyCategory.replace(/_/g, ' ').toUpperCase()} POLICY\n\n`;
         
-        if (typeof pricingInfo === 'object') {
-          Object.keys(pricingInfo).forEach(subKey => {
-            pricingText += `${subKey.replace(/_/g, ' ')}: ${pricingInfo[subKey]}\n`;
+        if (typeof policyData === 'object') {
+          Object.keys(policyData).forEach(policyItem => {
+            const policyValue = policyData[policyItem];
+            policyText += `${policyItem.replace(/_/g, ' ')}: ${policyValue}\n\n`;
           });
         } else {
-          pricingText += pricingInfo;
+          policyText += policyData;
         }
 
         chunks.push({
-          id: `pricing_${key}`,
-          category: 'pricing',
-          type: 'pricing_info',
-          sourceSection: 'pricing',
-          title: `${key.replace(/_/g, ' ')} Pricing`,
-          content: pricingText
+          id: `policy_${policyCategory}`,
+          category: 'policies',
+          type: 'company_policy',
+          sourceSection: 'policies',
+          title: `${policyCategory.replace(/_/g, ' ')} Policy`,
+          policyType: policyCategory,
+          content: policyText.trim()
         });
       });
     }
@@ -376,11 +429,34 @@ class EmbeddingService {
       }
     }
 
+    // Process seasonal information
+    if (knowledgeBase.seasonal_info) {
+      Object.keys(knowledgeBase.seasonal_info).forEach(season => {
+        const seasonData = knowledgeBase.seasonal_info[season];
+        let seasonText = `${season.toUpperCase()} SEASON INFORMATION\n\n`;
+        
+        Object.keys(seasonData).forEach(key => {
+          const value = seasonData[key];
+          seasonText += `${key.replace(/_/g, ' ')}: ${value}\n\n`;
+        });
+
+        chunks.push({
+          id: `seasonal_${season}`,
+          category: 'seasonal',
+          type: 'seasonal_info',
+          sourceSection: 'seasonal_info',
+          title: `${season} Season Information`,
+          season: season,
+          content: seasonText.trim()
+        });
+      });
+    }
+
     return chunks;
   }
 
   /**
-   * Search for similar content using vector store
+   * Enhanced search for similar content using vector store with improved query processing
    * @param {string} query - Search query
    * @param {number} maxResults - Maximum number of results to return
    * @param {Object} filter - Optional metadata filter
@@ -390,29 +466,31 @@ class EmbeddingService {
     try {
       const opId = `${Math.random().toString(36).slice(2, 8)}-${Date.now()}`;
       const totalStart = Date.now();
-      console.log('🔍 Starting vector search with query:', query);
+      
+      // Enhanced query preprocessing for better search results
+      const enhancedQuery = this.preprocessSearchQuery(query);
+      console.log('🔍 Enhanced search query:', enhancedQuery);
       console.log('🔍 Max results:', maxResults);
       console.log('🔍 Filter:', filter);
       
       const vsStart = Date.now();
       const vectorStore = await this.getVectorStore();
       console.log(`[EmbeddingService][${opId}] 🏗️ getVectorStore took ${Date.now() - vsStart}ms`);
-      console.log('🔍 Vector store created successfully');
       
+      // Perform initial search with increased results for better ranking
+      const initialMaxResults = Math.min(maxResults * 2, 15);
       const retriever = vectorStore.asRetriever({
-        k: maxResults,
+        k: initialMaxResults,
         searchType: "similarity",
         searchKwargs: {
           filter: filter
         }
       });
-      console.log('🔍 Retriever configured');
       
       console.log('🔍 Calling getRelevantDocuments...');
       const searchStart = Date.now();
-      const docs = await retriever.getRelevantDocuments(query);
+      const docs = await retriever.getRelevantDocuments(enhancedQuery);
       console.log(`[EmbeddingService][${opId}] 🔎 getRelevantDocuments returned ${docs.length} docs in ${Date.now() - searchStart}ms`);
-      console.log('🔍 Raw search results count:', docs.length);
       
       if (docs.length > 0) {
         console.log('🔍 First result sample:', {
@@ -421,22 +499,124 @@ class EmbeddingService {
         });
       }
       
-      const mapped = docs.map(doc => ({
-        contentId: doc.metadata.contentId,
-        category: doc.metadata.category,
-        type: doc.metadata.type,
-        title: doc.metadata.title,
-        content: doc.pageContent,
-        chunkIndex: doc.metadata.chunkIndex || 0,
-        sourceSection: doc.metadata.sourceSection
-      }));
-      console.log(`[EmbeddingService][${opId}] ✅ total=${mapped.length} totalMs=${Date.now() - totalStart}`);
-      return mapped;
+      // Enhanced result processing with deduplication and relevance scoring
+      const processedResults = this.processSearchResults(docs, query, maxResults);
+      
+      console.log(`[EmbeddingService][${opId}] ✅ total=${processedResults.length} totalMs=${Date.now() - totalStart}`);
+      return processedResults;
       
     } catch (error) {
       console.error('Error searching similar content:', error);
       throw error;
     }
+  }
+
+  /**
+   * Preprocess search query to improve retrieval results
+   * @param {string} query - Original search query
+   * @returns {string} Enhanced query
+   */
+  preprocessSearchQuery(query) {
+    if (!query) return '';
+    
+    // Convert common conversational phrases to more specific search terms
+    let enhancedQuery = query.toLowerCase();
+    
+    // Map common question patterns to better search terms
+    const queryMappings = {
+      'how much': 'price cost pricing',
+      'how long': 'time duration installation',
+      'what materials': 'materials types options',
+      'do you install': 'installation service',
+      'warranty': 'warranty guarantee coverage',
+      'emergency': 'emergency repair urgent',
+      'when can you': 'scheduling availability',
+      'do you serve': 'service area location',
+      'permit': 'permit requirements approval',
+      'financing': 'financing payment options',
+      // Contact and company info mappings
+      'phone number': 'phone contact company information',
+      'call you': 'phone contact company information',
+      'contact you': 'phone email contact company information',
+      'reach you': 'phone email contact company information',
+      'your number': 'phone contact company information',
+      'business hours': 'hours company information',
+      'when open': 'hours company information schedule',
+      'your address': 'address location company information',
+      'where located': 'address location company information',
+      'your email': 'email contact company information',
+      'your website': 'website company information',
+      'company info': 'company information contact phone email address'
+    };
+    
+    // Apply mappings
+    Object.keys(queryMappings).forEach(pattern => {
+      if (enhancedQuery.includes(pattern)) {
+        enhancedQuery += ' ' + queryMappings[pattern];
+      }
+    });
+    
+    return enhancedQuery;
+  }
+
+  /**
+   * Process and rank search results with deduplication
+   * @param {Array} docs - Raw search results
+   * @param {string} originalQuery - Original search query
+   * @param {number} maxResults - Maximum results to return
+   * @returns {Array} Processed and ranked results
+   */
+  processSearchResults(docs, originalQuery, maxResults) {
+    // Convert to standard format
+    let results = docs.map(doc => ({
+      contentId: doc.metadata.contentId,
+      category: doc.metadata.category,
+      type: doc.metadata.type,
+      title: doc.metadata.title,
+      content: doc.pageContent,
+      chunkIndex: doc.metadata.chunkIndex || 0,
+      sourceSection: doc.metadata.sourceSection,
+      faqCategory: doc.metadata.faqCategory,
+      policyType: doc.metadata.policyType,
+      season: doc.metadata.season
+    }));
+    
+    // Deduplicate results from the same content section
+    const seenSections = new Set();
+    const deduplicatedResults = [];
+    
+    for (const result of results) {
+      const sectionKey = `${result.category}_${result.sourceSection}_${result.contentId}`;
+      
+      if (!seenSections.has(sectionKey)) {
+        seenSections.add(sectionKey);
+        deduplicatedResults.push(result);
+      }
+    }
+    
+    // Prioritize results based on query type
+    const queryLower = originalQuery.toLowerCase();
+    const isServiceQuery = ['how', 'what', 'when', 'where', 'why', 'can you', 'do you'].some(q => queryLower.includes(q));
+    const isContactQuery = ['phone', 'number', 'call', 'contact', 'reach', 'email', 'address', 'location'].some(q => queryLower.includes(q));
+    
+    deduplicatedResults.sort((a, b) => {
+      let aPriority = 0;
+      let bPriority = 0;
+      
+      if (isContactQuery) {
+        // Prioritize contact information for contact queries
+        aPriority += (a.category === 'contact' ? 5 : 0) + (a.category === 'company' ? 4 : 0);
+        bPriority += (b.category === 'contact' ? 5 : 0) + (b.category === 'company' ? 4 : 0);
+      } else if (isServiceQuery) {
+        // Prioritize FAQ and policies for service questions
+        aPriority += (a.category === 'faq' ? 3 : 0) + (a.category === 'policies' ? 2 : 0);
+        bPriority += (b.category === 'faq' ? 3 : 0) + (b.category === 'policies' ? 2 : 0);
+      }
+      
+      return bPriority - aPriority;
+    });
+    
+    return deduplicatedResults.slice(0, maxResults);
   }
 
   /**
