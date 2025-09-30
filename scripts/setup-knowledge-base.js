@@ -35,12 +35,10 @@ async function setupKnowledgeBase() {
     
     console.log('✅ Knowledge base loaded successfully');
     
-    // Check if embeddings already exist
-    const hasExisting = await embeddingService.checkExistingEmbeddings('sherpaprompt_fencing_kb');
-    if (hasExisting) {
-      console.log('⚠️  Existing embeddings found. Removing old ones...');
-      await embeddingService.removeExistingEmbeddings('sherpaprompt_fencing_kb');
-    }
+    // Clear ALL existing embeddings from knowledge_base collection
+    console.log('🧹 Clearing all existing embeddings from knowledge_base collection...');
+    await embeddingService.clearAllEmbeddings();
+    console.log('✅ All existing embeddings cleared');
     
     // Process the knowledge base into embeddings
     console.log('🔄 Processing knowledge base into embeddings...');
