@@ -133,7 +133,7 @@ class GoogleCalendarService {
           slots.push({
             start: currentTime.format('HH:mm'),
             end: slotEnd.format('HH:mm'),
-            display: currentTime.format('h:mm A') + ' - ' + slotEnd.format('h:mm A')
+            display: currentTime.format('h:mm A')
           });
         }
         currentTime.add(30, 'minutes');

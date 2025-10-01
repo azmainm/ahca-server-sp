@@ -128,6 +128,7 @@ router.post('/process', async (req, res) => {
     console.log('📝 [LLM] User input:', text);
 
     const session = getSession(sessionId);
+    console.log('🔍 [Debug] Session state - userInfo.collected:', session.userInfo.collected, 'awaitingFollowUp:', session.awaitingFollowUp, 'appointmentFlow.active:', session.appointmentFlow.active);
     
     // Add user message to history
     session.conversationHistory.push({
@@ -156,21 +157,22 @@ router.post('/process', async (req, res) => {
     const isGoodbye = goodbyePatterns.some(pattern => pattern.test(text));
     
     if (isGoodbye) {
+      console.log('👋 [Flow] Taking goodbye path');
       const userName = session.userInfo.name || 'there';
       assistantResponse = `Thank you, ${userName}! I hope you were satisfied with SherpaPrompt AI's service. Have a great day!`;
     } else if (!session.userInfo.collected) {
-      // Phase 1: Collect name and email
+      console.log('📝 [Flow] Taking name/email collection path');
+      // Phase 1: Collect name and email ONLY
       systemPrompt = `You are a friendly assistant for SherpaPrompt Fencing Company. 
-      
-Your task is to extract ONLY the user's name and email from their response. Be helpful and conversational but concise.
 
-IMPORTANT: Do NOT ask for phone numbers, contact numbers, or any other information. Only collect name and email.
+CRITICAL INSTRUCTIONS:
+- ONLY collect name and email - NEVER ask for phone numbers or any other information
+- If you have both name and email, respond EXACTLY with: "Thanks [name]! I've got your email as [email]. How can I help you today?"
+- If missing info, ask ONLY for the missing piece (name OR email)
+- Do NOT mention phone numbers, contact methods, or any other information
+- Keep responses short and professional
 
-If you get both name and email, respond with: "Thanks [name]! I've got your email as [email]. How can I help you today?"
-
-If information is missing, briefly ask for what's missing (name or email only).
-
-Keep responses short and natural.`;
+Your ONLY job is name and email collection.`;
 
       // Try to extract name and email
       const extractionPrompt = `Extract name and email from this text: "${text}"
@@ -196,11 +198,20 @@ If missing info, set those fields to null and hasComplete to false.`;
           const responsePrompt = `The user said: "${text}"
           We have: name="${session.userInfo.name || 'missing'}", email="${session.userInfo.email || 'missing'}"
           
-          Generate a friendly response asking for any missing information (name or email only - do NOT ask for phone numbers). Be conversational and helpful.`;
+          CRITICAL: Generate a friendly response asking ONLY for missing name or email. 
+          NEVER mention phone numbers, contact methods, or any other information.
+          Be brief and professional.`;
           
           assistantResponse = await callOpenAI([
             { role: 'system', content: responsePrompt }
           ]);
+          
+          // Safety check: Remove any phone number requests
+          if (assistantResponse.toLowerCase().includes('phone') || 
+              assistantResponse.toLowerCase().includes('contact') ||
+              assistantResponse.toLowerCase().includes('number')) {
+            assistantResponse = "I'd be happy to help! Could you please provide your name and email address so I can assist you better?";
+          }
         }
       } catch (e) {
         // Fallback response
@@ -208,6 +219,7 @@ If missing info, set those fields to null and hasComplete to false.`;
       }
 
     } else {
+      console.log('🏢 [Flow] Taking main conversation path (Phase 2)');
       // Phase 2: Handle appointments and answer questions
       // Check for appointment requests at any point
       const appointmentPatterns = [
@@ -226,34 +238,99 @@ If missing info, set those fields to null and hasComplete to false.`;
       ];
 
       const isAppointmentRequest = appointmentPatterns.some(pattern => pattern.test(text));
+      console.log('🗓️ [Appointment] Checking appointment patterns for:', text);
+      console.log('🗓️ [Appointment] Is appointment request:', isAppointmentRequest);
 
       // Handle active appointment flow
       if (session.appointmentFlow.active || isAppointmentRequest) {
+        console.log('🗓️ [Appointment] Processing appointment request');
         assistantResponse = await handleAppointmentFlow(session, text, isAppointmentRequest);
       } 
       // Handle follow-up after previous query (asking for more questions or appointment)
       else if (session.awaitingFollowUp) {
+        console.log('⏳ [Follow-up] Processing follow-up response');
         const wantsMoreQuestions = /yes|more|another|other|question/i.test(text);
         const wantsAppointment = /appointment|schedule|meeting|consultation|book/i.test(text);
         
-        if (wantsAppointment) {
+        // First check if it's an appointment request (even in follow-up)
+        if (isAppointmentRequest) {
+          console.log('🗓️ [Follow-up → Appointment] Detected appointment request in follow-up');
           session.appointmentFlow.active = true;
           session.appointmentFlow.step = 'collect_title';
           session.awaitingFollowUp = false;
-          assistantResponse = "Great! I'd be happy to help you schedule an appointment. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+          assistantResponse = "Great! I'd be happy to help you schedule an appointment. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+        }
+        // Check if it's a company info query (even in follow-up)
+        else if (companyInfoService.isCompanyInfoQuery(text)) {
+          console.log('🏢 [Follow-up → Company Info] Detected company info query in follow-up');
+          assistantResponse = companyInfoService.getCompanyInfo(text);
+          assistantResponse += " Is there anything else you'd like to know, or would you like to schedule an appointment?";
+          // Keep awaitingFollowUp = true
+        }
+        // Check for general follow-up responses
+        else if (wantsAppointment) {
+          session.appointmentFlow.active = true;
+          session.appointmentFlow.step = 'collect_title';
+          session.awaitingFollowUp = false;
+          assistantResponse = "Great! I'd be happy to help you schedule an appointment. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
         } else if (wantsMoreQuestions) {
           session.awaitingFollowUp = false;
           assistantResponse = "Of course! What else would you like to know about our fencing services?";
         } else {
+          // It's a new question - process it normally
+          console.log('⏳ [Follow-up → New Question] Processing as new question');
           session.awaitingFollowUp = false;
-          assistantResponse = "Alright! Feel free to ask if you have any more questions or need to schedule an appointment. How else can I assist you?";
+          
+          // Check company info first
+          if (companyInfoService.isCompanyInfoQuery(text)) {
+            console.log('🏢 [Company Info] Detected company information query');
+            assistantResponse = companyInfoService.getCompanyInfo(text);
+            assistantResponse += " Is there anything else you'd like to know, or would you like to schedule an appointment?";
+            session.awaitingFollowUp = true;
+          } else {
+            // Process with RAG
+            needsRAG = true;
+            const searchTerms = extractSearchTerms(text);
+            let contextInfo = '';
+
+            if (searchTerms.length > 0) {
+              console.log('🔍 [RAG] Searching for:', searchTerms);
+              const searchResults = await embeddingService.searchSimilarContent(searchTerms.join(' '), 5);
+              
+              if (searchResults && searchResults.length > 0) {
+                contextInfo = fencingRAG.formatContext(searchResults);
+                console.log('📚 [RAG] Found relevant info from', searchResults.length, 'sources');
+              }
+            }
+
+            if (contextInfo) {
+              const ragResponse = await fencingRAG.generateResponse(text, contextInfo, session.conversationHistory);
+              assistantResponse = ragResponse.answer;
+            } else {
+              if (companyInfoService.isCompanyInfoQuery(text)) {
+                assistantResponse = companyInfoService.getCompanyInfo(text);
+              } else {
+                const systemPrompt = `You are a helpful assistant for SherpaPrompt Fencing Company. Answer questions concisely using the provided context.`;
+                const messages = [
+                  { role: 'system', content: systemPrompt },
+                  ...session.conversationHistory.slice(-6),
+                ];
+                assistantResponse = await callOpenAI(messages);
+              }
+            }
+            
+            assistantResponse += " Is there anything else you'd like to know, or would you like to schedule an appointment?";
+            session.awaitingFollowUp = true;
+          }
         }
       }
       // Regular Q&A with RAG
       else {
+        console.log('📋 [Regular Q&A] Processing regular query');
         needsRAG = true;
 
         // Check if this is a company info query first
+        console.log('🔍 [Company Info] Checking if query is company info:', text);
         if (companyInfoService.isCompanyInfoQuery(text)) {
           console.log('🏢 [Company Info] Detected company information query');
           assistantResponse = companyInfoService.getCompanyInfo(text);
@@ -262,6 +339,7 @@ If missing info, set those fields to null and hasComplete to false.`;
           assistantResponse += " Is there anything else you'd like to know, or would you like to schedule an appointment?";
           session.awaitingFollowUp = true;
         } else {
+          console.log('🚫 [Company Info] Not a company info query, proceeding to RAG');
           systemPrompt = `You are a helpful assistant for SherpaPrompt Fencing Company. Answer questions concisely using the provided context.
 
 User: ${session.userInfo.name} (${session.userInfo.email})
@@ -338,7 +416,9 @@ Guidelines:
       sessionId,
       userInfo: session.userInfo,
       hadFunctionCalls: needsRAG,
-      conversationHistory: session.conversationHistory
+      conversationHistory: session.conversationHistory,
+      calendarLink: session.lastAppointment?.calendarLink || null,
+      appointmentDetails: session.lastAppointment?.details || null
     });
 
   } catch (error) {
@@ -488,17 +568,58 @@ async function handleAppointmentFlow(session, text, isAppointmentRequest) {
         
         details.time = selectedSlot.start;
         details.timeDisplay = selectedSlot.display;
-        session.appointmentFlow.step = 'confirm';
+        session.appointmentFlow.step = 'review';
         
-        // Show confirmation
-        return `Perfect! Let me confirm your appointment details:
-        
+        // Show review details
+        return `Perfect! Let me review your appointment details:
+
 Service: ${details.title}
 Date: ${details.date}
 Time: ${details.timeDisplay} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Should I go ahead and schedule this appointment?`;
+Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, or time).`;
+
+      case 'review':
+        // Handle review responses
+        const looksGoodPatterns = [/looks good/i, /good/i, /correct/i, /yes/i, /confirm/i, /schedule/i, /book/i, /go ahead/i, /sounds good/i, /perfect/i];
+        const changeServicePatterns = [/change.*service/i, /different.*service/i, /service/i];
+        const changeDatePatterns = [/change.*date/i, /different.*date/i, /date/i];
+        const changeTimePatterns = [/change.*time/i, /different.*time/i, /time/i];
+        
+        if (looksGoodPatterns.some(pattern => pattern.test(text))) {
+          // Move to final confirmation
+          session.appointmentFlow.step = 'confirm';
+          return `Excellent! I'll now schedule your appointment. Please confirm one final time - should I go ahead and book this appointment?`;
+        } else if (changeServicePatterns.some(pattern => pattern.test(text))) {
+          // Go back to service collection
+          session.appointmentFlow.step = 'collect_title';
+          session.appointmentFlow.details = {};
+          return "No problem! What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+        } else if (changeDatePatterns.some(pattern => pattern.test(text))) {
+          // Go back to date collection
+          session.appointmentFlow.step = 'collect_date';
+          // Keep service but reset date/time details
+          const serviceTitle = details.title;
+          session.appointmentFlow.details = { title: serviceTitle };
+          return `No problem! What date would work best for your ${serviceTitle}? Please provide the date in format like "December 15, 2024" or "2024-12-15".`;
+        } else if (changeTimePatterns.some(pattern => pattern.test(text))) {
+          // Go back to time selection with same date
+          session.appointmentFlow.step = 'collect_time';
+          // Keep service and date, reset time
+          const serviceTitle = details.title;
+          const appointmentDate = details.date;
+          const availableSlots = details.availableSlots;
+          session.appointmentFlow.details = { 
+            title: serviceTitle, 
+            date: appointmentDate, 
+            availableSlots: availableSlots 
+          };
+          const slotsText = availableSlots.map(slot => slot.display).join(', ');
+          return `No problem! Here are the available times for ${appointmentDate}: ${slotsText}. Which time works best for you?`;
+        } else {
+          return `I didn't catch what you'd like to change. Please say "looks good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", or "time".`;
+        }
 
       case 'confirm':
         const confirmPatterns = [/yes/i, /confirm/i, /schedule/i, /book/i, /go ahead/i, /correct/i, /sounds good/i];
@@ -526,6 +647,13 @@ Should I go ahead and schedule this appointment?`;
           session.appointmentFlow.details = {};
 
           if (appointmentResult.success) {
+            // Store calendar link in session for UI access
+            session.lastAppointment = {
+              calendarLink: appointmentResult.eventLink,
+              eventId: appointmentResult.eventId,
+              details: details
+            };
+            
             return `Excellent! Your appointment has been scheduled successfully in our calendar system. 
 
 Appointment Details:
@@ -533,6 +661,8 @@ Appointment Details:
 - Date & Time: ${details.date} at ${details.timeDisplay || details.time}
 - Duration: 30 minutes
 - Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+📅 Calendar Link: ${appointmentResult.eventLink}
 
 Our team will contact you at ${session.userInfo.email} to confirm the appointment details and provide any additional information you may need.
 
@@ -571,58 +701,95 @@ Is there anything else I can help you with today?`;
  * @returns {Object|null} Selected slot or null if not found
  */
 function findSelectedTimeSlot(text, availableSlots) {
-  const inputLower = text.toLowerCase();
+  const inputLower = text.toLowerCase().trim();
   
-  // Try to match time patterns in the input
-  const timePatterns = [
-    /(\d{1,2}):(\d{2})\s*(am|pm)/i,  // 12:00 PM
-    /(\d{1,2})\s*(am|pm)/i,          // 12 PM
-    /(\d{1,2}):(\d{2})/              // 12:00 (24-hour)
-  ];
-  
+  // First, try exact match with display format
   for (const slot of availableSlots) {
-    // Check if user input matches the display format exactly
-    if (inputLower.includes(slot.display.toLowerCase())) {
+    if (inputLower === slot.display.toLowerCase()) {
       return slot;
     }
-    
-    // Check if user input matches any time in the slot
-    for (const pattern of timePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        let hours, minutes;
-        
-        if (pattern === timePatterns[0]) { // HH:MM AM/PM
-          hours = parseInt(match[1]);
-          minutes = match[2];
-          const meridiem = match[3].toLowerCase();
-          if (meridiem === 'pm' && hours !== 12) hours += 12;
-          if (meridiem === 'am' && hours === 12) hours = 0;
-        } else if (pattern === timePatterns[1]) { // H AM/PM
-          hours = parseInt(match[1]);
-          minutes = '00';
-          const meridiem = match[2].toLowerCase();
-          if (meridiem === 'pm' && hours !== 12) hours += 12;
-          if (meridiem === 'am' && hours === 12) hours = 0;
-        } else if (pattern === timePatterns[2]) { // HH:MM (24-hour)
-          hours = parseInt(match[1]);
-          minutes = match[2];
+  }
+  
+  // Try to extract time from user input using various patterns
+  const timePatterns = [
+    /(\d{1,2}):(\d{2})\s*(am|pm)/i,  // 12:30 PM, 2:00 PM
+    /(\d{1,2})\s*(am|pm)/i,          // 12 PM, 2 PM
+    /(\d{1,2}):(\d{2})/,             // 14:30 (24-hour)
+    /(\d{1,2})\s*(?:o'clock)?/i      // 2, 12 o'clock
+  ];
+  
+  let extractedTime = null;
+  
+  for (const pattern of timePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      let hours, minutes;
+      
+      if (pattern === timePatterns[0]) { // HH:MM AM/PM
+        hours = parseInt(match[1]);
+        minutes = match[2];
+        const meridiem = match[3].toLowerCase();
+        if (meridiem === 'pm' && hours !== 12) hours += 12;
+        if (meridiem === 'am' && hours === 12) hours = 0;
+      } else if (pattern === timePatterns[1]) { // H AM/PM
+        hours = parseInt(match[1]);
+        minutes = '00';
+        const meridiem = match[2].toLowerCase();
+        if (meridiem === 'pm' && hours !== 12) hours += 12;
+        if (meridiem === 'am' && hours === 12) hours = 0;
+      } else if (pattern === timePatterns[2]) { // HH:MM (24-hour)
+        hours = parseInt(match[1]);
+        minutes = match[2];
+      } else if (pattern === timePatterns[3]) { // Just number
+        hours = parseInt(match[1]);
+        minutes = '00';
+        // Assume PM for business hours (12-4 PM)
+        if (hours >= 12 && hours <= 16) {
+          // Already in 24-hour format
+        } else if (hours >= 1 && hours <= 4) {
+          hours += 12; // Convert to PM
         }
-        
-        const timeString = `${hours.toString().padStart(2, '0')}:${minutes}`;
-        
-        // Check if this matches the slot start time
-        if (slot.start === timeString) {
-          return slot;
-        }
+      }
+      
+      extractedTime = `${hours.toString().padStart(2, '0')}:${minutes}`;
+      break;
+    }
+  }
+  
+  // If we extracted a time, find matching slot
+  if (extractedTime) {
+    for (const slot of availableSlots) {
+      if (slot.start === extractedTime) {
+        return slot;
       }
     }
   }
   
-  // Try partial matching (e.g., "12" for "12:00 PM")
+  // Try partial matching with display text
   for (const slot of availableSlots) {
-    if (slot.display.toLowerCase().includes(inputLower.trim())) {
+    const slotDisplay = slot.display.toLowerCase();
+    
+    // Check if input contains key parts of the slot display
+    if (slotDisplay.includes(inputLower) || inputLower.includes(slotDisplay.split(' ')[0])) {
       return slot;
+    }
+    
+    // Try matching just the hour part
+    const hourMatch = slotDisplay.match(/(\d{1,2})/);
+    const inputHourMatch = inputLower.match(/(\d{1,2})/);
+    
+    if (hourMatch && inputHourMatch && hourMatch[1] === inputHourMatch[1]) {
+      // Also check for AM/PM consistency if present in input
+      const slotHasPM = slotDisplay.includes('pm');
+      const inputHasPM = inputLower.includes('pm') || inputLower.includes('p.m');
+      const inputHasAM = inputLower.includes('am') || inputLower.includes('a.m');
+      
+      if (!inputHasPM && !inputHasAM) {
+        // No meridiem specified, assume it matches if hour matches
+        return slot;
+      } else if ((slotHasPM && inputHasPM) || (!slotHasPM && inputHasAM)) {
+        return slot;
+      }
     }
   }
   
