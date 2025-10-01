@@ -1,6 +1,6 @@
 const express = require('express');
-const { EmbeddingService } = require('../services/EmbeddingService');
-const { FencingRAG } = require('../services/FencingRAG');
+const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
+const { FencingRAG } = require('../../../shared/services/FencingRAG');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -19,7 +19,7 @@ router.post('/process', async (req, res) => {
     console.log('Starting knowledge base processing...');
     
     // Read the knowledge base file
-    const knowledgeBasePath = path.join(__dirname, '../docs/knowldge_base_dummy.json');
+    const knowledgeBasePath = path.join(__dirname, '../../../docs/knowldge_base_dummy.json');
     const knowledgeBaseData = await fs.readFile(knowledgeBasePath, 'utf8');
     const knowledgeBase = JSON.parse(knowledgeBaseData);
     
