@@ -516,8 +516,24 @@ async function handleAppointmentFlow(session, text, isAppointmentRequest) {
       case 'collect_title':
         // Extract service type from user input
         details.title = text.trim();
-        session.appointmentFlow.step = 'collect_date';
-        return `Perfect! I'll schedule a ${details.title} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like "December 15, 2024" or "2024-12-15".`;
+        
+        // Check if we already have date/time information (from previous appointment setup)
+        if (details.date && details.time) {
+          // We have all info, go directly to review
+          session.appointmentFlow.step = 'review';
+          return `Perfect! I've updated your service to ${details.title}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+        } else {
+          // Need to collect date
+          session.appointmentFlow.step = 'collect_date';
+          return `Perfect! I'll schedule a ${details.title} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like "December 15, 2024" or "2024-12-15".`;
+        }
 
       case 'collect_date':
         // Parse and validate date
@@ -578,7 +594,7 @@ Date: ${details.date}
 Time: ${details.timeDisplay} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, or time).`;
+Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
 
       case 'review':
         // Handle review responses
@@ -586,15 +602,68 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
         const changeServicePatterns = [/change.*service/i, /different.*service/i, /service/i];
         const changeDatePatterns = [/change.*date/i, /different.*date/i, /date/i];
         const changeTimePatterns = [/change.*time/i, /different.*time/i, /time/i];
+        const changeNamePatterns = [/change.*name/i, /different.*name/i, /name/i];
+        const changeEmailPatterns = [/change.*email/i, /different.*email/i, /email/i];
         
         if (looksGoodPatterns.some(pattern => pattern.test(text))) {
-          // Move to final confirmation
-          session.appointmentFlow.step = 'confirm';
-          return `Excellent! I'll now schedule your appointment. Please confirm one final time - should I go ahead and book this appointment?`;
-        } else if (changeServicePatterns.some(pattern => pattern.test(text))) {
-          // Go back to service collection
-          session.appointmentFlow.step = 'collect_title';
+          // Create the appointment directly - no double confirmation needed
+          console.log('📅 Creating calendar appointment with details:', details);
+          
+          const appointmentResult = await calendarService.createAppointment(
+            {
+              title: details.title,
+              description: `Scheduled via SherpaPrompt AI Assistant`,
+              date: details.date,
+              time: details.time,
+              duration: 30 // 30 minutes
+            },
+            session.userInfo.email,
+            session.userInfo.name
+          );
+
+          // Reset appointment flow
+          session.appointmentFlow.active = false;
+          session.appointmentFlow.step = 'none';
           session.appointmentFlow.details = {};
+
+          if (appointmentResult.success) {
+            // Store calendar link in session for UI access
+            session.lastAppointment = {
+              calendarLink: appointmentResult.eventLink,
+              eventId: appointmentResult.eventId,
+              details: details
+            };
+            
+            return `Excellent! Your appointment has been scheduled successfully in our calendar system. 
+
+Appointment Details:
+- Service: ${details.title}  
+- Date & Time: ${details.date} at ${details.timeDisplay || details.time}
+- Duration: 30 minutes
+- Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Our team will contact you at ${session.userInfo.email} to confirm the appointment details and provide any additional information you may need.
+
+Is there anything else I can help you with today?`;
+          } else {
+            console.error('Calendar appointment creation failed:', appointmentResult.error);
+            return `I apologize, but there was an issue creating your calendar appointment. Please call us directly at (303) 555-FENCE to schedule your appointment, or try again later. Our team will be happy to help you schedule your ${details.title}.`;
+          }
+        } else if (changeServicePatterns.some(pattern => pattern.test(text))) {
+          // Go back to service collection but keep date/time if available
+          const currentDate = details.date;
+          const currentTime = details.time;
+          const currentTimeDisplay = details.timeDisplay;
+          const currentAvailableSlots = details.availableSlots;
+          
+          session.appointmentFlow.step = 'collect_title';
+          session.appointmentFlow.details = {
+            // Preserve existing date/time info if available
+            ...(currentDate && { date: currentDate }),
+            ...(currentTime && { time: currentTime }),
+            ...(currentTimeDisplay && { timeDisplay: currentTimeDisplay }),
+            ...(currentAvailableSlots && { availableSlots: currentAvailableSlots })
+          };
           return "No problem! What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
         } else if (changeDatePatterns.some(pattern => pattern.test(text))) {
           // Go back to date collection
@@ -617,9 +686,49 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
           };
           const slotsText = availableSlots.map(slot => slot.display).join(', ');
           return `No problem! Here are the available times for ${appointmentDate}: ${slotsText}. Which time works best for you?`;
+        } else if (changeNamePatterns.some(pattern => pattern.test(text))) {
+          // Change name - set up to collect new name
+          session.appointmentFlow.step = 'collect_name';
+          return `No problem! What name should I use for this appointment?`;
+        } else if (changeEmailPatterns.some(pattern => pattern.test(text))) {
+          // Change email - set up to collect new email
+          session.appointmentFlow.step = 'collect_email';
+          return `No problem! What email address should I use for this appointment?`;
         } else {
-          return `I didn't catch what you'd like to change. Please say "looks good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", or "time".`;
+          return `I didn't catch what you'd like to change. Please say "looks good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", "time", "name", or "email".`;
         }
+
+      case 'collect_name':
+        // Update the user's name for this appointment
+        const newName = text.trim();
+        session.userInfo.name = newName;
+        
+        // Go back to review with updated name
+        session.appointmentFlow.step = 'review';
+        return `Perfect! I've updated the name to ${newName}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+
+      case 'collect_email':
+        // Update the user's email for this appointment
+        const newEmail = text.trim();
+        session.userInfo.email = newEmail;
+        
+        // Go back to review with updated email
+        session.appointmentFlow.step = 'review';
+        return `Perfect! I've updated the email to ${newEmail}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
 
       case 'confirm':
         const confirmPatterns = [/yes/i, /confirm/i, /schedule/i, /book/i, /go ahead/i, /correct/i, /sounds good/i];
@@ -661,8 +770,6 @@ Appointment Details:
 - Date & Time: ${details.date} at ${details.timeDisplay || details.time}
 - Duration: 30 minutes
 - Customer: ${session.userInfo.name} (${session.userInfo.email})
-
-📅 Calendar Link: ${appointmentResult.eventLink}
 
 Our team will contact you at ${session.userInfo.email} to confirm the appointment details and provide any additional information you may need.
 
