@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
 const axios = require('axios');
+const CalculatorService = require('../services/calculator');
+const FormatterService = require('../services/formatter');
 const router = express.Router();
 
 // Configure multer for file uploads
@@ -23,7 +25,7 @@ const upload = multer({
   }
 });
 
-// Zod schema for estimate validation
+// Zod schema for estimate validation - Updated for new catalog format
 const EstimateSchema = z.object({
   project_meta: z.object({
     region: z.string().optional(),
@@ -31,13 +33,13 @@ const EstimateSchema = z.object({
     estimator_id: z.string().optional()
   }).optional(),
   line_items: z.array(z.object({
-    type: z.enum(['material', 'labor', 'assembly']),
+    type: z.enum(['material', 'labor', 'assembly', 'extra']), // Added 'extra' type
     catalog_key: z.string().optional(),
     name: z.string(),
     attributes: z.object({}).optional(),
     quantity: z.number().min(0).default(1),
     unit: z.string(),
-    waste_percent: z.number().min(0).max(100).default(0), // Allow percentage format
+    waste_percent: z.number().min(0).max(100).default(0), // Allow percentage format (will be normalized)
     labor_hours: z.object({
       most_likely: z.number().min(0),
       low_surprise: z.number().min(0).optional(),
@@ -48,21 +50,19 @@ const EstimateSchema = z.object({
       unit_price: z.number().min(0).optional(),
       hourly_rate: z.number().min(0).optional(),
       unit_price_effective_date: z.string().optional()
-    }).refine(data => data.unit_price != null || data.hourly_rate != null, {
-      message: "Either unit_price or hourly_rate must be provided"
-    }),
+    }).optional(), // Made optional since pricing will be applied by calculator
     confidence: z.object({
       extraction: z.number().min(0).max(1).optional(),
       normalization: z.number().min(0).max(1).optional()
     }).optional(),
     notes: z.string().optional(),
-    line_total: z.number().optional()
+    line_total: z.number().optional() // Will be calculated by calculator service
   })),
   totals: z.object({
     subtotal: z.number().optional(),
     tax_total: z.number().optional(),
     grand_total: z.number().optional()
-  }).optional()
+  }).optional() // Will be calculated by calculator service
 });
 
 // Load catalog data
@@ -149,19 +149,29 @@ async function generateEstimate(transcript, customCatalogData = null) {
   const catalog = loadCatalog(customCatalogData);
   const catalogText = catalog ? JSON.stringify(catalog, null, 2) : '';
 
-  const systemPrompt = `You are a strict JSON extractor and estimator. You MUST output **only valid JSON** that matches the Estimate schema provided below. 
+  const systemPrompt = `You are a service project analyzer and item extractor. Your job is to EXTRACT items and quantities from user descriptions and map them to catalog items. You do NOT calculate prices or totals - that will be handled separately.
 
 CRITICAL REQUIREMENTS:
 - Return ONLY pure JSON, no markdown code blocks, no \`\`\`json\`\`\`, no explanations
+- Focus on EXTRACTION and MAPPING, not calculations
+- Map items to exact catalog keys when possible
+- For labor items, extract or estimate hours but do NOT calculate costs
 - Ensure numeric fields are actual numbers, not strings
-- Units must be consistent
+- Units must match catalog units exactly
 
-Available catalog items for reference:
+CATALOG STRUCTURE:
+The catalog has 4 main categories:
+1. "materials" - Raw materials, components, supplies, parts needed for the service
+2. "labor" - Labor activities, services, work tasks with hourly rates  
+3. "assemblies" - Complete systems, packages, or bundled services priced per unit
+4. "extras" - Additional services like permits, inspections, cleanup, disposal, consultations
+
+Available catalog for reference:
 ${catalogText}`;
 
   const userPrompt = `Transcript: "${transcript}"
 
-Task: Convert the transcript into an Estimate JSON object with EXACT schema:
+Task: Extract items from the transcript and map them to catalog items. Return ONLY the JSON structure below:
 
 {
   "project_meta": {
@@ -170,47 +180,50 @@ Task: Convert the transcript into an Estimate JSON object with EXACT schema:
   },
   "line_items": [
     {
-      "type": "assembly", // or "material" or "labor"
-      "catalog_key": "cedar_privacy_fence_linear_ft",
-      "name": "Cedar Privacy Fence (per linear ft)",
-      "quantity": 50,
-      "unit": "lf",
-      "waste_percent": 0.05,
-      "pricing": {
-        "source": "catalog",
-        "unit_price": 29  // for materials/assemblies
-      },
+      "type": "assembly",  // Must be: "material", "labor", "assembly", or "extra"
+      "catalog_key": "cedar_privacy_fence_linear_ft",  // Exact key from catalog
+      "name": "Cedar Privacy Fence (per linear ft)",   // Exact name from catalog
+      "quantity": 50,     // Extracted quantity
+      "unit": "lf",       // Exact unit from catalog
+      "waste_percent": 0.05,  // Decimal format (5% = 0.05)
+      "labor_hours": {"most_likely": 8},  // Only for labor items
       "confidence": {"extraction": 0.9},
-      "notes": "Description here"
-    },
-    {
-      "type": "labor",
-      "catalog_key": "post_hole_digging", 
-      "name": "Post Hole Digging",
-      "quantity": 1,
-      "unit": "hr",
-      "labor_hours": {"most_likely": 5},
-      "pricing": {
-        "source": "catalog",
-        "hourly_rate": 45  // for labor
-      },
-      "confidence": {"extraction": 0.8},
-      "notes": "Labor description"
+      "notes": "50 feet of cedar privacy fencing as requested"
     }
   ]
 }
 
-LABOR HOURS HANDLING:
-- If user specifies hours (e.g., "digging will take 8 hours", "3 hours for installation", "needs 6 hours total"):
-  * Use the EXACT hours mentioned by user
-  * Set confidence.extraction to 0.95 (high confidence for user-specified values)
-  * Note in the "notes" field that hours were user-specified
-- If NO hours mentioned:
-  * Estimate reasonable hours based on project scope and industry standards
-  * Set confidence.extraction based on how clear the requirements are (0.7-0.9)
-  * Always provide labor_hours.most_likely for ALL labor items
+EXTRACTION RULES:
+1. MATERIALS: Map to "materials" category (raw materials, components, supplies, parts) - use type: "material"
+2. LABOR: Map to "labor" category (work tasks, services, activities requiring time) - use type: "labor"
+3. ASSEMBLIES: Map to "assemblies" for complete systems, packages, or bundled services - use type: "assembly"
+4. EXTRAS: Map to "extras" for additional services, permits, inspections, consultations - use type: "extra"
 
-CRITICAL: Return ONLY this exact structure. No nested "estimate" wrapper. No markdown.`;
+LABOR HOURS EXTRACTION:
+- If user specifies hours: Use EXACT hours mentioned, set confidence to 0.95
+- If NO hours mentioned: Estimate reasonable hours based on scope, set confidence 0.7-0.9
+- Always include labor_hours.most_likely for labor items
+- Note user-specified hours in the "notes" field
+
+QUANTITY EXTRACTION:
+- Extract exact quantities mentioned by user
+- Look for units like: feet, meters, hours, pieces, gallons, pounds, square feet, etc.
+- For service quantities: look for counts, areas, volumes, time durations
+- Default to 1 if quantity unclear
+
+CATALOG KEY MAPPING:
+- Use EXACT catalog keys from the provided catalog
+- Match the most appropriate item based on user description
+- If no exact match, choose the closest available item
+- Set confidence.extraction lower (0.6-0.8) for uncertain mappings
+
+CRITICAL: Return ONLY the JSON structure. No pricing calculations. No totals. Focus purely on extraction and mapping.
+
+IMPORTANT TYPE VALUES:
+- Use "material" (singular) for materials category items
+- Use "labor" (singular) for labor category items  
+- Use "assembly" (singular) for assemblies category items
+- Use "extra" (singular) for extras category items`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -345,72 +358,9 @@ Return only the corrected JSON.`;
   }
 }
 
-// Apply catalog pricing and compute totals
-function processEstimate(estimate, customCatalogData = null) {
-  const catalog = loadCatalog(customCatalogData);
-  let subtotal = 0;
-
-  estimate.line_items.forEach(item => {
-    // Apply catalog pricing if available
-    if (item.catalog_key && catalog) {
-      const catalogItem = findCatalogItem(catalog, item.catalog_key);
-      if (catalogItem) {
-        item.pricing.source = 'catalog';
-        if (catalogItem.unit_price) {
-          item.pricing.unit_price = catalogItem.unit_price;
-        } else if (catalogItem.hourly_rate) {
-          item.pricing.hourly_rate = catalogItem.hourly_rate;
-        }
-      }
-    }
-
-    // Normalize waste_percent to decimal if it's a percentage
-    if (item.waste_percent && item.waste_percent > 1) {
-      item.waste_percent = item.waste_percent / 100;
-    }
-
-    // Compute line total
-    let linePrice = 0;
-    
-    if (item.type === 'labor' && item.labor_hours && item.pricing.hourly_rate) {
-      // Labor: hours * hourly_rate
-      linePrice = item.labor_hours.most_likely * item.pricing.hourly_rate;
-    } else if (item.pricing.unit_price) {
-      // Materials/Assembly: quantity * unit_price * (1 + waste)
-      const wasteMultiplier = 1 + (item.waste_percent || 0);
-      linePrice = item.quantity * item.pricing.unit_price * wasteMultiplier;
-    } else if (item.pricing.hourly_rate && item.quantity) {
-      // Fallback: quantity * hourly_rate (for labor without specific hours)
-      linePrice = item.quantity * item.pricing.hourly_rate;
-    }
-
-    item.line_total = Math.round(linePrice * 100) / 100; // Round to 2 decimals
-    subtotal += item.line_total;
-  });
-
-  // Compute totals
-  const taxRate = 0.0875; // 8.75% tax
-  const taxTotal = subtotal * taxRate;
-  const grandTotal = subtotal + taxTotal;
-
-  estimate.totals = {
-    subtotal: Math.round(subtotal * 100) / 100,
-    tax_total: Math.round(taxTotal * 100) / 100,
-    grand_total: Math.round(grandTotal * 100) / 100
-  };
-
-  return estimate;
-}
-
-// Find catalog item by key
-function findCatalogItem(catalog, key) {
-  for (const category of ['materials', 'labor', 'assemblies', 'extras']) {
-    if (catalog[category] && catalog[category][key]) {
-      return catalog[category][key];
-    }
-  }
-  return null;
-}
+// Initialize services
+const calculatorService = new CalculatorService();
+const formatterService = new FormatterService();
 
 // Apply safe defaults for invalid estimates
 function applySafeDefaults(estimate) {
@@ -460,6 +410,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
   try {
     console.log('\n🎤 =================== NEW ESTIMATE REQUEST ===================');
+    console.log('🔄 [SERVER] USING UPDATED CODE WITH FORMATTER SERVICE');
     console.log('⏰ [SERVER] Request received at:', new Date().toISOString());
     console.log('🔍 [SERVER] Request headers:', {
       'content-type': req.headers['content-type'],
@@ -548,25 +499,42 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
     // Step 5: Process estimate (apply catalog pricing and compute totals)
     console.log('💰 [SERVER] Step 5: Processing pricing and totals...');
-    const finalEstimate = processEstimate(validationResult.data, customCatalogData);
+    const calculatedEstimate = calculatorService.processEstimate(validationResult.data, customCatalogData);
     console.log('💵 [SERVER] Final totals calculated:', {
-      subtotal: finalEstimate.totals?.subtotal,
-      tax: finalEstimate.totals?.tax_total,
-      grand_total: finalEstimate.totals?.grand_total
+      subtotal: calculatedEstimate.totals?.subtotal,
+      tax: calculatedEstimate.totals?.tax_total,
+      grand_total: calculatedEstimate.totals?.grand_total
     });
+
+    // Step 6: Format estimate for client display
+    console.log('📝 [SERVER] Step 6: Formatting estimate for display...');
+    console.log('🔍 [SERVER] About to call formatterService.formatEstimate');
+    let formattedEstimate;
+    try {
+      formattedEstimate = formatterService.formatEstimate(calculatedEstimate);
+      console.log('✅ [SERVER] Estimate formatted for client display');
+      console.log('🔍 [SERVER] Formatted estimate type:', typeof formattedEstimate);
+      console.log('📏 [SERVER] Formatted estimate preview:', formattedEstimate.substring(0, 100) + '...');
+    } catch (formatterError) {
+      console.error('❌ [SERVER] Formatter error:', formatterError);
+      formattedEstimate = JSON.stringify(calculatedEstimate, null, 2);
+      console.log('🔄 [SERVER] Falling back to JSON format');
+    }
 
     const processingTime = Date.now() - startTime;
     console.log(`✅ [SERVER] SUCCESS! Estimate processed in ${processingTime}ms`);
-    console.log('📤 [SERVER] Sending response to client...\n');
+    console.log('📤 [SERVER] Sending formatted response to client...\n');
 
     res.json({
-      estimate: finalEstimate,
+      estimate: formattedEstimate,  // Send formatted string instead of JSON
+      raw_estimate: calculatedEstimate,  // Include raw JSON for debugging/future use
       meta: {
         processing_time_ms: processingTime,
         validation: {
           ok: validationResult.success,
           attempts: validationAttempts
-        }
+        },
+        format: 'formatted_text'  // Indicate the format type
       }
     });
 

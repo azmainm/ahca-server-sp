@@ -1,0 +1,112 @@
+{
+  "materials": {
+    "example_material_key": {
+      "name": "Example Material Name",
+      "unit": "ea",
+      "unit_price": 0.00,
+      "description": "Description of the material or component",
+      "category": "materials"
+    },
+    "another_material_example": {
+      "name": "Another Material Example",
+      "unit": "lf",
+      "unit_price": 0.00,
+      "description": "Linear foot priced material example",
+      "category": "materials"
+    },
+    "bulk_material_example": {
+      "name": "Bulk Material Example",
+      "unit": "bag",
+      "unit_price": 0.00,
+      "description": "Bulk material sold by bag, box, or container",
+      "category": "materials"
+    }
+  },
+  "labor": {
+    "example_labor_task": {
+      "name": "Example Labor Task",
+      "unit": "hr",
+      "hourly_rate": 0.00,
+      "description": "Description of the labor activity or service"
+    },
+    "specialized_service": {
+      "name": "Specialized Service",
+      "unit": "hr",
+      "hourly_rate": 0.00,
+      "description": "Higher-skilled labor or specialized service"
+    },
+    "consultation_service": {
+      "name": "Consultation Service",
+      "unit": "hr",
+      "hourly_rate": 0.00,
+      "description": "Professional consultation or advisory service"
+    }
+  },
+  "assemblies": {
+    "complete_system_example": {
+      "name": "Complete System Example",
+      "unit": "ea",
+      "unit_price": 0.00,
+      "description": "Complete system or package deal",
+      "category": "assembly"
+    },
+    "per_unit_assembly": {
+      "name": "Per Unit Assembly",
+      "unit": "sf",
+      "unit_price": 0.00,
+      "description": "Assembly priced per square foot, linear foot, etc.",
+      "category": "assembly"
+    },
+    "bundled_service_package": {
+      "name": "Bundled Service Package",
+      "unit": "ea",
+      "unit_price": 0.00,
+      "description": "Complete service package with multiple components",
+      "category": "assembly"
+    }
+  },
+  "extras": {
+    "permit_fee_example": {
+      "name": "Permit Fee Example",
+      "unit": "ea",
+      "unit_price": 0.00,
+      "description": "Government permit or licensing fee",
+      "category": "permits"
+    },
+    "inspection_service": {
+      "name": "Inspection Service",
+      "unit": "ea",
+      "unit_price": 0.00,
+      "description": "Professional inspection or assessment",
+      "category": "service"
+    },
+    "cleanup_service": {
+      "name": "Cleanup Service",
+      "unit": "hr",
+      "hourly_rate": 0.00,
+      "description": "Post-project cleanup or maintenance"
+    },
+    "disposal_service": {
+      "name": "Disposal Service",
+      "unit": "ea",
+      "unit_price": 0.00,
+      "description": "Waste disposal or removal service",
+      "category": "disposal"
+    },
+    "emergency_surcharge": {
+      "name": "Emergency Service Surcharge",
+      "unit": "ea",
+      "unit_price": 0.00,
+      "description": "Additional charge for urgent or after-hours service",
+      "category": "service"
+    }
+  },
+  "metadata": {
+    "currency": "USD",
+    "last_updated": "YYYY-MM-DD",
+    "region": "US-STATE-CITY",
+    "company_name": "Your Company Name",
+    "catalog_version": "1.0",
+    "notes": "Additional notes about pricing, terms, or conditions"
+  }
+}

@@ -1,171 +1,204 @@
 {
-    "materials": {
-      "romex_12_2_250ft": {
-        "name": "Romex Wire 12/2 (250 ft)",
-        "unit": "roll",
-        "unit_price": 95.00,
-        "description": "250 ft roll of 12/2 NM-B indoor electrical cable",
-        "category": "wiring"
-      },
-      "romex_14_2_250ft": {
-        "name": "Romex Wire 14/2 (250 ft)",
-        "unit": "roll",
-        "unit_price": 78.00,
-        "description": "250 ft roll of 14/2 NM-B indoor electrical cable",
-        "category": "wiring"
-      },
-      "breaker_20a": {
-        "name": "Circuit Breaker 20A",
-        "unit": "ea",
-        "unit_price": 14.00,
-        "description": "Standard 20 amp single-pole breaker",
-        "category": "panels_breakers"
-      },
-      "breaker_15a": {
-        "name": "Circuit Breaker 15A",
-        "unit": "ea",
-        "unit_price": 13.00,
-        "description": "Standard 15 amp single-pole breaker",
-        "category": "panels_breakers"
-      },
-      "outlet_gfci": {
-        "name": "GFCI Outlet",
-        "unit": "ea",
-        "unit_price": 22.50,
-        "description": "20 amp GFCI-protected receptacle",
-        "category": "devices"
-      },
-      "standard_outlet": {
-        "name": "Standard Duplex Outlet",
-        "unit": "ea",
-        "unit_price": 3.25,
-        "description": "15 amp indoor duplex receptacle",
-        "category": "devices"
-      },
-      "light_switch_single": {
-        "name": "Single-Pole Light Switch",
-        "unit": "ea",
-        "unit_price": 2.50,
-        "description": "Single-pole toggle switch",
-        "category": "devices"
-      },
-      "led_recessed_light": {
-        "name": "LED Recessed Light Kit",
-        "unit": "ea",
-        "unit_price": 38.00,
-        "description": "6-inch canless LED recessed lighting kit",
-        "category": "fixtures"
-      },
-      "meter_base": {
-        "name": "Meter Base",
-        "unit": "ea",
-        "unit_price": 115.00,
-        "description": "Electric meter base for service entry",
-        "category": "service_equipment"
-      },
-      "conduit_pvc_3_4_10ft": {
-        "name": "PVC Conduit 3/4 in (10 ft)",
-        "unit": "ea",
-        "unit_price": 8.50,
-        "description": "10 ft length of 3/4 inch PVC electrical conduit",
-        "category": "conduit"
-      }
+  "materials": {
+    "romex_12_2_250ft": { 
+      "name": "Romex Cable 12/2 (250 ft)", 
+      "unit": "roll", 
+      "unit_price": 145.00, 
+      "description": "12-gauge NM-B indoor electrical cable", 
+      "category": "wiring" 
     },
-    "labor": {
-      "rough_in_wiring": {
-        "name": "Rough-In Wiring",
-        "unit": "hr",
-        "hourly_rate": 75.00,
-        "description": "Run cables, mount boxes, rough electrical work"
-      },
-      "finish_electrical": {
-        "name": "Finish Electrical",
-        "unit": "hr",
-        "hourly_rate": 78.00,
-        "description": "Install devices, fixtures, plates, and trim"
-      },
-      "panel_installation": {
-        "name": "Panel Installation",
-        "unit": "hr",
-        "hourly_rate": 85.00,
-        "description": "Install or replace electrical service panels"
-      },
-      "troubleshooting": {
-        "name": "Diagnostics & Troubleshooting",
-        "unit": "hr",
-        "hourly_rate": 90.00,
-        "description": "Identify and correct electrical issues"
-      },
-      "service_upgrade": {
-        "name": "Service Upgrade Work",
-        "unit": "hr",
-        "hourly_rate": 95.00,
-        "description": "Upgrade main service, meter, and connections"
-      }
+    "romex_14_2_250ft": { 
+      "name": "Romex Cable 14/2 (250 ft)", 
+      "unit": "roll", 
+      "unit_price": 115.00, 
+      "description": "14-gauge NM-B indoor cable", 
+      "category": "wiring" 
     },
-    "assemblies": {
-      "outlet_installation": {
-        "name": "Outlet Installation (per outlet)",
-        "unit": "ea",
-        "unit_price": 65.00,
-        "description": "Includes labor, standard device, box, and cover",
-        "category": "assembly"
-      },
-      "light_fixture_install": {
-        "name": "Light Fixture Install (per fixture)",
-        "unit": "ea",
-        "unit_price": 110.00,
-        "description": "Standard ceiling or wall fixture replacement/install",
-        "category": "assembly"
-      },
-      "breaker_panel_replacement": {
-        "name": "200A Panel Replacement",
-        "unit": "ea",
-        "unit_price": 1400.00,
-        "description": "Includes removal, new panel, breakers, and reconnection",
-        "category": "assembly"
-      },
-      "recessed_lighting_per_can": {
-        "name": "Recessed Lighting Install (per can)",
-        "unit": "ea",
-        "unit_price": 125.00,
-        "description": "Includes fixture, wiring, and trim out",
-        "category": "assembly"
-      }
+    "breaker_20a": { 
+      "name": "20A Circuit Breaker", 
+      "unit": "ea", 
+      "unit_price": 18.00, 
+      "description": "Standard 20-amp single pole breaker", 
+      "category": "panels" 
     },
-    "extras": {
-      "permit_fee": {
-        "name": "Permit Fee (average)",
-        "unit": "ea",
-        "unit_price": 95.00,
-        "description": "Typical electrical permit fee",
-        "category": "permits"
-      },
-      "panel_disposal": {
-        "name": "Old Panel Disposal",
-        "unit": "ea",
-        "unit_price": 35.00,
-        "description": "Removal and disposal of old electrical panel",
-        "category": "disposal"
-      },
-      "cleanup": {
-        "name": "Cleanup / Debris Removal",
-        "unit": "hr",
-        "hourly_rate": 40.00,
-        "description": "Removal of scraps, dust, and leftover materials"
-      },
-      "generator_hookup": {
-        "name": "Generator Hookup Fee",
-        "unit": "ea",
-        "unit_price": 350.00,
-        "description": "Connection of portable or standby generator",
-        "category": "specialty"
-      }
+    "breaker_30a": { 
+      "name": "30A Circuit Breaker", 
+      "unit": "ea", 
+      "unit_price": 24.00, 
+      "description": "Standard 30-amp single pole breaker", 
+      "category": "panels" 
     },
-    "metadata": {
-      "currency": "USD",
-      "last_updated": "2025-09-30",
-      "region": "US-OR-PDX"
+    "electrical_panel_200a": { 
+      "name": "200A Electrical Panel", 
+      "unit": "ea", 
+      "unit_price": 420.00, 
+      "description": "Load center with main breaker", 
+      "category": "panels" 
+    },
+    "gfi_outlet": { 
+      "name": "GFCI Outlet 15A/20A", 
+      "unit": "ea", 
+      "unit_price": 22.00, 
+      "description": "Ground fault circuit interrupter outlet", 
+      "category": "outlets" 
+    },
+    "standard_outlet": { 
+      "name": "Standard Duplex Outlet", 
+      "unit": "ea", 
+      "unit_price": 3.50, 
+      "description": "15A duplex receptacle", 
+      "category": "outlets" 
+    },
+    "led_recessed_light": { 
+      "name": "LED Recessed Can Light", 
+      "unit": "ea", 
+      "unit_price": 28.00, 
+      "description": "6-inch recessed LED fixture", 
+      "category": "lighting" 
+    },
+    "smoke_detector": { 
+      "name": "Smoke/CO Detector (Combo)", 
+      "unit": "ea", 
+      "unit_price": 42.00, 
+      "description": "Battery/Hardwired combo unit", 
+      "category": "safety" 
+    },
+    "conduit_emt_1in_10ft": { 
+      "name": "1 in EMT Conduit (10 ft)", 
+      "unit": "length", 
+      "unit_price": 14.00, 
+      "description": "Metallic conduit pipe", 
+      "category": "conduit" 
     }
+  },
+  "labor": {
+    "rough_wiring": { 
+      "name": "Rough Wiring Installation", 
+      "unit": "hr", 
+      "hourly_rate": 68.00, 
+      "description": "Run cables before walls are closed" 
+    },
+    "finish_wiring": { 
+      "name": "Finish Wiring / Trim-Out", 
+      "unit": "hr", 
+      "hourly_rate": 70.00, 
+      "description": "Install outlets, switches, fixtures" 
+    },
+    "panel_upgrade": { 
+      "name": "Electrical Panel Work", 
+      "unit": "hr", 
+      "hourly_rate": 85.00, 
+      "description": "Service panel installation or upgrade" 
+    },
+    "lighting_installation": { 
+      "name": "Lighting Installation", 
+      "unit": "hr", 
+      "hourly_rate": 72.00, 
+      "description": "Install fixtures or recessed cans" 
+    },
+    "ev_charger_install": { 
+      "name": "EV Charger Install Labor", 
+      "unit": "hr", 
+      "hourly_rate": 90.00, 
+      "description": "Hardwired EV charging station setup" 
+    },
+    "troubleshooting": { 
+      "name": "Electrical Troubleshooting", 
+      "unit": "hr", 
+      "hourly_rate": 75.00, 
+      "description": "Diagnose and fix electrical issues" 
+    },
+    "generator_setup": { 
+      "name": "Generator Installation Labor", 
+      "unit": "hr", 
+      "hourly_rate": 95.00, 
+      "description": "Transfer switch and setup" 
+    }
+  },
+  "assemblies": {
+    "outlet_installation": { 
+      "name": "Standard Outlet Installation", 
+      "unit": "ea", 
+      "unit_price": 65.00, 
+      "description": "Includes box, wiring connection, outlet", 
+      "category": "assembly" 
+    },
+    "gfi_installation": { 
+      "name": "GFCI Outlet Installation", 
+      "unit": "ea", 
+      "unit_price": 95.00, 
+      "description": "Includes labor and GFCI device", 
+      "category": "assembly" 
+    },
+    "lighting_circuit": { 
+      "name": "Lighting Circuit (per room)", 
+      "unit": "ea", 
+      "unit_price": 220.00, 
+      "description": "Includes wiring, switch, and fixture", 
+      "category": "assembly" 
+    },
+    "panel_replacement": { 
+      "name": "200A Panel Replacement", 
+      "unit": "ea", 
+      "unit_price": 1850.00, 
+      "description": "Includes panel, breakers, labor", 
+      "category": "assembly" 
+    },
+    "ev_charger_circuit": { 
+      "name": "EV Charger Circuit Install", 
+      "unit": "ea", 
+      "unit_price": 750.00, 
+      "description": "Dedicated circuit and wiring", 
+      "category": "assembly" 
+    },
+    "smoke_detector_install": { 
+      "name": "Smoke/CO Detector Install", 
+      "unit": "ea", 
+      "unit_price": 90.00, 
+      "description": "Includes device and labor", 
+      "category": "assembly" 
+    }
+  },
+  "extras": {
+    "permit_fee": { 
+      "name": "Permit Fee (average)", 
+      "unit": "ea", 
+      "unit_price": 95.00, 
+      "description": "Electrical permit as required", 
+      "category": "permits" 
+    },
+    "inspection": { 
+      "name": "Inspection & Testing", 
+      "unit": "hr", 
+      "hourly_rate": 60.00, 
+      "description": "Final safety test and certification", 
+      "category": "service" 
+    },
+    "emergency_service": { 
+      "name": "Emergency Call-Out Fee", 
+      "unit": "ea", 
+      "unit_price": 175.00, 
+      "description": "After-hours or priority response", 
+      "category": "service" 
+    },
+    "old_wiring_removal": { 
+      "name": "Old Wiring Removal", 
+      "unit": "hr", 
+      "hourly_rate": 55.00, 
+      "description": "Removal/disposal of obsolete wiring", 
+      "category": "disposal" 
+    },
+    "generator_maintenance": { 
+      "name": "Generator Maintenance Visit", 
+      "unit": "ea", 
+      "unit_price": 140.00, 
+      "description": "Inspection and tune-up", 
+      "category": "service" 
+    }
+  },
+  "metadata": {
+    "currency": "USD",
+    "last_updated": "2025-10-01",
+    "region": "US-OR-PDX"
   }
-  
+}
