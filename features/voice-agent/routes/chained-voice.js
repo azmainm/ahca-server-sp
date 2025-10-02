@@ -12,6 +12,7 @@ const fetch = require('node-fetch');
 const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
 const { FencingRAG } = require('../../../shared/services/FencingRAG');
 const { GoogleCalendarService } = require('../../../shared/services/GoogleCalendarService');
+const { MicrosoftCalendarService } = require('../../../shared/services/MicrosoftCalendarService');
 const { CompanyInfoService } = require('../../../shared/services/CompanyInfoService');
 
 const router = express.Router();
@@ -19,7 +20,8 @@ const router = express.Router();
 // Initialize services
 const embeddingService = new EmbeddingService();
 const fencingRAG = new FencingRAG();
-const calendarService = new GoogleCalendarService();
+const googleCalendarService = new GoogleCalendarService();
+const microsoftCalendarService = new MicrosoftCalendarService();
 const companyInfoService = new CompanyInfoService();
 
 // Session storage
@@ -31,7 +33,7 @@ function getSession(sessionId) {
     sessions.set(sessionId, {
       conversationHistory: [],
       userInfo: { name: null, email: null, collected: false },
-      appointmentFlow: { active: false, step: 'none', details: {} },
+      appointmentFlow: { active: false, step: 'none', details: {}, calendarType: null },
       awaitingFollowUp: false,
       createdAt: new Date()
     });
@@ -496,6 +498,17 @@ router.post('/synthesize', async (req, res) => {
 });
 
 /**
+ * Get the appropriate calendar service based on user's choice
+ */
+function getCalendarService(calendarType) {
+  if (calendarType === 'microsoft') {
+    return microsoftCalendarService;
+  } else {
+    return googleCalendarService; // Default to Google Calendar
+  }
+}
+
+/**
  * Handle appointment scheduling flow
  */
 async function handleAppointmentFlow(session, text, isAppointmentRequest) {
@@ -503,16 +516,32 @@ async function handleAppointmentFlow(session, text, isAppointmentRequest) {
     // Initialize appointment flow if new request
     if (isAppointmentRequest && !session.appointmentFlow.active) {
       session.appointmentFlow.active = true;
-      session.appointmentFlow.step = 'collect_title';
+      session.appointmentFlow.step = 'select_calendar';
       session.appointmentFlow.details = {};
+      session.appointmentFlow.calendarType = null;
       session.awaitingFollowUp = false;
-      return "Great! I'd be happy to help you schedule an appointment. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+      return "Great! I'd be happy to help you schedule an appointment. First, would you like to schedule this in your Google Calendar or Microsoft Calendar? Please say 'Google' or 'Microsoft'.";
     }
 
     const step = session.appointmentFlow.step;
     const details = session.appointmentFlow.details;
 
     switch (step) {
+      case 'select_calendar':
+        // Handle calendar selection
+        const calendarChoice = text.toLowerCase().trim();
+        if (calendarChoice.includes('google')) {
+          session.appointmentFlow.calendarType = 'google';
+          session.appointmentFlow.step = 'collect_title';
+          return "Perfect! I'll schedule your appointment in Google Calendar. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+        } else if (calendarChoice.includes('microsoft') || calendarChoice.includes('outlook')) {
+          session.appointmentFlow.calendarType = 'microsoft';
+          session.appointmentFlow.step = 'collect_title';
+          return "Perfect! I'll schedule your appointment in Microsoft Calendar. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+        } else {
+          return "I didn't catch that. Would you like to use Google Calendar or Microsoft Calendar for your appointment? Please say 'Google' or 'Microsoft'.";
+        }
+
       case 'collect_title':
         // Extract service type from user input
         details.title = text.trim();
@@ -544,6 +573,7 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
         
         // Check if it's a business day and find available slots
         console.log('📅 Checking availability for date:', dateResult.date);
+        const calendarService = getCalendarService(session.appointmentFlow.calendarType);
         const slotsResult = await calendarService.findAvailableSlots(dateResult.date);
         
         if (!slotsResult.success) {
@@ -609,6 +639,7 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
           // Create the appointment directly - no double confirmation needed
           console.log('📅 Creating calendar appointment with details:', details);
           
+          const calendarService = getCalendarService(session.appointmentFlow.calendarType);
           const appointmentResult = await calendarService.createAppointment(
             {
               title: details.title,
@@ -634,13 +665,15 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
               details: details
             };
             
-            return `Excellent! Your appointment has been scheduled successfully in our calendar system. 
+            const calendarName = session.appointmentFlow.calendarType === 'microsoft' ? 'Microsoft Calendar' : 'Google Calendar';
+            return `Excellent! Your appointment has been scheduled successfully in ${calendarName}. 
 
 Appointment Details:
 - Service: ${details.title}  
 - Date & Time: ${details.date} at ${details.timeDisplay || details.time}
 - Duration: 30 minutes
 - Customer: ${session.userInfo.name} (${session.userInfo.email})
+- Calendar: ${calendarName}
 
 Our team will contact you at ${session.userInfo.email} to confirm the appointment details and provide any additional information you may need.
 
@@ -738,6 +771,7 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
           // Create the appointment
           console.log('📅 Creating calendar appointment with details:', details);
           
+          const calendarService = getCalendarService(session.appointmentFlow.calendarType);
           const appointmentResult = await calendarService.createAppointment(
             {
               title: details.title,
@@ -763,13 +797,15 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
               details: details
             };
             
-            return `Excellent! Your appointment has been scheduled successfully in our calendar system. 
+            const calendarName = session.appointmentFlow.calendarType === 'microsoft' ? 'Microsoft Calendar' : 'Google Calendar';
+            return `Excellent! Your appointment has been scheduled successfully in ${calendarName}. 
 
 Appointment Details:
 - Service: ${details.title}  
 - Date & Time: ${details.date} at ${details.timeDisplay || details.time}
 - Duration: 30 minutes
 - Customer: ${session.userInfo.name} (${session.userInfo.email})
+- Calendar: ${calendarName}
 
 Our team will contact you at ${session.userInfo.email} to confirm the appointment details and provide any additional information you may need.
 
