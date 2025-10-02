@@ -14,6 +14,7 @@ const { FencingRAG } = require('../../../shared/services/FencingRAG');
 const { GoogleCalendarService } = require('../../../shared/services/GoogleCalendarService');
 const { MicrosoftCalendarService } = require('../../../shared/services/MicrosoftCalendarService');
 const { CompanyInfoService } = require('../../../shared/services/CompanyInfoService');
+const { EmailService } = require('../../../shared/services/EmailService');
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ const fencingRAG = new FencingRAG();
 const googleCalendarService = new GoogleCalendarService();
 const microsoftCalendarService = new MicrosoftCalendarService();
 const companyInfoService = new CompanyInfoService();
+const emailService = new EmailService();
 
 // Session storage
 const sessions = new Map();
@@ -162,6 +164,11 @@ router.post('/process', async (req, res) => {
       console.log('👋 [Flow] Taking goodbye path');
       const userName = session.userInfo.name || 'there';
       assistantResponse = `Thank you, ${userName}! I hope you were satisfied with SherpaPrompt AI's service. Have a great day!`;
+      
+      // Send conversation summary email asynchronously (don't wait for it)
+      sendConversationSummary(sessionId, session).catch(error => {
+        console.error('❌ [Email] Failed to send summary email in goodbye flow:', error);
+      });
     } else if (!session.userInfo.collected) {
       console.log('📝 [Flow] Taking name/email collection path');
       // Phase 1: Collect name and email ONLY
@@ -1058,6 +1065,51 @@ function parseTimeFromText(text) {
 }
 
 /**
+ * Send conversation summary email to user
+ * @param {string} sessionId - Session identifier
+ * @param {Object} session - Session data
+ */
+async function sendConversationSummary(sessionId, session) {
+  try {
+    // Check if user has provided email
+    if (!session.userInfo || !session.userInfo.email || !session.userInfo.collected) {
+      console.log('📧 [Email] Skipping email - no user email collected for session:', sessionId);
+      return { success: false, reason: 'No user email available' };
+    }
+
+    // Check if there's meaningful conversation to summarize
+    if (!session.conversationHistory || session.conversationHistory.length < 2) {
+      console.log('📧 [Email] Skipping email - insufficient conversation history for session:', sessionId);
+      return { success: false, reason: 'Insufficient conversation history' };
+    }
+
+    console.log('📧 [Email] Sending conversation summary for session:', sessionId);
+    console.log('📧 [Email] User info:', { name: session.userInfo.name, email: session.userInfo.email });
+    console.log('📧 [Email] Conversation messages:', session.conversationHistory.length);
+    console.log('📧 [Email] Has appointment:', !!session.lastAppointment);
+
+    // Send the email
+    const emailResult = await emailService.sendConversationSummary(
+      session.userInfo,
+      session.conversationHistory,
+      session.lastAppointment
+    );
+
+    if (emailResult.success) {
+      console.log('✅ [Email] Conversation summary sent successfully:', emailResult.messageId);
+      return { success: true, messageId: emailResult.messageId };
+    } else {
+      console.error('❌ [Email] Failed to send conversation summary:', emailResult.error);
+      return { success: false, error: emailResult.error };
+    }
+
+  } catch (error) {
+    console.error('❌ [Email] Error sending conversation summary:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Helper Functions
  */
 
@@ -1128,10 +1180,17 @@ function extractSearchTerms(text) {
 }
 
 // Session cleanup
-router.delete('/session/:sessionId', (req, res) => {
+router.delete('/session/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
   
   if (sessions.has(sessionId)) {
+    const session = sessions.get(sessionId);
+    
+    // Send conversation summary email before deleting session (don't wait for it)
+    sendConversationSummary(sessionId, session).catch(error => {
+      console.error('❌ [Email] Failed to send summary email in session cleanup:', error);
+    });
+    
     sessions.delete(sessionId);
     console.log('🗑️ Session deleted:', sessionId);
   }
@@ -1146,10 +1205,127 @@ setInterval(() => {
   
   for (const [sessionId, session] of sessions.entries()) {
     if (now - session.createdAt > maxAge) {
+      // Send conversation summary email before cleanup (don't wait for it)
+      sendConversationSummary(sessionId, session).catch(error => {
+        console.error('❌ [Email] Failed to send summary email in automatic cleanup:', error);
+      });
+      
       sessions.delete(sessionId);
       console.log('🧹 Cleaned up old session:', sessionId);
     }
   }
 }, 5 * 60 * 1000); // Check every 5 minutes
+
+// Test endpoint for email functionality
+router.post('/test-email', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email is required for testing' 
+      });
+    }
+
+    // Create test conversation data
+    const testUserInfo = {
+      name: name || 'Test User',
+      email: email,
+      collected: true
+    };
+
+    const testConversationHistory = [
+      {
+        role: 'user',
+        content: 'Hi, I need information about fence installation',
+        timestamp: new Date()
+      },
+      {
+        role: 'assistant',
+        content: 'Hello! I\'d be happy to help you with fence installation information. We offer various materials including wood, vinyl, and chain link fencing.',
+        timestamp: new Date()
+      },
+      {
+        role: 'user',
+        content: 'What are your prices for wood fencing?',
+        timestamp: new Date()
+      },
+      {
+        role: 'assistant',
+        content: 'Our wood fencing prices vary based on the type of wood and height. For a standard 6-foot privacy fence, prices typically range from $25-40 per linear foot including installation.',
+        timestamp: new Date()
+      },
+      {
+        role: 'user',
+        content: 'Can I schedule an appointment?',
+        timestamp: new Date()
+      },
+      {
+        role: 'assistant',
+        content: 'Absolutely! I can help you schedule an appointment. What date works best for you?',
+        timestamp: new Date()
+      }
+    ];
+
+    const testAppointmentDetails = {
+      details: {
+        title: 'Fence Consultation',
+        date: '2024-12-15',
+        time: '14:00',
+        timeDisplay: '2:00 PM'
+      },
+      calendarType: 'Google Calendar'
+    };
+
+    // Send test email
+    const emailResult = await emailService.sendConversationSummary(
+      testUserInfo,
+      testConversationHistory,
+      testAppointmentDetails
+    );
+
+    res.json({
+      success: true,
+      message: 'Test email sent',
+      emailResult,
+      testData: {
+        userInfo: testUserInfo,
+        conversationMessages: testConversationHistory.length,
+        hasAppointment: true
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [Test Email] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send test email',
+      message: error.message
+    });
+  }
+});
+
+// Test endpoint for email service connectivity
+router.get('/test-email-connection', async (req, res) => {
+  try {
+    const connectionTest = await emailService.testConnection();
+    
+    res.json({
+      success: connectionTest.success,
+      emailServiceReady: emailService.isReady(),
+      message: connectionTest.success ? 'Email service is working' : connectionTest.error,
+      ping: connectionTest.ping || null
+    });
+
+  } catch (error) {
+    console.error('❌ [Test Email Connection] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to test email connection',
+      message: error.message
+    });
+  }
+});
 
 module.exports = router;
