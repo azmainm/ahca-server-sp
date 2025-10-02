@@ -172,59 +172,97 @@ router.post('/process', async (req, res) => {
     } else if (!session.userInfo.collected) {
       console.log('📝 [Flow] Taking name/email collection path');
       // Phase 1: Collect name and email ONLY
-      systemPrompt = `You are a friendly assistant for SherpaPrompt Fencing Company. 
+      systemPrompt = `You're a friendly voice assistant for SherpaPrompt Fencing Company. Sound natural and conversational.
 
 CRITICAL INSTRUCTIONS:
-- ONLY collect name and email - NEVER ask for phone numbers or any other information
+- ONLY collect name and email - NEVER ask for phone numbers or anything else
 - If you have both name and email, respond EXACTLY with: "Thanks [name]! I've got your email as [email]. How can I help you today?"
 - If missing info, ask ONLY for the missing piece (name OR email)
-- Do NOT mention phone numbers, contact methods, or any other information
-- Keep responses short and professional
+- Sound conversational, use contractions (I'll, we're, that's, etc.)
+- Keep responses friendly but brief
 
 Your ONLY job is name and email collection.`;
 
-      // Try to extract name and email
-      const extractionPrompt = `Extract name and email from this text: "${text}"
-      
-Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com", "hasComplete": true}
-If missing info, set those fields to null and hasComplete to false.`;
+      // Try to extract name and email with improved context handling
+      const extractionPrompt = `You are extracting name and email from user speech. Handle these cases carefully:
 
-      const extractionResponse = await callOpenAI([
-        { role: 'system', content: extractionPrompt },
-        { role: 'user', content: text }
-      ]);
+1. If user is spelling out their email (e.g., "a-z-m-a-i-n at gmail dot com"), convert it properly
+2. Convert "at" to "@" and "dot" to "." in emails
+3. Handle corrections and clarifications (e.g., "no wait, it's actually...")
+4. Ignore filler words like "um", "uh", "so", "basically"
+5. If user says "spell" or "let me spell", they're providing spelling
+
+User input: "${text}"
+
+Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com", "hasComplete": true, "needsSpelling": false}
+- Set needsSpelling to true if the name/email seems unclear or contains unusual characters
+- If missing info, set those fields to null and hasComplete to false
+- Convert spelled-out emails properly (a-t becomes @, d-o-t becomes .)`;
 
       try {
-        const extracted = JSON.parse(extractionResponse);
-        if (extracted.name) session.userInfo.name = extracted.name;
-        if (extracted.email) session.userInfo.email = extracted.email;
-        
+        const extractionResponse = await callOpenAI([
+          { role: 'system', content: extractionPrompt },
+          { role: 'user', content: text }
+        ]);
+
+        try {
+          const extracted = JSON.parse(extractionResponse);
+          if (extracted.name) session.userInfo.name = extracted.name;
+          if (extracted.email) session.userInfo.email = extracted.email;
+          
           if (extracted.hasComplete && extracted.name && extracted.email) {
             session.userInfo.collected = true;
             assistantResponse = `Thanks ${extracted.name}! I've got your email as ${extracted.email}. How can I help you today?`;
           } else {
-          // Generate response asking for missing info
-          const responsePrompt = `The user said: "${text}"
-          We have: name="${session.userInfo.name || 'missing'}", email="${session.userInfo.email || 'missing'}"
+            // Generate response asking for missing info with spelling encouragement
+            let missingInfo = [];
+            if (!session.userInfo.name) missingInfo.push('name');
+            if (!session.userInfo.email) missingInfo.push('email address');
+            
+            if (missingInfo.length === 2) {
+              assistantResponse = "I'd be happy to help! Could you please tell me your name and email address? Feel free to spell them out if needed for clarity.";
+            } else if (missingInfo.includes('name')) {
+              assistantResponse = "Thanks! I still need your name. Please tell me your name, and feel free to spell it out if it's unusual.";
+            } else if (missingInfo.includes('email address')) {
+              assistantResponse = "Thanks! I still need your email address. Please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'.";
+            }
+          }
+        } catch (e) {
+          console.error('❌ [Extraction] JSON parsing error:', e.message);
+          // Try simple pattern matching as fallback
+          const nameMatch = text.match(/(?:name.*is|call.*me|i'm)\s+([a-zA-Z\s]+)/i);
+          const emailMatch = text.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
           
-          CRITICAL: Generate a friendly response asking ONLY for missing name or email. 
-          NEVER mention phone numbers, contact methods, or any other information.
-          Be brief and professional.`;
+          if (nameMatch) session.userInfo.name = nameMatch[1].trim();
+          if (emailMatch) session.userInfo.email = emailMatch[1].trim();
           
-          assistantResponse = await callOpenAI([
-            { role: 'system', content: responsePrompt }
-          ]);
-          
-          // Safety check: Remove any phone number requests
-          if (assistantResponse.toLowerCase().includes('phone') || 
-              assistantResponse.toLowerCase().includes('contact') ||
-              assistantResponse.toLowerCase().includes('number')) {
+          if (session.userInfo.name && session.userInfo.email) {
+            session.userInfo.collected = true;
+            assistantResponse = `Thanks ${session.userInfo.name}! I've got your email as ${session.userInfo.email}. How can I help you today?`;
+          } else {
             assistantResponse = "I'd be happy to help! Could you please provide your name and email address so I can assist you better?";
           }
         }
-      } catch (e) {
-        // Fallback response
-        assistantResponse = "I'd be happy to help! Could you please provide your name and email address so I can assist you better?";
+      } catch (openaiError) {
+        console.error('❌ [OpenAI] Service unavailable, using fallback extraction:', openaiError.message);
+        
+        // Fallback: Try simple pattern matching when OpenAI is down
+        const nameMatch = text.match(/(?:name.*is|call.*me|i'm)\s+([a-zA-Z\s]+)/i);
+        const emailMatch = text.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        
+        if (nameMatch) session.userInfo.name = nameMatch[1].trim();
+        if (emailMatch) session.userInfo.email = emailMatch[1].trim();
+        
+        if (session.userInfo.name && session.userInfo.email) {
+          session.userInfo.collected = true;
+          assistantResponse = `Thanks ${session.userInfo.name}! I've got your email as ${session.userInfo.email}. How can I help you today?`;
+        } else if (session.userInfo.name) {
+          assistantResponse = "Thanks! I still need your email address. Please spell it out letter by letter for accuracy.";
+        } else if (session.userInfo.email) {
+          assistantResponse = "Thanks! I still need your name. Please tell me your name.";
+        } else {
+          assistantResponse = "I'm having trouble with my AI service right now, but I can still help! Could you please clearly state your name and email address?";
+        }
       }
 
     } else {
@@ -250,8 +288,100 @@ If missing info, set those fields to null and hasComplete to false.`;
       console.log('🗓️ [Appointment] Checking appointment patterns for:', text);
       console.log('🗓️ [Appointment] Is appointment request:', isAppointmentRequest);
 
+      // Check for name/email change requests during regular conversation
+      const nameChangePatterns = [
+        /change.*name/i,
+        /update.*name/i,
+        /my name.*is/i,
+        /actually.*name/i,
+        /correct.*name/i,
+        /wrong.*name/i,
+        /name.*should.*be/i,
+        /call.*me/i
+      ];
+      
+      const emailChangePatterns = [
+        /change.*email/i,
+        /update.*email/i,
+        /my email.*is/i,
+        /actually.*email/i,
+        /correct.*email/i,
+        /wrong.*email/i,
+        /email.*should.*be/i,
+        /email.*address.*is/i
+      ];
+
+      const isNameChange = nameChangePatterns.some(pattern => pattern.test(text));
+      const isEmailChange = emailChangePatterns.some(pattern => pattern.test(text));
+
+      // Handle name/email changes during regular conversation
+      if (isNameChange && !session.appointmentFlow.active) {
+        console.log('👤 [Name Change] Detected name change request during conversation');
+        
+        // Extract new name
+        const nameExtractionPrompt = `The user wants to change their name. Extract the new name from: "${text}"
+        
+Handle corrections, spelling, and filler words. Look for patterns like:
+- "my name is actually..."
+- "call me..."
+- "my name should be..."
+- "change my name to..."
+
+Return ONLY: {"name": "John Doe"}`;
+
+        try {
+          const nameResponse = await callOpenAI([
+            { role: 'system', content: nameExtractionPrompt },
+            { role: 'user', content: text }
+          ]);
+          
+          const nameData = JSON.parse(nameResponse);
+          if (nameData.name) {
+            const oldName = session.userInfo.name;
+            session.userInfo.name = nameData.name;
+            assistantResponse = `Got it! I've updated your name from ${oldName} to ${nameData.name}. How can I help you today?`;
+          } else {
+            assistantResponse = "I'd be happy to update your name. Could you please tell me what name you'd like me to use? Feel free to spell it out if needed.";
+          }
+        } catch (e) {
+          assistantResponse = "I'd be happy to update your name. Could you please tell me what name you'd like me to use?";
+        }
+      }
+      // Handle email changes during regular conversation  
+      else if (isEmailChange && !session.appointmentFlow.active) {
+        console.log('📧 [Email Change] Detected email change request during conversation');
+        
+        // Extract new email
+        const emailExtractionPrompt = `The user wants to change their email. Extract the new email from: "${text}"
+        
+Handle these cases:
+1. Spelled out emails (e.g., "j-o-h-n at gmail dot com") - convert properly
+2. Convert "at" to "@" and "dot" to "."
+3. Handle corrections and clarifications
+4. Look for patterns like "my email is actually...", "change my email to...", "email should be..."
+
+Return ONLY: {"email": "john@example.com"}`;
+
+        try {
+          const emailResponse = await callOpenAI([
+            { role: 'system', content: emailExtractionPrompt },
+            { role: 'user', content: text }
+          ]);
+          
+          const emailData = JSON.parse(emailResponse);
+          if (emailData.email) {
+            const oldEmail = session.userInfo.email;
+            session.userInfo.email = emailData.email;
+            assistantResponse = `Perfect! I've updated your email from ${oldEmail} to ${emailData.email}. How can I help you today?`;
+          } else {
+            assistantResponse = "I'd be happy to update your email. Could you please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'?";
+          }
+        } catch (e) {
+          assistantResponse = "I'd be happy to update your email. Could you please spell it out letter by letter for accuracy?";
+        }
+      }
       // Handle active appointment flow
-      if (session.appointmentFlow.active || isAppointmentRequest) {
+      else if (session.appointmentFlow.active || isAppointmentRequest) {
         console.log('🗓️ [Appointment] Processing appointment request');
         assistantResponse = await handleAppointmentFlow(session, text, isAppointmentRequest);
       } 
@@ -267,7 +397,7 @@ If missing info, set those fields to null and hasComplete to false.`;
           session.appointmentFlow.active = true;
           session.appointmentFlow.step = 'collect_title';
           session.awaitingFollowUp = false;
-          assistantResponse = "Great! I'd be happy to help you schedule an appointment. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+          assistantResponse = "Great! I'd be happy to help you schedule an appointment. Just so you know, all appointments are 30 minutes and we're available Monday through Friday from 12:00 PM to 4:00 PM. What type of service are you looking for? Like a fence consultation, repair estimate, or installation quote?";
         }
         // Check if it's a company info query (even in follow-up)
         else if (companyInfoService.isCompanyInfoQuery(text)) {
@@ -281,7 +411,7 @@ If missing info, set those fields to null and hasComplete to false.`;
           session.appointmentFlow.active = true;
           session.appointmentFlow.step = 'collect_title';
           session.awaitingFollowUp = false;
-          assistantResponse = "Great! I'd be happy to help you schedule an appointment. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+          assistantResponse = "Great! I'd be happy to help you schedule an appointment. Just so you know, all appointments are 30 minutes and we're available Monday through Friday from 12:00 PM to 4:00 PM. What type of service are you looking for? Like a fence consultation, repair estimate, or installation quote?";
         } else if (wantsMoreQuestions) {
           session.awaitingFollowUp = false;
           assistantResponse = "Of course! What else would you like to know about our fencing services?";
@@ -319,7 +449,7 @@ If missing info, set those fields to null and hasComplete to false.`;
               if (companyInfoService.isCompanyInfoQuery(text)) {
                 assistantResponse = companyInfoService.getCompanyInfo(text);
               } else {
-                const systemPrompt = `You are a helpful assistant for SherpaPrompt Fencing Company. Answer questions concisely using the provided context.`;
+                const systemPrompt = `You're a friendly voice assistant for SherpaPrompt Fencing Company. Chat naturally and conversationally - use contractions and sound human, not robotic.`;
                 const messages = [
                   { role: 'system', content: systemPrompt },
                   ...session.conversationHistory.slice(-6),
@@ -349,16 +479,17 @@ If missing info, set those fields to null and hasComplete to false.`;
           session.awaitingFollowUp = true;
         } else {
           console.log('🚫 [Company Info] Not a company info query, proceeding to RAG');
-          systemPrompt = `You are a helpful assistant for SherpaPrompt Fencing Company. Answer questions concisely using the provided context.
+          systemPrompt = `You're a friendly voice assistant for SherpaPrompt Fencing Company. Chat naturally with customers like you're having a real conversation.
 
 User: ${session.userInfo.name} (${session.userInfo.email})
 
 Guidelines:
-- Be direct and to-the-point but friendly
-- Answer only what's asked
-- Keep responses conversational but brief
-- Do NOT ask follow-up questions in this response - that will be handled separately
-- If user says goodbye/no more questions, thank them and mention you hope they were satisfied with SherpaPrompt AI's service`;
+- Sound conversational and human, not robotic or formal
+- Use contractions (I'll, we're, that's, etc.) and casual language
+- Answer what they're asking without being overly wordy
+- Don't sound like you're reading from a script
+- Avoid formal phrases like "I would be happy to assist" - just help them naturally
+- If user says goodbye, thank them casually and mention you hope we could help`;
 
           // Search knowledge base
           const searchTerms = extractSearchTerms(text);
@@ -527,7 +658,7 @@ async function handleAppointmentFlow(session, text, isAppointmentRequest) {
       session.appointmentFlow.details = {};
       session.appointmentFlow.calendarType = null;
       session.awaitingFollowUp = false;
-      return "Great! I'd be happy to help you schedule an appointment. First, would you like to schedule this in your Google Calendar or Microsoft Calendar? Please say 'Google' or 'Microsoft'.";
+      return "Great! I'd be happy to help you schedule an appointment. First, would you like me to add this to your Google Calendar or Microsoft Calendar? Just say 'Google' or 'Microsoft'.";
     }
 
     const step = session.appointmentFlow.step;
@@ -540,18 +671,76 @@ async function handleAppointmentFlow(session, text, isAppointmentRequest) {
         if (calendarChoice.includes('google')) {
           session.appointmentFlow.calendarType = 'google';
           session.appointmentFlow.step = 'collect_title';
-          return "Perfect! I'll schedule your appointment in Google Calendar. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+          return "Perfect! I'll add it to your Google Calendar. What type of service are you looking for? Like a fence consultation, repair estimate, or installation quote?";
         } else if (calendarChoice.includes('microsoft') || calendarChoice.includes('outlook')) {
           session.appointmentFlow.calendarType = 'microsoft';
           session.appointmentFlow.step = 'collect_title';
-          return "Perfect! I'll schedule your appointment in Microsoft Calendar. What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.";
+          return "Perfect! I'll add it to your Microsoft Calendar. What type of service are you looking for? Like a fence consultation, repair estimate, or installation quote?";
         } else {
           return "I didn't catch that. Would you like to use Google Calendar or Microsoft Calendar for your appointment? Please say 'Google' or 'Microsoft'.";
         }
 
       case 'collect_title':
-        // Extract service type from user input
-        details.title = text.trim();
+        // Extract service type from user input with better context understanding
+        const serviceExtractionPrompt = `You are extracting the FINAL service type the user wants from their speech. Pay attention to corrections and final intent.
+
+User said: "${text}"
+
+CRITICAL RULES:
+1. If user corrects themselves (e.g., "no wait, actually I need repair"), use the FINAL/CORRECTED service only
+2. Ignore filler words: "um", "uh", "so", "basically", "I need", "I want", "never mind"
+3. Look for keywords: "installation", "repair", "consultation", "estimate", "quote", "gate", "maintenance", "emergency"
+4. If user says multiple services, pick the LAST one mentioned (that's usually their correction)
+5. Map to these exact service names:
+   - "Fence consultation" (for consultations, general questions, advice)
+   - "Fence installation" (for new fence installation)
+   - "Fence repair" (for fixing existing fences)
+   - "Fence estimate" (for quotes, pricing, estimates)
+   - "Gate installation" (for new gate installation)
+   - "Gate repair" (for fixing gates)
+   - "Fence maintenance" (for upkeep, cleaning, staining)
+   - "Emergency fence repair" (for urgent repairs)
+
+Examples:
+- "um I need installation code" → "Fence installation"
+- "no wait I think I need never mind so basically I need to know your service areas" → "Fence consultation"
+- "I want repair estimate for my fence" → "Fence estimate"
+
+Return ONLY: {"service": "Fence consultation"}`;
+
+        try {
+          const serviceResponse = await callOpenAI([
+            { role: 'system', content: serviceExtractionPrompt },
+            { role: 'user', content: text }
+          ]);
+          
+          const serviceData = JSON.parse(serviceResponse);
+          if (serviceData.service && serviceData.service !== text.trim()) {
+            details.title = serviceData.service;
+            console.log(`🎯 [Service] Extracted "${serviceData.service}" from "${text}"`);
+          } else {
+            // Better fallback - try to match keywords
+            const lowerText = text.toLowerCase();
+            if (lowerText.includes('install') && !lowerText.includes('repair')) {
+              details.title = lowerText.includes('gate') ? 'Gate installation' : 'Fence installation';
+            } else if (lowerText.includes('repair')) {
+              details.title = lowerText.includes('gate') ? 'Gate repair' : 'Fence repair';
+            } else if (lowerText.includes('estimate') || lowerText.includes('quote') || lowerText.includes('price')) {
+              details.title = 'Fence estimate';
+            } else if (lowerText.includes('maintenance') || lowerText.includes('stain') || lowerText.includes('clean')) {
+              details.title = 'Fence maintenance';
+            } else if (lowerText.includes('emergency')) {
+              details.title = 'Emergency fence repair';
+            } else {
+              details.title = 'Fence consultation';
+            }
+            console.log(`🎯 [Service] Fallback extracted "${details.title}" from "${text}"`);
+          }
+        } catch (e) {
+          // Final fallback - default to consultation
+          details.title = 'Fence consultation';
+          console.log(`🎯 [Service] Error fallback to "Fence consultation" from "${text}"`);
+        }
         
         // Check if we already have date/time information (from previous appointment setup)
         if (details.date && details.time) {
@@ -729,23 +918,50 @@ Is there anything else I can help you with today?`;
         } else if (changeNamePatterns.some(pattern => pattern.test(text))) {
           // Change name - set up to collect new name
           session.appointmentFlow.step = 'collect_name';
-          return `No problem! What name should I use for this appointment?`;
+          return `No problem! What name should I use for this appointment? Feel free to spell it out if it's unusual.`;
         } else if (changeEmailPatterns.some(pattern => pattern.test(text))) {
           // Change email - set up to collect new email
           session.appointmentFlow.step = 'collect_email';
-          return `No problem! What email address should I use for this appointment?`;
+          return `No problem! What email address should I use for this appointment? Please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'.`;
         } else {
           return `I didn't catch what you'd like to change. Please say "looks good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", "time", "name", or "email".`;
         }
 
       case 'collect_name':
-        // Update the user's name for this appointment
-        const newName = text.trim();
-        session.userInfo.name = newName;
+        // Extract and clean the name with better parsing
+        const nameExtractionPrompt = `Extract the person's name from this text: "${text}"
         
-        // Go back to review with updated name
+Handle spelling, corrections, and filler words. If they're spelling it out, reconstruct it properly.
+Return ONLY a JSON object: {"name": "John Doe", "confidence": "high"}
+Set confidence to "low" if the name seems unclear.`;
+
+        try {
+          const nameResponse = await callOpenAI([
+            { role: 'system', content: nameExtractionPrompt },
+            { role: 'user', content: text }
+          ]);
+          
+          const nameData = JSON.parse(nameResponse);
+          if (nameData.name) {
+            session.userInfo.name = nameData.name;
+            session.appointmentFlow.step = 'review';
+            return `Perfect! I've updated the name to ${nameData.name}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+          }
+        } catch (e) {
+          // Fallback to simple extraction
+          const newName = text.trim();
+          session.userInfo.name = newName;
+        }
+        
         session.appointmentFlow.step = 'review';
-        return `Perfect! I've updated the name to ${newName}. Let me review your appointment details:
+        return `Perfect! I've updated the name to ${session.userInfo.name}. Let me review your appointment details:
 
 Service: ${details.title}
 Date: ${details.date}
@@ -755,13 +971,45 @@ Customer: ${session.userInfo.name} (${session.userInfo.email})
 Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
 
       case 'collect_email':
-        // Update the user's email for this appointment
-        const newEmail = text.trim();
-        session.userInfo.email = newEmail;
+        // Extract and clean the email with better parsing
+        const emailExtractionPrompt = `Extract the email address from this text: "${text}"
         
-        // Go back to review with updated email
+Handle these cases:
+1. Spelled out emails (e.g., "a-z-m-a-i-n at gmail dot com") - convert properly
+2. Convert "at" to "@" and "dot" to "."
+3. Handle corrections and clarifications
+4. Ignore filler words
+
+Return ONLY a JSON object: {"email": "john@example.com", "confidence": "high"}
+Set confidence to "low" if the email seems unclear.`;
+
+        try {
+          const emailResponse = await callOpenAI([
+            { role: 'system', content: emailExtractionPrompt },
+            { role: 'user', content: text }
+          ]);
+          
+          const emailData = JSON.parse(emailResponse);
+          if (emailData.email) {
+            session.userInfo.email = emailData.email;
+            session.appointmentFlow.step = 'review';
+            return `Perfect! I've updated the email to ${emailData.email}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+          }
+        } catch (e) {
+          // Fallback to simple extraction
+          const newEmail = text.trim();
+          session.userInfo.email = newEmail;
+        }
+        
         session.appointmentFlow.step = 'review';
-        return `Perfect! I've updated the email to ${newEmail}. Let me review your appointment details:
+        return `Perfect! I've updated the email to ${session.userInfo.email}. Let me review your appointment details:
 
 Service: ${details.title}
 Date: ${details.date}
@@ -951,22 +1199,61 @@ function findSelectedTimeSlot(text, availableSlots) {
  */
 function parseDateFromText(text) {
   try {
+    // First, normalize ordinal numbers (second, third, fourth, etc.)
+    const normalizedText = text.toLowerCase()
+      .replace(/\bfirst\b/g, '1st')
+      .replace(/\bsecond\b/g, '2nd')
+      .replace(/\bthird\b/g, '3rd')
+      .replace(/\bfourth\b/g, '4th')
+      .replace(/\bfifth\b/g, '5th')
+      .replace(/\bsixth\b/g, '6th')
+      .replace(/\bseventh\b/g, '7th')
+      .replace(/\beighth\b/g, '8th')
+      .replace(/\bninth\b/g, '9th')
+      .replace(/\btenth\b/g, '10th')
+      .replace(/\beleventh\b/g, '11th')
+      .replace(/\btwelfth\b/g, '12th')
+      .replace(/\bthirteenth\b/g, '13th')
+      .replace(/\bfourteenth\b/g, '14th')
+      .replace(/\bfifteenth\b/g, '15th')
+      .replace(/\bsixteenth\b/g, '16th')
+      .replace(/\bseventeenth\b/g, '17th')
+      .replace(/\beighteenth\b/g, '18th')
+      .replace(/\bnineteenth\b/g, '19th')
+      .replace(/\btwentieth\b/g, '20th')
+      .replace(/\btwenty-first\b/g, '21st')
+      .replace(/\btwenty-second\b/g, '22nd')
+      .replace(/\btwenty-third\b/g, '23rd')
+      .replace(/\btwenty-fourth\b/g, '24th')
+      .replace(/\btwenty-fifth\b/g, '25th')
+      .replace(/\btwenty-sixth\b/g, '26th')
+      .replace(/\btwenty-seventh\b/g, '27th')
+      .replace(/\btwenty-eighth\b/g, '28th')
+      .replace(/\btwenty-ninth\b/g, '29th')
+      .replace(/\bthirtieth\b/g, '30th')
+      .replace(/\bthirty-first\b/g, '31st');
+
     // Try various date formats
     const datePatterns = [
       // YYYY-MM-DD format
       /(\d{4})-(\d{1,2})-(\d{1,2})/,
       // MM/DD/YYYY format
       /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
-      // Month DD, YYYY format
-      /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}),?\s+(\d{4})/i,
-      // DD Month YYYY format
-      /(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/i
+      // Month DD, YYYY format (including ordinals)
+      /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}(?:st|nd|rd|th)?),?\s+(\d{4})/i,
+      // DD Month YYYY format (including ordinals)
+      /(\d{1,2}(?:st|nd|rd|th)?)\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/i,
+      // Month DD format (current year assumed, including ordinals)
+      /(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}(?:st|nd|rd|th)?)/i,
+      // DD Month format (current year assumed, including ordinals)
+      /(\d{1,2}(?:st|nd|rd|th)?)\s+(january|february|march|april|may|june|july|august|september|october|november|december)/i
     ];
 
     for (const pattern of datePatterns) {
-      const match = text.match(pattern);
+      const match = normalizedText.match(pattern);
       if (match) {
         let year, month, day;
+        const currentYear = new Date().getFullYear();
         
         if (pattern === datePatterns[0]) { // YYYY-MM-DD
           year = match[1];
@@ -980,14 +1267,26 @@ function parseDateFromText(text) {
           const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
                             'july', 'august', 'september', 'october', 'november', 'december'];
           month = (monthNames.indexOf(match[1].toLowerCase()) + 1).toString().padStart(2, '0');
-          day = match[2].padStart(2, '0');
+          day = match[2].replace(/\D/g, '').padStart(2, '0'); // Remove ordinal suffixes
           year = match[3];
         } else if (pattern === datePatterns[3]) { // DD Month YYYY
           const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
                             'july', 'august', 'september', 'october', 'november', 'december'];
+          day = match[1].replace(/\D/g, '').padStart(2, '0'); // Remove ordinal suffixes
           month = (monthNames.indexOf(match[2].toLowerCase()) + 1).toString().padStart(2, '0');
-          day = match[1].padStart(2, '0');
           year = match[3];
+        } else if (pattern === datePatterns[4]) { // Month DD (current year)
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                            'july', 'august', 'september', 'october', 'november', 'december'];
+          month = (monthNames.indexOf(match[1].toLowerCase()) + 1).toString().padStart(2, '0');
+          day = match[2].replace(/\D/g, '').padStart(2, '0'); // Remove ordinal suffixes
+          year = currentYear.toString();
+        } else if (pattern === datePatterns[5]) { // DD Month (current year)
+          const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                            'july', 'august', 'september', 'october', 'november', 'december'];
+          day = match[1].replace(/\D/g, '').padStart(2, '0'); // Remove ordinal suffixes
+          month = (monthNames.indexOf(match[2].toLowerCase()) + 1).toString().padStart(2, '0');
+          year = currentYear.toString();
         }
 
         const dateString = `${year}-${month}-${day}`;
@@ -1113,27 +1412,58 @@ async function sendConversationSummary(sessionId, session) {
  * Helper Functions
  */
 
-async function callOpenAI(messages, model = 'gpt-4') {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: 300,
-      temperature: 0.7
-    })
-  });
+async function callOpenAI(messages, model = 'gpt-4', retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`🤖 [OpenAI] Attempt ${attempt}/${retries} - Calling ${model}`);
+      
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: 300,
+          temperature: 0.7
+        })
+      });
 
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ [OpenAI] API error ${response.status}: ${errorText}`);
+        
+        // If it's a 503 (Service Unavailable) or 429 (Rate Limit), retry
+        if ((response.status === 503 || response.status === 429) && attempt < retries) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`⏳ [OpenAI] Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ [OpenAI] Success on attempt ${attempt}`);
+      return data.choices[0].message.content;
+      
+    } catch (error) {
+      console.error(`❌ [OpenAI] Attempt ${attempt} failed:`, error.message);
+      
+      // If it's the last attempt, throw the error
+      if (attempt === retries) {
+        throw error;
+      }
+      
+      // Wait before retrying
+      const delay = Math.pow(2, attempt) * 1000;
+      console.log(`⏳ [OpenAI] Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 function extractSearchTerms(text) {
