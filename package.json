@@ -17,6 +17,7 @@
     "@langchain/mongodb": "^0.0.3",
     "@langchain/openai": "^0.6.13",
     "@langchain/textsplitters": "^0.1.0",
+    "@mailchimp/mailchimp_transactional": "^1.0.59",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
@@ -27,6 +28,7 @@
     "langchain": "^0.1.36",
     "moment-timezone": "^0.6.0",
     "multer": "^2.0.2",
+    "resend": "^6.1.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {
