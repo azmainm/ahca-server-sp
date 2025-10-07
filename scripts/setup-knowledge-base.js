@@ -5,7 +5,7 @@
  * Run with: node scripts/setup-knowledge-base.js
  */
 
-const { EmbeddingService } = require('../services/EmbeddingService');
+const { EmbeddingService } = require('../shared/services/EmbeddingService');
 const fs = require('fs').promises;
 const path = require('path');
 require('dotenv').config();
@@ -27,7 +27,7 @@ async function setupKnowledgeBase() {
     console.log('✅ Environment variables validated');
     
     // Read the knowledge base file
-    const knowledgeBasePath = path.join(__dirname, '../docs/knowldge_base_dummy.json');
+    const knowledgeBasePath = path.join(__dirname, '../data/knowldge_base_dummy.json');
     console.log(`📖 Reading knowledge base from: ${knowledgeBasePath}`);
     
     const knowledgeBaseData = await fs.readFile(knowledgeBasePath, 'utf8');
