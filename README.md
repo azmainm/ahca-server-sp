@@ -32,23 +32,40 @@ Audio Input → STT (Whisper) → Text Processing (GPT-4 + RAG) → TTS (TTS-1) 
 - Environment variable loading
 ```
 
-#### 2. Chained Voice Route (`routes/chained-voice.js`)
-The main voice processing pipeline implementing OpenAI's chained architecture:
+#### 2. Refactored Voice Agent Architecture (`routes/chained-voice.js`)
+The voice processing pipeline has been refactored into a modular, maintainable architecture:
 
-**Three Core Endpoints:**
+**🏗️ Architecture Overview:**
+- **Route Layer**: Thin HTTP controllers handling requests/responses
+- **Service Layer**: 8 specialized service classes with single responsibilities  
+- **Orchestration**: Central ConversationFlowHandler coordinating all services
+
+**📋 Service Classes:**
+- `ConversationStateManager` - Session state management
+- `UserInfoCollector` - Name/email collection logic
+- `AppointmentFlowManager` - Complete appointment booking flow
+- `IntentClassifier` - User intent classification
+- `DateTimeParser` - Date/time parsing utilities
+- `ResponseGenerator` - Natural language response generation
+- `OpenAIService` - OpenAI API wrapper with retry logic
+- `ConversationFlowHandler` - Central orchestrator
+
+📖 **For detailed architecture documentation, see [docs/VOICE_AGENT_ARCHITECTURE.md](docs/VOICE_AGENT_ARCHITECTURE.md)**
+
+**🔗 Three Core Endpoints:**
 
 1. **`POST /api/chained-voice/transcribe`**
    - Converts audio (base64) to text using OpenAI Whisper
-   - Handles multipart form data for audio files
+   - Delegates to OpenAIService for processing
    - Returns transcribed text
 
 2. **`POST /api/chained-voice/process`**
-   - Core business logic processor
-   - Manages conversation state and user information
+   - **NOW A THIN CONTROLLER** - delegates to ConversationFlowHandler
+   - Manages complete conversation flow with state transitions
    - Implements two phases:
      - **Phase 1**: Name and email collection
-     - **Phase 2**: Knowledge-based Q&A with RAG
-   - Handles goodbye detection and conversation ending
+     - **Phase 2**: Knowledge-based Q&A with RAG + Appointment booking
+   - Handles all intents: goodbye, appointments, info changes, Q&A
 
 3. **`POST /api/chained-voice/synthesize`**
    - Converts text responses to speech using OpenAI TTS-1

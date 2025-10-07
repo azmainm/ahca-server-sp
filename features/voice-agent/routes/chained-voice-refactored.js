@@ -14,7 +14,7 @@
 const express = require('express');
 const multer = require('multer');
 
-// Import existing shared services (unchanged)
+// Import existing shared services
 const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
 const { FencingRAG } = require('../../../shared/services/FencingRAG');
 const { GoogleCalendarService } = require('../../../shared/services/GoogleCalendarService');
