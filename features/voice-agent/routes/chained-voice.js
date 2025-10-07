@@ -352,15 +352,21 @@ Return ONLY: {"name": "John Doe"}`;
         console.log('📧 [Email Change] Detected email change request during conversation');
         
         // Extract new email
-        const emailExtractionPrompt = `The user wants to change their email. Extract the new email from: "${text}"
+        const emailExtractionPrompt = `The user wants to change their email. Extract ONLY the email address from: "${text}"
         
-Handle these cases:
-1. Spelled out emails (e.g., "j-o-h-n at gmail dot com") - convert properly
-2. Convert "at" to "@" and "dot" to "."
-3. Handle corrections and clarifications
-4. Look for patterns like "my email is actually...", "change my email to...", "email should be..."
+CRITICAL RULES:
+1. Extract ONLY the email address, ignore all other text
+2. Handle spelled out emails (e.g., "j-o-h-n at gmail dot com") - convert properly
+3. Convert "at" to "@" and "dot" to "."
+4. Handle repetitions and clarifications - use the FINAL/CORRECTED email mentioned
+5. Ignore filler words like "the email address I want to change to will be", "it is spelled", "let me repeat"
+6. Look for patterns like "my email is actually...", "change my email to...", "email should be..."
 
-Return ONLY: {"email": "john@example.com"}`;
+Examples:
+- "The email address I want to change to will be ozmainmorshad03 at gmail.com It is spelled AZMAINMORSHED03 at gmail.com Let me repeat it AZMAINMORSHED03 at gmail.com" → "AZMAINMORSHED03@gmail.com"
+- "my email is actually test at yahoo dot com" → "test@yahoo.com"
+
+Return ONLY: {"email": "extracted@email.com"}`;
 
         try {
           const emailResponse = await callOpenAI([
@@ -372,6 +378,12 @@ Return ONLY: {"email": "john@example.com"}`;
           if (emailData.email) {
             const oldEmail = session.userInfo.email;
             session.userInfo.email = emailData.email;
+            console.log('📧 [Email Update] Email updated in session:', { 
+              sessionId, 
+              oldEmail, 
+              newEmail: emailData.email,
+              userInfo: session.userInfo 
+            });
             assistantResponse = `Perfect! I've updated your email from ${oldEmail} to ${emailData.email}. How can I help you today?`;
           } else {
             assistantResponse = "I'd be happy to update your email. Could you please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'?";
@@ -753,7 +765,7 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
         } else {
           // Need to collect date
           session.appointmentFlow.step = 'collect_date';
@@ -784,7 +796,13 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
           if (nextAvailable.success) {
             const firstSlots = nextAvailable.availableSlots.slice(0, 3); // Show first 3 slots
             const slotsText = firstSlots.map(slot => slot.display).join(', ');
-            return `I'm sorry, but ${dateResult.formatted} has no available appointment slots. The next available date is ${nextAvailable.formattedDate} with slots at: ${slotsText}. Would you like to book one of these times, or try a different date?`;
+            
+            // Store the next available date and slots for time selection
+            details.date = nextAvailable.date;
+            details.availableSlots = nextAvailable.availableSlots;
+            session.appointmentFlow.step = 'collect_time';
+            
+            return `I'm sorry, but ${dateResult.formatted} has no available appointment slots. The next available date is ${nextAvailable.formattedDate} with slots at: ${slotsText}. Which time works best for you?`;
           } else {
             return `I'm sorry, but ${dateResult.formatted} has no available slots, and I couldn't find any available appointments in the next two weeks. Please call us at (303) 555-FENCE to discuss alternative scheduling options.`;
           }
@@ -800,6 +818,25 @@ Please review these details. Say "looks good" to confirm, or tell me what you'd 
         return `Great! ${dateResult.formatted} has ${slotsResult.availableSlots.length} available 30-minute slots: ${slotsText}. Which time works best for you?`;
 
       case 'collect_time':
+        // First check if user is providing a different date instead of time
+        const datePatterns = [
+          /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}/i,
+          /\b\d{4}-\d{1,2}-\d{1,2}\b/,
+          /\b\d{1,2}\/\d{1,2}\/\d{4}\b/,
+          /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2},?\s+\d{4}/i,
+          /\b\d{1,2}\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}/i
+        ];
+        
+        const isDateProvided = datePatterns.some(pattern => pattern.test(text));
+        
+        if (isDateProvided) {
+          // User wants to change the date, go back to date collection
+          session.appointmentFlow.step = 'collect_date';
+          const serviceTitle = details.title;
+          session.appointmentFlow.details = { title: serviceTitle };
+          return `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like "December 15, 2024" or "2024-12-15".`;
+        }
+        
         // Find the selected time slot
         const selectedSlot = findSelectedTimeSlot(text, details.availableSlots);
         
@@ -820,17 +857,372 @@ Date: ${details.date}
 Time: ${details.timeDisplay} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
 
       case 'review':
         // Handle review responses
-        const looksGoodPatterns = [/looks good/i, /good/i, /correct/i, /yes/i, /confirm/i, /schedule/i, /book/i, /go ahead/i, /sounds good/i, /perfect/i];
+        const looksGoodPatterns = [/sounds good/i, /good/i, /correct/i, /yes/i, /confirm/i, /schedule/i, /book/i, /go ahead/i, /looks good/i, /perfect/i];
         const changeServicePatterns = [/change.*service/i, /different.*service/i, /service/i];
         const changeDatePatterns = [/change.*date/i, /different.*date/i, /date/i];
         const changeTimePatterns = [/change.*time/i, /different.*time/i, /time/i];
         const changeNamePatterns = [/change.*name/i, /different.*name/i, /name/i];
         const changeEmailPatterns = [/change.*email/i, /different.*email/i, /email/i];
         
+        // First check if user is making a direct change with the new value in the same message
+        const directChangePatterns = {
+          service: /change.*service.*to\s+(.+)|service.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
+          date: /change.*date.*to\s+(.+)|date.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
+          time: /change.*time.*to\s+(.+)|time.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
+          name: /change.*name.*to\s+(.+)|name.*should.*be\s+(.+)|call.*me\s+(.+)/i,
+          email: /change.*email.*to\s+(.+)|email.*should.*be\s+(.+)/i
+        };
+
+        // Track multiple changes made in this message
+        let changesApplied = [];
+        let hasMultipleChanges = false;
+
+        // Check for direct service change
+        const serviceMatch = text.match(directChangePatterns.service);
+        if (serviceMatch) {
+          hasMultipleChanges = changesApplied.length > 0;
+          const newService = (serviceMatch[1] || serviceMatch[2] || serviceMatch[3]).trim();
+          
+          // Extract and validate service type
+          const serviceExtractionPrompt = `Extract and standardize the service type from: "${newService}"
+
+Map to these exact service names:
+- "Fence consultation" (for consultations, general questions, advice)
+- "Fence installation" (for new fence installation)
+- "Fence repair" (for fixing existing fences)
+- "Fence estimate" (for quotes, pricing, estimates)
+- "Gate installation" (for new gate installation)
+- "Gate repair" (for fixing gates)
+- "Fence maintenance" (for upkeep, cleaning, staining)
+- "Emergency fence repair" (for urgent repairs)
+
+Return ONLY: {"service": "Fence consultation"}`;
+
+          try {
+            const serviceResponse = await callOpenAI([
+              { role: 'system', content: serviceExtractionPrompt },
+              { role: 'user', content: newService }
+            ]);
+            
+            const serviceData = JSON.parse(serviceResponse);
+            if (serviceData.service) {
+              details.title = serviceData.service;
+              console.log(`🎯 [Direct Service Change] Updated to "${serviceData.service}" from "${newService}"`);
+              
+              changesApplied.push(`service to ${serviceData.service}`);
+              
+              // If this is the only change, return immediately
+              if (!hasMultipleChanges) {
+                return `Perfect! I've updated your service to ${serviceData.service}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+              }
+            }
+          } catch (e) {
+            console.log('🎯 [Direct Service Change] Extraction failed, using fallback');
+          }
+        }
+
+        // Check for direct date change
+        const dateMatch = text.match(directChangePatterns.date);
+        if (dateMatch) {
+          hasMultipleChanges = changesApplied.length > 0;
+          const newDateText = (dateMatch[1] || dateMatch[2] || dateMatch[3]).trim();
+          
+          const dateResult = parseDateFromText(newDateText);
+          if (dateResult.success) {
+            // Check availability for new date
+            const calendarService = getCalendarService(session.appointmentFlow.calendarType);
+            const slotsResult = await calendarService.findAvailableSlots(dateResult.date);
+            
+            if (slotsResult.success && slotsResult.availableSlots.length > 0) {
+              details.date = dateResult.date;
+              details.availableSlots = slotsResult.availableSlots;
+              // Keep existing time if it's still available, otherwise clear it
+              const timeStillAvailable = slotsResult.availableSlots.some(slot => slot.start === details.time);
+              if (!timeStillAvailable) {
+                delete details.time;
+                delete details.timeDisplay;
+                session.appointmentFlow.step = 'collect_time';
+                const slotsText = slotsResult.availableSlots.map(slot => slot.display).join(', ');
+                return `Perfect! I've updated your date to ${dateResult.formatted}. Your previous time is no longer available. Here are the available times: ${slotsText}. Which time works best for you?`;
+              }
+              
+              console.log(`📅 [Direct Date Change] Updated to "${dateResult.formatted}"`);
+              
+              changesApplied.push(`date to ${dateResult.formatted}`);
+              
+              // If this is the only change, return immediately
+              if (!hasMultipleChanges) {
+                return `Perfect! I've updated your date to ${dateResult.formatted}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+              }
+            } else {
+              return `I've checked ${dateResult.formatted}, but there are no available appointment slots on that date. Please choose a different date or let me know if you'd like me to suggest alternative dates.`;
+            }
+          }
+        }
+
+        // Check for direct time change
+        const timeMatch = text.match(directChangePatterns.time);
+        if (timeMatch) {
+          hasMultipleChanges = changesApplied.length > 0;
+          const newTimeText = (timeMatch[1] || timeMatch[2] || timeMatch[3]).trim();
+          
+          if (details.availableSlots) {
+            const selectedSlot = findSelectedTimeSlot(newTimeText, details.availableSlots);
+            if (selectedSlot) {
+              details.time = selectedSlot.start;
+              details.timeDisplay = selectedSlot.display;
+              
+              console.log(`🕐 [Direct Time Change] Updated to "${selectedSlot.display}"`);
+              
+              changesApplied.push(`time to ${selectedSlot.display}`);
+              
+              // If this is the only change, return immediately
+              if (!hasMultipleChanges) {
+                return `Perfect! I've updated your time to ${selectedSlot.display}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+              }
+            } else {
+              const slotsText = details.availableSlots.map(slot => slot.display).join(', ');
+              return `I couldn't match "${newTimeText}" to one of the available times. Please choose from: ${slotsText}`;
+            }
+          }
+        }
+
+        // Check for direct name change
+        const nameMatch = text.match(directChangePatterns.name);
+        if (nameMatch) {
+          hasMultipleChanges = changesApplied.length > 0;
+          const newNameText = (nameMatch[1] || nameMatch[2] || nameMatch[3]).trim();
+          
+          // Extract and clean the name with better parsing for spelled-out names
+          const nameExtractionPrompt = `Extract the person's name from this text: "${newNameText}"
+
+CRITICAL RULES:
+1. Extract ONLY the person's name, ignore all other text
+2. Handle spelled out names (e.g., "J-O-H-N S-M-I-T-H" → "John Smith")
+3. Handle corrections and clarifications - use the FINAL/CORRECTED name mentioned
+4. Ignore filler words like "it is spelled", "let me spell that", "the name should be"
+5. Convert spelled-out letters to proper capitalization
+6. Handle both first and last names if provided
+
+Examples:
+- "change my name to J-O-H-N S-M-I-T-H" → "John Smith"
+- "call me M-A-R-Y" → "Mary"
+- "my name should be Robert Johnson" → "Robert Johnson"
+- "it's spelled D-O-U-G" → "Doug"
+
+Return ONLY: {"name": "Extracted Name", "confidence": "high"}
+Set confidence to "low" if the name seems unclear.`;
+
+          try {
+            const nameResponse = await callOpenAI([
+              { role: 'system', content: nameExtractionPrompt },
+              { role: 'user', content: newNameText }
+            ]);
+            
+            const nameData = JSON.parse(nameResponse);
+            if (nameData.name && nameData.name.trim().length > 0) {
+              session.userInfo.name = nameData.name;
+              console.log(`👤 [Direct Name Change] Updated to "${nameData.name}" from "${newNameText}"`);
+              
+              changesApplied.push(`name to ${nameData.name}`);
+              
+              // If this is the only change, return immediately
+              if (!hasMultipleChanges) {
+                return `Perfect! I've updated your name to ${nameData.name}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+              }
+            }
+          } catch (e) {
+            console.log('👤 [Direct Name Change] Extraction failed, using fallback');
+            // Fallback to simple name extraction
+            if (newNameText && newNameText.length > 0) {
+              session.userInfo.name = newNameText;
+              console.log(`👤 [Direct Name Change] Fallback updated to "${newNameText}"`);
+              
+              changesApplied.push(`name to ${newNameText}`);
+              
+              // If this is the only change, return immediately
+              if (!hasMultipleChanges) {
+                return `Perfect! I've updated your name to ${newNameText}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+              }
+            }
+          }
+        }
+
+        // Check for direct email change
+        const emailMatch = text.match(directChangePatterns.email);
+        if (emailMatch) {
+          hasMultipleChanges = changesApplied.length > 0;
+          const newEmailText = (emailMatch[1] || emailMatch[2]).trim();
+          
+          const directEmailExtractionPrompt = `Extract ONLY the email address from: "${newEmailText}"
+
+CRITICAL RULES:
+1. Extract ONLY the email address, ignore all other text
+2. Handle spelled out emails (convert "at" to "@", "dot" to ".")
+3. Handle letter-by-letter spelling (e.g., "j-o-h-n at g-m-a-i-l dot c-o-m" → "john@gmail.com")
+4. Handle repetitions and clarifications - use the FINAL/CORRECTED email mentioned
+5. Ignore filler words like "it is spelled", "let me spell that", "the email should be"
+6. Convert to lowercase for consistency
+
+Examples:
+- "change my email to j-o-h-n at g-m-a-i-l dot c-o-m" → "john@gmail.com"
+- "email should be A-Z-M-A-I-N-M-O-R-S-H-E-D-0-3 at gmail dot com" → "azmainmorshed03@gmail.com"
+- "it's spelled test at yahoo dot com" → "test@yahoo.com"
+
+Return ONLY: {"email": "extracted@email.com"}`;
+
+          try {
+            const emailResponse = await callOpenAI([
+              { role: 'system', content: directEmailExtractionPrompt },
+              { role: 'user', content: newEmailText }
+            ]);
+            
+            const emailData = JSON.parse(emailResponse);
+            if (emailData.email) {
+              const oldEmail = session.userInfo.email;
+              session.userInfo.email = emailData.email;
+              console.log('📧 [Direct Email Change] Updated email:', { 
+                sessionId, 
+                oldEmail, 
+                newEmail: emailData.email
+              });
+              
+              changesApplied.push(`email to ${emailData.email}`);
+              
+              // If this is the only change, return immediately
+              if (!hasMultipleChanges) {
+                return `Perfect! I've updated your email to ${emailData.email}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+              }
+            }
+          } catch (e) {
+            console.log('📧 [Direct Email Change] GPT extraction failed, trying regex fallback');
+            
+            // Fallback to regex extraction for spelled-out emails
+            let extractedEmail = null;
+            
+            // Pattern 1: Standard email format
+            const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i;
+            const emailMatch = newEmailText.match(emailRegex);
+            
+            if (emailMatch) {
+              extractedEmail = emailMatch[1].toLowerCase();
+            } else {
+              // Pattern 2: Spelled out email (convert "at" to "@" and "dot" to ".")
+              const spelledOutRegex = /([a-zA-Z0-9._-]+)\s+at\s+([a-zA-Z0-9.-]+)\s+dot\s+([a-zA-Z]{2,})/i;
+              const spelledMatch = newEmailText.match(spelledOutRegex);
+              
+              if (spelledMatch) {
+                extractedEmail = `${spelledMatch[1]}@${spelledMatch[2]}.${spelledMatch[3]}`.toLowerCase();
+              } else {
+                // Pattern 3: Letter-by-letter spelled email (e.g., "j-o-h-n at g-m-a-i-l dot c-o-m")
+                const letterSpelledRegex = /([a-zA-Z0-9-]+)\s+at\s+([a-zA-Z0-9-]+)\s+dot\s+([a-zA-Z]{2,})/i;
+                const letterMatch = newEmailText.match(letterSpelledRegex);
+                
+                if (letterMatch) {
+                  const username = letterMatch[1].replace(/-/g, '');
+                  const domain = letterMatch[2].replace(/-/g, '');
+                  const extension = letterMatch[3];
+                  extractedEmail = `${username}@${domain}.${extension}`.toLowerCase();
+                } else {
+                  // Pattern 4: Handle cases like "azmainmorshed03 at gmail.com" (without dashes)
+                  const simpleSpelledRegex = /([a-zA-Z0-9]+)\s+at\s+([a-zA-Z0-9.]+)/i;
+                  const simpleMatch = newEmailText.match(simpleSpelledRegex);
+                  
+                  if (simpleMatch) {
+                    extractedEmail = `${simpleMatch[1]}@${simpleMatch[2]}`.toLowerCase();
+                  }
+                }
+              }
+            }
+            
+            if (extractedEmail) {
+              const oldEmail = session.userInfo.email;
+              session.userInfo.email = extractedEmail;
+              console.log('📧 [Direct Email Change] Regex extraction successful:', { 
+                sessionId, 
+                oldEmail, 
+                newEmail: extractedEmail
+              });
+              
+              changesApplied.push(`email to ${extractedEmail}`);
+              
+              // If this is the only change, return immediately
+              if (!hasMultipleChanges) {
+                return `Perfect! I've updated your email to ${extractedEmail}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+              }
+            } else {
+              console.log('📧 [Direct Email Change] All extraction methods failed');
+            }
+          }
+        }
+
+        // If multiple changes were applied, show summary
+        if (changesApplied.length > 0) {
+          const changesList = changesApplied.join(', ');
+          return `Perfect! I've updated your ${changesList}. Let me review your appointment details:
+
+Service: ${details.title}
+Date: ${details.date}
+Time: ${details.timeDisplay || details.time} (30 minutes)
+Customer: ${session.userInfo.name} (${session.userInfo.email})
+
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+        }
+
+        // If no direct changes detected, proceed with original logic
         if (looksGoodPatterns.some(pattern => pattern.test(text))) {
           // Create the appointment directly - no double confirmation needed
           console.log('📅 Creating calendar appointment with details:', details);
@@ -920,11 +1312,11 @@ Is there anything else I can help you with today?`;
           session.appointmentFlow.step = 'collect_name';
           return `No problem! What name should I use for this appointment? Feel free to spell it out if it's unusual.`;
         } else if (changeEmailPatterns.some(pattern => pattern.test(text))) {
-          // Change email - set up to collect new email
+          // No email provided directly, ask for it
           session.appointmentFlow.step = 'collect_email';
           return `No problem! What email address should I use for this appointment? Please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'.`;
         } else {
-          return `I didn't catch what you'd like to change. Please say "looks good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", "time", "name", or "email".`;
+          return `I didn't catch what you'd like to change. Please say "sounds good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", "time", "name", or "email".`;
         }
 
       case 'collect_name':
@@ -952,7 +1344,7 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
           }
         } catch (e) {
           // Fallback to simple extraction
@@ -968,20 +1360,27 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
 
       case 'collect_email':
         // Extract and clean the email with better parsing
-        const emailExtractionPrompt = `Extract the email address from this text: "${text}"
-        
-Handle these cases:
-1. Spelled out emails (e.g., "a-z-m-a-i-n at gmail dot com") - convert properly
-2. Convert "at" to "@" and "dot" to "."
-3. Handle corrections and clarifications
-4. Ignore filler words
+        const emailExtractionPrompt = `Extract ONLY the email address from this text: "${text}"
 
-Return ONLY a JSON object: {"email": "john@example.com", "confidence": "high"}
-Set confidence to "low" if the email seems unclear.`;
+CRITICAL RULES:
+1. Extract ONLY the email address, ignore all other text
+2. Handle spelled out emails (e.g., "a-z-m-a-i-n at gmail dot com") - convert to proper format
+3. Convert "at" to "@" and "dot" to "."
+4. Handle repetitions and clarifications - use the FINAL/CORRECTED email mentioned
+5. Ignore filler words like "the email address I want to change to will be", "it is spelled", "let me repeat"
+6. If multiple emails mentioned, use the LAST one (usually the correction)
+
+Examples:
+- "The email address I want to change to will be ozmainmorshad03 at gmail.com It is spelled AZMAINMORSHED03 at gmail.com Let me repeat it AZMAINMORSHED03 at gmail.com" → "AZMAINMORSHED03@gmail.com"
+- "j-o-h-n at g-m-a-i-l dot c-o-m" → "john@gmail.com"
+- "my email is actually test at yahoo dot com" → "test@yahoo.com"
+
+Return ONLY: {"email": "extracted@email.com", "confidence": "high"}
+Set confidence to "low" if unclear.`;
 
         try {
           const emailResponse = await callOpenAI([
@@ -991,7 +1390,14 @@ Set confidence to "low" if the email seems unclear.`;
           
           const emailData = JSON.parse(emailResponse);
           if (emailData.email) {
+            const oldEmail = session.userInfo.email;
             session.userInfo.email = emailData.email;
+            console.log('📧 [Email Update] Email updated in appointment flow:', { 
+              sessionId, 
+              oldEmail, 
+              newEmail: emailData.email,
+              userInfo: session.userInfo 
+            });
             session.appointmentFlow.step = 'review';
             return `Perfect! I've updated the email to ${emailData.email}. Let me review your appointment details:
 
@@ -1000,12 +1406,44 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
           }
         } catch (e) {
-          // Fallback to simple extraction
-          const newEmail = text.trim();
-          session.userInfo.email = newEmail;
+          // Fallback to regex extraction
+          console.log('📧 [Email Update] JSON parsing failed, using regex fallback');
+          
+          // Try to extract email with regex patterns
+          let extractedEmail = null;
+          
+          // Pattern 1: Standard email format
+          const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i;
+          const emailMatch = text.match(emailRegex);
+          
+          if (emailMatch) {
+            extractedEmail = emailMatch[1];
+          } else {
+            // Pattern 2: Spelled out email (convert "at" to "@" and "dot" to ".")
+            const spelledOutRegex = /([a-zA-Z0-9._-]+)\s+at\s+([a-zA-Z0-9.-]+)\s+dot\s+([a-zA-Z]{2,})/i;
+            const spelledMatch = text.match(spelledOutRegex);
+            
+            if (spelledMatch) {
+              extractedEmail = `${spelledMatch[1]}@${spelledMatch[2]}.${spelledMatch[3]}`;
+            }
+          }
+          
+          if (extractedEmail) {
+            const oldEmail = session.userInfo.email;
+            session.userInfo.email = extractedEmail;
+            console.log('📧 [Email Update] Regex extraction successful:', { 
+              sessionId, 
+              oldEmail, 
+              newEmail: extractedEmail,
+              userInfo: session.userInfo 
+            });
+          } else {
+            // Final fallback - use the trimmed text (this was the original behavior)
+            session.userInfo.email = text.trim();
+          }
         }
         
         session.appointmentFlow.step = 'review';
@@ -1016,7 +1454,7 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${session.userInfo.name} (${session.userInfo.email})
 
-Please review these details. Say "looks good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
 
       case 'confirm':
         const confirmPatterns = [/yes/i, /confirm/i, /schedule/i, /book/i, /go ahead/i, /correct/i, /sounds good/i];
@@ -1075,7 +1513,7 @@ Is there anything else I can help you with today?`;
           session.appointmentFlow.details = {};
           return "No problem! Let's start over. What type of service are you interested in?";
         } else {
-          return `I didn't catch that. Should I go ahead and schedule this appointment? Please say "yes" to confirm or "no" to make changes.`;
+          return `I didn't catch that. Should I go ahead and schedule this appointment? Please say "sounds good" to confirm or "no" to make changes.`;
         }
 
       default:
@@ -1387,9 +1825,18 @@ async function sendConversationSummary(sessionId, session) {
     console.log('📧 [Email] Conversation messages:', session.conversationHistory.length);
     console.log('📧 [Email] Has appointment:', !!session.lastAppointment);
 
-    // Send the email
+    // Create a fresh copy of user info to ensure we have the latest email
+    const currentUserInfo = {
+      name: session.userInfo.name,
+      email: session.userInfo.email,
+      collected: session.userInfo.collected
+    };
+
+    console.log('📧 [Email] Using current user info for email:', currentUserInfo);
+
+    // Send the email with the current user info
     const emailResult = await emailService.sendConversationSummary(
-      session.userInfo,
+      currentUserInfo,
       session.conversationHistory,
       session.lastAppointment
     );
