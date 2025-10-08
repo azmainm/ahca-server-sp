@@ -1860,7 +1860,7 @@ async function sendConversationSummary(sessionId, session) {
  * Helper Functions
  */
 
-async function callOpenAI(messages, model = 'gpt-4', retries = 3) {
+async function callOpenAI(messages, model = 'gpt-5-nano', retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       console.log(`🤖 [OpenAI] Attempt ${attempt}/${retries} - Calling ${model}`);
@@ -1874,8 +1874,10 @@ async function callOpenAI(messages, model = 'gpt-4', retries = 3) {
         body: JSON.stringify({
           model,
           messages,
-          max_tokens: 300,
-          temperature: 0.7
+          max_output_tokens: 300,
+          temperature: 0.7,
+          reasoning: { effort: 'medium' },
+          verbosity: "medium"
         })
       });
 

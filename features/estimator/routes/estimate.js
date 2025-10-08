@@ -233,13 +233,15 @@ IMPORTANT TYPE VALUES:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5-nano',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.1,
-        max_tokens: 2000
+        max_output_tokens: 2000,
+        reasoning: { effort: 'medium' },
+        verbosity: "medium"
       })
     });
 
@@ -327,13 +329,15 @@ Return only the corrected JSON.`;
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5-nano',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
         temperature: 0,
-        max_tokens: 2000
+        max_output_tokens: 2000,
+        reasoning: { effort: 'medium' },
+        verbosity: "medium"
       })
     });
 

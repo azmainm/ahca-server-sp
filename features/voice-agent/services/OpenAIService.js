@@ -13,11 +13,11 @@ class OpenAIService {
   /**
    * Call OpenAI Chat Completions API with retry logic
    * @param {Array} messages - Array of message objects
-   * @param {string} model - Model to use (default: gpt-4)
+   * @param {string} model - Model to use (default: gpt-5-nano)
    * @param {number} retries - Number of retries (default: 3)
    * @returns {Promise<string>} Response content
    */
-  async callOpenAI(messages, model = 'gpt-4', retries = 3) {
+  async callOpenAI(messages, model = 'gpt-5-nano', retries = 3) {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         console.log(`🤖 [OpenAI] Attempt ${attempt}/${retries} - Calling ${model}`);
@@ -31,8 +31,10 @@ class OpenAIService {
           body: JSON.stringify({
             model,
             messages,
-            max_tokens: 300,
-            temperature: 0.7
+            max_output_tokens: 300,
+            temperature: 0.7,
+            reasoning: { effort: 'medium' },
+            verbosity: "medium"
           })
         });
 

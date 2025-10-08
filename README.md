@@ -356,7 +356,7 @@ User indicates completion
 
 ### OpenAI Model Configuration
 - **STT**: `whisper-1` (English language)
-- **LLM**: `gpt-4` (with function calling)
+- **LLM**: `gpt-5-nano` (with function calling)
 - **TTS**: `tts-1` with `alloy` voice
 - **Embeddings**: `text-embedding-3-small`
 
