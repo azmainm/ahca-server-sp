@@ -8,12 +8,37 @@ class ResponseGenerator {
   }
 
   /**
+   * Format text for better TTS conversion
+   * @param {string} text - Text to format
+   * @returns {string} Formatted text
+   */
+  formatForTTS(text) {
+    return text
+      // Replace equals signs with "is"
+      .replace(/\s*=\s*/g, ' is ')
+      // Replace dashes in ranges with "to" 
+      .replace(/(\d+)\s*[-–—]\s*(\d+)/g, '$1 to $2')
+      // Replace time ranges like "12:00 PM - 4:00 PM" with "12:00 PM to 4:00 PM"
+      .replace(/(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[-–—]\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/gi, '$1 to $2')
+      // Replace dollar signs with "dollars"
+      .replace(/\$(\d+)/g, '$1 dollars')
+      // Replace & with "and"
+      .replace(/\s*&\s*/g, ' and ')
+      // Replace @ with "at"
+      .replace(/@/g, ' at ')
+      // Clean up multiple spaces
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
    * Generate goodbye response
    * @param {string} userName - User's name
    * @returns {string} Goodbye response
    */
   generateGoodbyeResponse(userName = 'there') {
-    return `Thank you, ${userName}! I hope you were satisfied with SherpaPrompt AI's service. Have a great day!`;
+    const response = `Thank you, ${userName}! I hope you were satisfied with SherpaPrompt AI's service. Have a great day!`;
+    return this.formatForTTS(response);
   }
 
   /**
@@ -23,7 +48,7 @@ class ResponseGenerator {
    * @returns {string} Name change confirmation response
    */
   generateNameChangeResponse(oldName, newName) {
-    return `Got it! I've updated your name from ${oldName} to ${newName}. How can I help you today?`;
+    return `Got it! I've updated your name from ${oldName} to ${newName}. Do you have any questions about our fencing services, or would you like to schedule an appointment?`;
   }
 
   /**
@@ -33,7 +58,7 @@ class ResponseGenerator {
    * @returns {string} Email change confirmation response
    */
   generateEmailChangeResponse(oldEmail, newEmail) {
-    return `Perfect! I've updated your email from ${oldEmail} to ${newEmail}. How can I help you today?`;
+    return `Perfect! I've updated your email from ${oldEmail} to ${newEmail}. Do you have any questions about our fencing services, or would you like to schedule an appointment?`;
   }
 
   /**
@@ -60,7 +85,8 @@ class ResponseGenerator {
    * @returns {string} Service collection response
    */
   generateServiceCollectionResponse(serviceTitle) {
-    return `Perfect! I'll schedule a ${serviceTitle} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like "December 15, 2024" or "2024-12-15".`;
+    const response = `Perfect! I'll schedule a ${serviceTitle} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`;
+    return this.formatForTTS(response);
   }
 
   /**
@@ -95,7 +121,7 @@ class ResponseGenerator {
    * @returns {string} Appointment review response
    */
   generateAppointmentReviewResponse(details, userInfo) {
-    return `Perfect! Let me review your appointment details:
+    const response = `Perfect! Let me review your appointment details:
 
 Service: ${details.title}
 Date: ${details.date}
@@ -103,6 +129,7 @@ Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${userInfo.name} (${userInfo.email})
 
 Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+    return this.formatForTTS(response);
   }
 
   /**

@@ -16,7 +16,7 @@ Audio Input → STT (Whisper) → Text Processing (GPT-4 + RAG) → TTS (TTS-1) 
 
 - **Frontend (ahca-client)**: React/Next.js web application with voice interface
 - **Backend (ahca-server)**: Node.js/Express API server with OpenAI integrations
-- **Database**: MongoDB Atlas with vector search for knowledge base
+- **Database**: MongoDB Atlas with semantic vector search for knowledge base
 - **AI Services**: OpenAI Whisper (STT), GPT-4 (LLM), TTS-1 (Speech)
 
 ## Backend (ahca-server) - Detailed Implementation
@@ -84,18 +84,19 @@ const sessions = new Map();
 }
 ```
 
-#### 3. RAG Implementation
+#### 3. Semantic RAG Implementation
 
 **EmbeddingService (`services/EmbeddingService.js`)**
 - Manages OpenAI embeddings (text-embedding-3-small)
+- **Semantic chunking** using sliding window approach with embedding comparison
 - Handles MongoDB Atlas Vector Search integration
 - Provides similarity search functionality
-- Manages document chunking and storage
+- Creates semantically coherent chunks based on meaning changes
 
 **FencingRAG (`services/FencingRAG.js`)**
 - LangChain-based RAG implementation
-- Uses GPT-5-nano for response generation
-- Formats context from knowledge base
+- Uses GPT-4 for response generation
+- Formats context from semantically chunked knowledge base
 - Generates structured responses with confidence levels
 
 #### 4. Conversation Flow

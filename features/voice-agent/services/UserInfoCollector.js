@@ -25,7 +25,7 @@ class UserInfoCollector {
 
 CRITICAL INSTRUCTIONS:
 - ONLY collect name and email - NEVER ask for phone numbers or anything else
-- If you have both name and email, respond EXACTLY with: "Thanks [name]! I've got your email as [email]. How can I help you today?"
+- If you have both name and email, respond EXACTLY with: "Thanks [name]! I've got your email as [email]. Do you have any questions about our fencing services, or would you like to schedule an appointment?"
 - If missing info, ask ONLY for the missing piece (name OR email)
 - Sound conversational, use contractions (I'll, we're, that's, etc.)
 - Keep responses friendly but brief
@@ -113,7 +113,7 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
    * @returns {string} Completion response
    */
   generateCompletionResponse(name, email) {
-    return `Thanks ${name}! I've got your email as ${email}. How can I help you today?`;
+    return `Thanks ${name}! I've got your email as ${email}. Do you have any questions about our fencing services, or would you like to schedule an appointment?`;
   }
 
   /**

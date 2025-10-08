@@ -19,7 +19,7 @@ router.post('/process', async (req, res) => {
     console.log('Starting knowledge base processing...');
     
     // Read the knowledge base file
-    const knowledgeBasePath = path.join(__dirname, '../../../docs/knowldge_base_dummy.json');
+    const knowledgeBasePath = path.join(__dirname, '../../../data/knowldge_base_dummy.json');
     const knowledgeBaseData = await fs.readFile(knowledgeBasePath, 'utf8');
     const knowledgeBase = JSON.parse(knowledgeBaseData);
     

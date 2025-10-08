@@ -32,6 +32,21 @@ class ConversationFlowHandler {
   }
 
   /**
+   * Check if query is asking for basic contact info (phone, email, address)
+   * @param {string} text - User input text
+   * @returns {boolean} True if basic contact query
+   */
+  isBasicContactQuery(text) {
+    const textLower = text.toLowerCase();
+    const basicContactKeywords = [
+      'phone', 'number', 'call', 'telephone', 'contact number',
+      'email', 'address', 'location', 'where are you located',
+      'how to reach', 'contact info', 'contact information'
+    ];
+    return basicContactKeywords.some(keyword => textLower.includes(keyword));
+  }
+
+  /**
    * Main conversation processing entry point
    * @param {string} text - User input text
    * @param {string} sessionId - Session identifier
@@ -275,11 +290,12 @@ class ConversationFlowHandler {
       return { response: initResult.response, hadFunctionCalls: false };
     }
 
-    // Check if it's a company info query (even in follow-up)
-    if (this.companyInfoService.isCompanyInfoQuery(text)) {
-      console.log('🏢 [Follow-up → Company Info] Detected company info query in follow-up');
+    // Check if it's a basic contact query (even in follow-up)
+    if (this.companyInfoService.isCompanyInfoQuery(text) && this.isBasicContactQuery(text)) {
+      console.log('🏢 [Follow-up → Company Info] Detected basic contact query in follow-up');
+      const baseResponse = this.companyInfoService.getCompanyInfo(text);
       const response = this.responseGenerator.generateFollowUpResponse(
-        this.companyInfoService.getCompanyInfo(text)
+        this.responseGenerator.formatForTTS(baseResponse)
       );
       // Keep awaitingFollowUp = true
       return { response, hadFunctionCalls: false };
@@ -323,18 +339,9 @@ class ConversationFlowHandler {
    * @returns {Promise<Object>} Processing result
    */
   async processNewQuestion(text, sessionId, session, isFollowUp) {
-    // Check if this is a company info query first
-    console.log('🔍 [Company Info] Checking if query is company info:', text);
-    if (this.companyInfoService.isCompanyInfoQuery(text)) {
-      console.log('🏢 [Company Info] Detected company information query');
-      const baseResponse = this.companyInfoService.getCompanyInfo(text);
-      const response = this.responseGenerator.generateFollowUpResponse(baseResponse);
-      this.stateManager.setAwaitingFollowUp(sessionId, true);
-      return { response, hadFunctionCalls: false };
-    }
-
-    console.log('🚫 [Company Info] Not a company info query, proceeding to RAG');
-
+    // Try RAG first for all queries
+    console.log('🔍 [RAG] Searching knowledge base for:', text);
+    
     // Search knowledge base with RAG
     const searchTerms = this.extractSearchTerms(text);
     let contextInfo = '';
@@ -364,30 +371,27 @@ class ConversationFlowHandler {
     // Generate response with context using FencingRAG
     if (contextInfo) {
       const ragResponse = await this.fencingRAG.generateResponse(text, contextInfo, session.conversationHistory);
-      response = ragResponse.answer;
+      const baseResponse = this.responseGenerator.formatForTTS(ragResponse.answer);
+      // Always add follow-up question to RAG responses
+      response = this.responseGenerator.generateFollowUpResponse(baseResponse);
     } else {
-      // Fallback to company info if no RAG results
-      if (this.companyInfoService.isCompanyInfoQuery(text)) {
-        response = this.companyInfoService.getCompanyInfo(text);
+      // Fallback to company info only for basic contact queries (not service-related)
+      if (this.companyInfoService.isCompanyInfoQuery(text) && this.isBasicContactQuery(text)) {
+        console.log('🏢 [Company Info] Using company info for basic contact query');
+        const baseResponse = this.companyInfoService.getCompanyInfo(text);
+        response = this.responseGenerator.generateFollowUpResponse(
+          this.responseGenerator.formatForTTS(baseResponse)
+        );
         hadFunctionCalls = false;
       } else {
-        // Final fallback to basic conversational response
-        response = await this.responseGenerator.generateConversationalResponse(
-          text, 
-          session.conversationHistory, 
-          session.userInfo
-        );
+        // If no RAG results and not a basic contact query, ask user to repeat or rephrase
+        response = "I don't have specific information about that. Could you please repeat or rephrase your question?";
         hadFunctionCalls = false;
       }
     }
 
-    // Add follow-up question after first complete response (if not already in follow-up)
-    if (!isFollowUp && !session.awaitingFollowUp && 
-        session.conversationHistory.filter(msg => msg.role === 'assistant').length === 0) {
-      response = this.responseGenerator.generateFollowUpResponse(response);
-      this.stateManager.setAwaitingFollowUp(sessionId, true);
-    } else if (isFollowUp) {
-      response = this.responseGenerator.generateFollowUpResponse(response);
+    // Set awaiting follow-up state for RAG responses
+    if (contextInfo) {
       this.stateManager.setAwaitingFollowUp(sessionId, true);
     }
 

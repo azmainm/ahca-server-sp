@@ -269,7 +269,30 @@ class AppointmentFlowManager {
       session.appointmentFlow.details = { title: serviceTitle };
       return {
         success: true,
-        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like "December 15, 2024" or "2024-12-15".`,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`,
+        step: this.steps.COLLECT_DATE
+      };
+    }
+    
+    // Check if user is asking for a different date (more flexible patterns)
+    const dateChangePatterns = [
+      /can we do.*?(\w+day|\d+)/i,
+      /what about.*?(\w+day|\d+)/i,
+      /how about.*?(\w+day|\d+)/i,
+      /i want.*?(\w+day|\d+)/i,
+      /i would like.*?(\w+day|\d+)/i,
+      /let's do.*?(\w+day|\d+)/i,
+      /set.*?date.*?(\w+day|\d+)/i
+    ];
+    
+    const isDateChange = dateChangePatterns.some(pattern => pattern.test(text));
+    if (isDateChange) {
+      session.appointmentFlow.step = this.steps.COLLECT_DATE;
+      const serviceTitle = details.title;
+      session.appointmentFlow.details = { title: serviceTitle };
+      return {
+        success: true,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`,
         step: this.steps.COLLECT_DATE
       };
     }
@@ -474,7 +497,7 @@ class AppointmentFlowManager {
         
         return {
           success: true,
-          response: `No problem! What date would work best for your ${serviceTitle}? Please provide the date in format like "December 15, 2024" or "2024-12-15".`,
+          response: this.responseGenerator.formatForTTS(`No problem! What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`),
           step: this.steps.COLLECT_DATE
         };
         

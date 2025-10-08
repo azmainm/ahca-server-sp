@@ -14,12 +14,21 @@ class EmbeddingService {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Improved text splitter with better parameters for knowledge base content
+    // Fallback text splitter for initial sentence splitting
     this.textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 800,  // Smaller chunks for more precise retrieval
       chunkOverlap: 150,  // Reduced overlap to avoid redundancy
       separators: ['\n\n', '\n', '. ', '? ', '! ', '; ', ': ', ', ', ' '],  // Better semantic boundaries
     });
+
+    // Semantic chunking configuration
+    this.semanticConfig = {
+      windowSize: 3,  // Number of sentences in sliding window
+      stepSize: 1,    // Step size for sliding window
+      similarityThreshold: 0.75,  // Threshold for semantic similarity (lower = more breaks)
+      minChunkSize: 100,  // Minimum characters per chunk
+      maxChunkSize: 1200  // Maximum characters per chunk
+    };
 
     this.client = null;
     this.db = null;
@@ -59,6 +68,7 @@ class EmbeddingService {
       indexName: this.VECTOR_INDEX_NAME,
       textKey: "text",
       embeddingKey: "embedding",
+      metadataKey: "metadata", // This was missing!
     });
     console.log(`[EmbeddingService] ✅ Vector store ready in ${Date.now() - start}ms`);
     return store;
@@ -72,6 +82,145 @@ class EmbeddingService {
   }
 
   /**
+   * Split text into sentences for semantic analysis
+   * @param {string} text - Text to split into sentences
+   * @returns {Array<string>} Array of sentences
+   */
+  splitIntoSentences(text) {
+    // Enhanced sentence splitting that handles various punctuation and formatting
+    const sentences = text
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 10); // Filter out very short fragments
+    
+    return sentences;
+  }
+
+  /**
+   * Calculate cosine similarity between two embeddings
+   * @param {Array<number>} embedding1 - First embedding vector
+   * @param {Array<number>} embedding2 - Second embedding vector
+   * @returns {number} Cosine similarity score (0-1)
+   */
+  calculateCosineSimilarity(embedding1, embedding2) {
+    if (embedding1.length !== embedding2.length) {
+      throw new Error('Embeddings must have the same length');
+    }
+
+    let dotProduct = 0;
+    let norm1 = 0;
+    let norm2 = 0;
+
+    for (let i = 0; i < embedding1.length; i++) {
+      dotProduct += embedding1[i] * embedding2[i];
+      norm1 += embedding1[i] * embedding1[i];
+      norm2 += embedding2[i] * embedding2[i];
+    }
+
+    const magnitude = Math.sqrt(norm1) * Math.sqrt(norm2);
+    return magnitude === 0 ? 0 : dotProduct / magnitude;
+  }
+
+  /**
+   * Semantic-based text chunking using sliding window approach
+   * @param {string} text - Text to chunk semantically
+   * @returns {Promise<Array<string>>} Array of semantically coherent chunks
+   */
+  async semanticChunking(text) {
+    try {
+      console.log('🧠 Starting semantic chunking...');
+      
+      // Split text into sentences
+      const sentences = this.splitIntoSentences(text);
+      console.log(`📝 Split into ${sentences.length} sentences`);
+      
+      if (sentences.length <= this.semanticConfig.windowSize) {
+        // If we have fewer sentences than window size, return as single chunk
+        return [text];
+      }
+
+      const chunks = [];
+      const embeddings = [];
+      
+      // Generate embeddings for sliding windows
+      console.log('🔄 Generating embeddings for sliding windows...');
+      for (let i = 0; i <= sentences.length - this.semanticConfig.windowSize; i += this.semanticConfig.stepSize) {
+        const window = sentences.slice(i, i + this.semanticConfig.windowSize).join(' ');
+        const embedding = await this.embeddings.embedQuery(window);
+        embeddings.push({
+          index: i,
+          embedding: embedding,
+          text: window
+        });
+      }
+
+      console.log(`🎯 Generated ${embeddings.length} window embeddings`);
+
+      // Find semantic breakpoints by comparing adjacent windows
+      const breakpoints = [0]; // Always start with first sentence
+      
+      for (let i = 1; i < embeddings.length; i++) {
+        const similarity = this.calculateCosineSimilarity(
+          embeddings[i - 1].embedding,
+          embeddings[i].embedding
+        );
+        
+        console.log(`📊 Window ${i-1} to ${i} similarity: ${similarity.toFixed(3)}`);
+        
+        // If similarity drops below threshold, mark as breakpoint
+        if (similarity < this.semanticConfig.similarityThreshold) {
+          const breakpointIndex = embeddings[i].index;
+          breakpoints.push(breakpointIndex);
+          console.log(`🔗 Semantic breakpoint found at sentence ${breakpointIndex}`);
+        }
+      }
+      
+      // Always end with last sentence
+      breakpoints.push(sentences.length);
+      
+      // Create chunks from breakpoints
+      console.log(`✂️ Creating chunks from ${breakpoints.length - 1} breakpoints...`);
+      for (let i = 0; i < breakpoints.length - 1; i++) {
+        const startIdx = breakpoints[i];
+        const endIdx = breakpoints[i + 1];
+        const chunkSentences = sentences.slice(startIdx, endIdx);
+        const chunkText = chunkSentences.join(' ').trim();
+        
+        // Ensure chunk meets size requirements
+        if (chunkText.length >= this.semanticConfig.minChunkSize) {
+          // If chunk is too large, split it further using fallback method
+          if (chunkText.length > this.semanticConfig.maxChunkSize) {
+            console.log(`📏 Chunk ${i} too large (${chunkText.length} chars), splitting further...`);
+            const subChunks = await this.textSplitter.splitText(chunkText);
+            chunks.push(...subChunks);
+          } else {
+            chunks.push(chunkText);
+          }
+        } else if (chunks.length > 0) {
+          // If chunk is too small, merge with previous chunk
+          console.log(`📏 Chunk ${i} too small (${chunkText.length} chars), merging with previous...`);
+          chunks[chunks.length - 1] += ' ' + chunkText;
+        } else {
+          // First chunk is too small, keep it anyway
+          chunks.push(chunkText);
+        }
+      }
+
+      console.log(`✅ Semantic chunking complete: ${chunks.length} chunks created`);
+      chunks.forEach((chunk, idx) => {
+        console.log(`  Chunk ${idx}: ${chunk.length} chars`);
+      });
+
+      return chunks;
+      
+    } catch (error) {
+      console.error('❌ Error in semantic chunking, falling back to traditional method:', error);
+      // Fallback to traditional chunking if semantic chunking fails
+      return await this.textSplitter.splitText(text);
+    }
+  }
+
+  /**
    * Process and store content chunks in vector database
    * @param {string} contentId - Unique identifier for the content
    * @param {string} content - Text content to process
@@ -82,9 +231,10 @@ class EmbeddingService {
     try {
       const vectorStore = await this.getVectorStore();
       
-      // Split text into chunks using LangChain
-      const chunks = await this.textSplitter.splitText(content);
-      console.log(`Split content ${contentId} into ${chunks.length} chunks`);
+      // Use semantic chunking for better content coherence
+      console.log(`🧠 Processing content ${contentId} with semantic chunking...`);
+      const chunks = await this.semanticChunking(content);
+      console.log(`✂️ Semantic chunking split content ${contentId} into ${chunks.length} chunks`);
       
       // Prepare documents for vector store
       const documents = chunks.map((chunk, index) => ({
@@ -94,6 +244,7 @@ class EmbeddingService {
           chunkIndex: index,
           chunkTotal: chunks.length,
           contentHash: this.generateContentHash(content),
+          chunkingMethod: 'semantic', // Track that this uses semantic chunking
           createdAt: new Date().toISOString(),
           ...metadata // Spread additional metadata
         }
@@ -102,15 +253,16 @@ class EmbeddingService {
       // Store in vector database
       await vectorStore.addDocuments(documents);
       
-      console.log(`Stored ${documents.length} chunks in vector database for content ${contentId}`);
+      console.log(`✅ Stored ${documents.length} semantic chunks in vector database for content ${contentId}`);
       return {
         chunksStored: documents.length,
         model: "text-embedding-3-small",
+        chunkingMethod: "semantic",
         contentHash: this.generateContentHash(content)
       };
       
     } catch (error) {
-      console.error('Error processing content to vector store:', error);
+      console.error('❌ Error processing content to vector store:', error);
       throw error;
     }
   }

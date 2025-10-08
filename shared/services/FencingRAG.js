@@ -30,14 +30,13 @@ class FencingRAG {
 You are a concise AI assistant for SherpaPrompt Fencing Company.
 
 Guidelines:
-- Answer directly and briefly using the knowledge base content
-- Be conversational but to-the-point
-- Only answer what's specifically asked
-- Quote specific details when relevant (prices, timeframes, warranty terms)
-- If info isn't in the knowledge base, say so briefly and offer to connect them with a human expert
-- For pricing, provide ranges but mention on-site evaluation is needed for accuracy
-
-Respond helpfully based on the knowledge base content below.
+- Answer ONLY what the user specifically asked - be direct and focused
+- Use conversational language suitable for voice responses
+- Replace technical symbols: use "is" instead of "=", "to" instead of "-" in ranges
+- Keep responses brief and natural for speech
+- If the knowledge base doesn't have the specific information requested, say "I don't have that specific information" and ask them to repeat or rephrase
+- Never provide contact information unless specifically asked for contact details
+- For pricing ranges, say "25 to 45 dollars" not "25-45" or "$25–$45"
 
 Context from relevant knowledge base sections:
 {context}`),
@@ -76,7 +75,7 @@ Context from relevant knowledge base sections:
       const invokeStart = Date.now();
       const response = await this.ragChain.invoke({
         question,
-        context: context || 'No relevant information found in the knowledge base for this query. Please contact our office at (303) 555-FENCE for assistance.',
+        context: context || 'No relevant information found in the knowledge base for this query.',
       });
       console.log(`[FencingRAG][${opId}] 🧠 ragChain.invoke took ${Date.now() - invokeStart}ms`);
 
@@ -95,7 +94,7 @@ Context from relevant knowledge base sections:
 
       // Return structured response from string
       const fallback = {
-        answer: typeof response === 'string' ? response : 'I encountered an issue processing your request. Please contact us at (303) 555-FENCE for direct assistance.',
+        answer: typeof response === 'string' ? response : 'I encountered an issue processing your request. Could you please repeat or rephrase your question?',
         confidence: 'medium',
         sources_used: [],
         follow_up_questions: []
@@ -106,7 +105,7 @@ Context from relevant knowledge base sections:
       console.error('Error in LangChain RAG:', error);
       // Return structured error response
       const errResp = {
-        answer: 'I encountered an error while processing your request. Please contact our office at (303) 555-FENCE and one of our fencing experts will be happy to help you.',
+        answer: 'I encountered an error while processing your request. Could you please repeat or rephrase your question?',
         confidence: 'low',
         sources_used: [],
         follow_up_questions: []
