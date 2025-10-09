@@ -31,6 +31,7 @@ const { IntentClassifier } = require('../services/IntentClassifier');
 const { ResponseGenerator } = require('../services/ResponseGenerator');
 const { ConversationFlowHandler } = require('../services/ConversationFlowHandler');
 const { OpenAIService } = require('../services/OpenAIService');
+const { RealtimeVADService } = require('../services/RealtimeVADService');
 
 const router = express.Router();
 
@@ -50,6 +51,56 @@ const dateTimeParser = new DateTimeParser();
 const intentClassifier = new IntentClassifier();
 const responseGenerator = new ResponseGenerator(openAIService);
 const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator);
+
+// Initialize Realtime VAD service
+const realtimeVADService = new RealtimeVADService();
+
+// Set up VAD event handlers to integrate with existing STT-TTS pipeline
+realtimeVADService.on('transcriptionCompleted', async ({ sessionId, transcript, speech }) => {
+  try {
+    console.log('📝 [RealtimeVAD] Transcription completed for session:', sessionId, 'Text:', transcript);
+    
+    // Process the transcribed text using existing pipeline
+    const processResponse = await conversationFlowHandler.processConversation(transcript, sessionId);
+    
+    if (processResponse.success && processResponse.response) {
+      // Convert response to speech using existing TTS
+      const synthesisResult = await openAIService.synthesizeText(processResponse.response);
+      
+      if (synthesisResult.success) {
+        console.log('🔊 [RealtimeVAD] TTS completed for session:', sessionId);
+        
+        // Queue the response audio to send back to client
+        realtimeVADService.queueResponseAudio(sessionId, synthesisResult.audio);
+        
+        // Update user info if provided
+        if (processResponse.userInfo) {
+          // Store user info in session for client retrieval
+          console.log('👤 [RealtimeVAD] User info updated:', processResponse.userInfo);
+        }
+        
+        // Store calendar link if provided
+        if (processResponse.calendarLink) {
+          console.log('📅 [RealtimeVAD] Calendar link created:', processResponse.calendarLink);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ [RealtimeVAD] Error processing transcription:', error);
+  }
+});
+
+realtimeVADService.on('speechStarted', ({ sessionId }) => {
+  console.log('🎤 [RealtimeVAD] Speech started for session:', sessionId);
+});
+
+realtimeVADService.on('speechStopped', ({ sessionId, speech }) => {
+  console.log('🔇 [RealtimeVAD] Speech stopped for session:', sessionId, 'Duration:', speech?.duration, 'ms');
+});
+
+realtimeVADService.on('error', ({ sessionId, error }) => {
+  console.error('❌ [RealtimeVAD] VAD error for session:', sessionId, error);
+});
 
 // Initialize conversation flow handler with all services
 const conversationFlowHandler = new ConversationFlowHandler({
@@ -120,8 +171,194 @@ function extractSearchTerms(text) {
 conversationFlowHandler.setHelpers(getCalendarService, extractSearchTerms);
 
 /**
- * STEP 1: Speech-to-Text (STT)
+ * OpenAI Realtime API VAD Endpoints
+ * Server-side VAD with semantic turn detection
+ * Integrates with existing STT-TTS pipeline
+ */
+
+/**
+ * Start Realtime VAD session
+ */
+router.post('/realtime-vad/start', async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    
+    if (!sessionId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Session ID is required' 
+      });
+    }
+
+    console.log('🎯 [RealtimeVAD] Starting VAD session:', sessionId, 'Mode: server_vad');
+    
+    const vadSession = await realtimeVADService.startVADSession(sessionId);
+    
+    res.json({
+      success: true,
+      ...vadSession
+    });
+
+  } catch (error) {
+    console.error('❌ [RealtimeVAD] Error starting VAD session:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start VAD session',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Send audio chunk to Realtime VAD
+ */
+router.post('/realtime-vad/audio', async (req, res) => {
+  try {
+    const { sessionId, audio, commit = false } = req.body;
+    
+    if (!sessionId || !audio) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Session ID and audio data are required' 
+      });
+    }
+
+    // Convert base64 to buffer
+    const audioBuffer = Buffer.from(audio, 'base64');
+    console.log('📊 [RealtimeVAD] Sending audio chunk:', audioBuffer.length, 'bytes for session:', sessionId);
+    
+    // Log first few bytes to help debug format
+    console.log('📊 [RealtimeVAD] Audio buffer header:', audioBuffer.slice(0, 16).toString('hex'));
+
+    // Send audio to Realtime VAD (now async due to audio conversion)
+    const success = await realtimeVADService.sendAudioChunk(sessionId, audioBuffer);
+    
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Failed to send audio chunk - session not found or not connected'
+      });
+    }
+
+    // Commit audio buffer if requested
+    if (commit) {
+      realtimeVADService.commitAudioBuffer(sessionId);
+    }
+    
+    res.json({
+      success: true,
+      sessionId,
+      audioSize: audioBuffer.length,
+      committed: commit
+    });
+
+  } catch (error) {
+    console.error('❌ [RealtimeVAD] Error sending audio chunk:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send audio chunk',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Get Realtime VAD session status
+ */
+router.get('/realtime-vad/status/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    const status = realtimeVADService.getVADSessionStatus(sessionId);
+    
+    res.json({
+      success: true,
+      sessionId,
+      ...status
+    });
+
+  } catch (error) {
+    console.error('❌ [RealtimeVAD] Error getting VAD status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get VAD status',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Get response audio and conversation data for a session
+ */
+router.get('/realtime-vad/response/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    // Get response audio from VAD service
+    const responseAudio = realtimeVADService.getResponseAudio(sessionId);
+    
+    // Get conversation data from conversation flow handler
+    const session = conversationFlowHandler.stateManager.getSession(sessionId);
+    
+    res.json({
+      success: true,
+      sessionId,
+      hasResponse: responseAudio.length > 0,
+      responseAudio: responseAudio.length > 0 ? responseAudio[0] : null, // Send first audio in queue
+      userInfo: session?.userInfo || null,
+      calendarLink: session?.calendarLink || null,
+      appointmentDetails: session?.appointmentDetails || null,
+      conversationCount: session?.conversationHistory?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ [RealtimeVAD] Error getting response:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get response',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Stop Realtime VAD session
+ */
+router.post('/realtime-vad/stop', async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    
+    if (!sessionId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Session ID is required' 
+      });
+    }
+
+    console.log('⏹️ [RealtimeVAD] Stopping VAD session:', sessionId);
+    
+    await realtimeVADService.stopVADSession(sessionId);
+    
+    res.json({
+      success: true,
+      sessionId,
+      message: 'VAD session stopped'
+    });
+
+  } catch (error) {
+    console.error('❌ [RealtimeVAD] Error stopping VAD session:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to stop VAD session',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * EXISTING: STEP 1: Speech-to-Text (STT)
  * Convert audio to text using Whisper
+ * (UNCHANGED - keeping existing STT-TTS pipeline)
  */
 router.post('/transcribe', async (req, res) => {
   try {
@@ -264,6 +501,14 @@ setInterval(async () => {
   const cleanedSessions = await conversationFlowHandler.performAutomaticCleanup();
   if (cleanedSessions.length > 0) {
     console.log('🧹 Automatic cleanup completed. Cleaned sessions:', cleanedSessions.length);
+  }
+  
+  // Also cleanup old VAD sessions
+  realtimeVADService.cleanupOldSessions();
+  
+  // Cleanup old audio conversion temp files
+  if (realtimeVADService.audioConverter) {
+    realtimeVADService.audioConverter.cleanupOldTempFiles();
   }
 }, 5 * 60 * 1000); // Check every 5 minutes
 
