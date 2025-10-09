@@ -11,35 +11,31 @@ class OpenAIService {
   }
 
   /**
-   * Call OpenAI GPT-5 Responses API with retry logic
+   * GPT-5-nano API call - ONLY for gpt-5-nano using responses endpoint
    * @param {Array} messages - Array of message objects
-   * @param {string} model - Model to use (default: gpt-5-nano)
+   * @param {string} model - Model to use (always gpt-5-nano)
    * @param {number} retries - Number of retries (default: 3)
-   * @param {Object} options - Additional options (verbosity, reasoning)
+   * @param {Object} options - Additional options
    * @returns {Promise<string>} Response content
    */
   async callOpenAI(messages, model = 'gpt-5-nano', retries = 3, options = {}) {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        console.log(`🤖 [OpenAI] Attempt ${attempt}/${retries} - Calling ${model}`);
+        console.log(`🤖 [OpenAI] Calling gpt-5-nano (attempt ${attempt}/${retries})`);
         
-        // Prepare the request body for GPT-5 Responses API
-        const requestBody = {
-          model,
-          input: messages,
-          text: {
-            max_tokens: options.max_tokens || 300,
-            temperature: options.temperature || 0.7,
-            verbosity: options.verbosity || "medium"
-          }
-        };
+        // Convert messages to GPT-5 format
+        const combinedInput = messages
+          .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+          .join('\n\n');
 
-        // Add reasoning parameter if specified
-        if (options.reasoning) {
-          requestBody.reasoning = options.reasoning;
-        }
+        const requestBody = {
+          model: 'gpt-5-nano',
+          input: combinedInput,
+          max_output_tokens: options.max_output_tokens || 500,
+          reasoning: options.reasoning || { effort: 'minimal' }
+        };
         
-        const response = await fetch(`${this.baseURL}/responses`, {
+        const response = await fetch('https://api.openai.com/v1/responses', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
@@ -52,9 +48,8 @@ class OpenAIService {
           const errorText = await response.text();
           console.error(`❌ [OpenAI] API error ${response.status}: ${errorText}`);
           
-          // If it's a 503 (Service Unavailable) or 429 (Rate Limit), retry
           if ((response.status === 503 || response.status === 429) && attempt < retries) {
-            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+            const delay = Math.pow(2, attempt) * 1000;
             console.log(`⏳ [OpenAI] Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;
@@ -64,23 +59,35 @@ class OpenAIService {
         }
 
         const data = await response.json();
-        console.log(`✅ [OpenAI] Success on attempt ${attempt}`);
+        console.log(`✅ [OpenAI] Success`);
         
-        // Extract text from GPT-5 response format
-        let outputText = "";
-        if (data.output && Array.isArray(data.output)) {
+        // Extract GPT-5 response text
+        if (data.output_text) {
+          return data.output_text;
+        }
+        
+        // Check if response is complete
+        if (data.status === 'incomplete') {
+          console.log('⚠️ [OpenAI] Response incomplete, reason:', data.incomplete_details?.reason);
+        }
+        
+        // Look for message content in output array
+        if (Array.isArray(data.output)) {
           for (const item of data.output) {
-            if (item.content && Array.isArray(item.content)) {
-              for (const content of item.content) {
-                if (content.text) {
-                  outputText += content.text;
-                }
+            if (item.type === 'message' && Array.isArray(item.content)) {
+              const texts = item.content
+                .filter(part => part?.text && part?.type !== 'reasoning')
+                .map(part => part.text);
+              if (texts.length > 0) {
+                return texts.join('\n');
               }
             }
           }
         }
         
-        return outputText;
+        // If no message found, return empty string
+        console.log('⚠️ [OpenAI] No text content found in response');
+        return '';
         
       } catch (error) {
         console.error(`❌ [OpenAI] Attempt ${attempt} failed:`, error.message);

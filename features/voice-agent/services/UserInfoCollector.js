@@ -59,9 +59,8 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
         { role: 'system', content: extractionPrompt },
         { role: 'user', content: text }
       ], 'gpt-5-nano', 3, {
-        verbosity: "low",
         reasoning: { effort: "minimal" },
-        max_tokens: 200,
+        max_output_tokens: 200,
         temperature: 0.1
       });
 
@@ -184,9 +183,8 @@ Return ONLY: {"name": "John Doe"}`;
         { role: 'system', content: nameExtractionPrompt },
         { role: 'user', content: text }
       ], 'gpt-5-nano', 3, {
-        verbosity: "low",
         reasoning: { effort: "minimal" },
-        max_tokens: 100,
+        max_output_tokens: 100,
         temperature: 0.1
       });
       
@@ -231,9 +229,8 @@ Return ONLY: {"email": "extracted@email.com"}`;
         { role: 'system', content: emailExtractionPrompt },
         { role: 'user', content: text }
       ], 'gpt-5-nano', 3, {
-        verbosity: "low",
         reasoning: { effort: "minimal" },
-        max_tokens: 100,
+        max_output_tokens: 100,
         temperature: 0.1
       });
       

@@ -201,9 +201,8 @@ Guidelines:
 
     try {
       return await this.openAIService.callOpenAI(messages, 'gpt-5-nano', 3, {
-        verbosity: "medium",
-        reasoning: { effort: "medium" },
-        max_tokens: 300,
+        reasoning: { effort: "minimal" },
+        max_output_tokens: 800,
         temperature: 0.7
       });
     } catch (error) {
