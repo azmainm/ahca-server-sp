@@ -780,7 +780,12 @@ Return ONLY: {"service": "Fence consultation"}`;
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: serviceExtractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        verbosity: "low",
+        reasoning: { effort: "minimal" },
+        max_tokens: 100,
+        temperature: 0.2
+      });
       
       const serviceData = JSON.parse(response);
       if (serviceData.service) {
@@ -846,7 +851,12 @@ Set confidence to "low" if the name seems unclear.`;
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: nameExtractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        verbosity: "low",
+        reasoning: { effort: "minimal" },
+        max_tokens: 100,
+        temperature: 0.1
+      });
       
       const nameData = JSON.parse(response);
       return nameData.name && nameData.name.trim().length > 0 ? nameData.name : null;
@@ -883,7 +893,12 @@ Return ONLY: {"email": "extracted@email.com"}`;
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: emailExtractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        verbosity: "low",
+        reasoning: { effort: "minimal" },
+        max_tokens: 100,
+        temperature: 0.1
+      });
       
       const emailData = JSON.parse(response);
       return emailData.email || null;

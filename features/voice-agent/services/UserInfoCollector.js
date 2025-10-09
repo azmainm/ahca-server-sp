@@ -58,7 +58,12 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: extractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        verbosity: "low",
+        reasoning: { effort: "minimal" },
+        max_tokens: 200,
+        temperature: 0.1
+      });
 
       return JSON.parse(response);
     } catch (error) {
@@ -178,7 +183,12 @@ Return ONLY: {"name": "John Doe"}`;
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: nameExtractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        verbosity: "low",
+        reasoning: { effort: "minimal" },
+        max_tokens: 100,
+        temperature: 0.1
+      });
       
       const nameData = JSON.parse(response);
       return {
@@ -220,7 +230,12 @@ Return ONLY: {"email": "extracted@email.com"}`;
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: emailExtractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        verbosity: "low",
+        reasoning: { effort: "minimal" },
+        max_tokens: 100,
+        temperature: 0.1
+      });
       
       const emailData = JSON.parse(response);
       return {

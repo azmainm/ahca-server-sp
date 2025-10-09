@@ -145,12 +145,12 @@ Guidelines:
   }
 
   /**
-   * Call OpenAI API for generating summaries
+   * Call OpenAI GPT-5 Responses API for generating summaries
    * @param {Array} messages - Array of messages for GPT
    * @returns {Promise<string>} GPT response
    */
   async callOpenAI(messages) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -158,11 +158,15 @@ Guidelines:
       },
       body: JSON.stringify({
         model: 'gpt-5-nano',
-        messages,
-        max_output_tokens: 1000,
-        temperature: 0.3,
-        reasoning: { effort: 'medium' },
-        verbosity: "medium"
+        input: messages,
+        text: {
+          max_tokens: 1000,
+          temperature: 0.3,
+          verbosity: "medium"
+        },
+        reasoning: {
+          effort: "minimal"
+        }
       })
     });
 
@@ -171,7 +175,22 @@ Guidelines:
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
+    
+    // Extract text from GPT-5 response format
+    let outputText = "";
+    if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.content && Array.isArray(item.content)) {
+          for (const content of item.content) {
+            if (content.text) {
+              outputText += content.text;
+            }
+          }
+        }
+      }
+    }
+    
+    return outputText;
   }
 
 

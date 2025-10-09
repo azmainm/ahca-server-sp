@@ -11,31 +11,41 @@ class OpenAIService {
   }
 
   /**
-   * Call OpenAI Chat Completions API with retry logic
+   * Call OpenAI GPT-5 Responses API with retry logic
    * @param {Array} messages - Array of message objects
    * @param {string} model - Model to use (default: gpt-5-nano)
    * @param {number} retries - Number of retries (default: 3)
+   * @param {Object} options - Additional options (verbosity, reasoning)
    * @returns {Promise<string>} Response content
    */
-  async callOpenAI(messages, model = 'gpt-5-nano', retries = 3) {
+  async callOpenAI(messages, model = 'gpt-5-nano', retries = 3, options = {}) {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         console.log(`🤖 [OpenAI] Attempt ${attempt}/${retries} - Calling ${model}`);
         
-        const response = await fetch(`${this.baseURL}/chat/completions`, {
+        // Prepare the request body for GPT-5 Responses API
+        const requestBody = {
+          model,
+          input: messages,
+          text: {
+            max_tokens: options.max_tokens || 300,
+            temperature: options.temperature || 0.7,
+            verbosity: options.verbosity || "medium"
+          }
+        };
+
+        // Add reasoning parameter if specified
+        if (options.reasoning) {
+          requestBody.reasoning = options.reasoning;
+        }
+        
+        const response = await fetch(`${this.baseURL}/responses`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            model,
-            messages,
-            max_output_tokens: 300,
-            temperature: 0.7,
-            reasoning: { effort: 'medium' },
-            verbosity: "medium"
-          })
+          body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -55,7 +65,22 @@ class OpenAIService {
 
         const data = await response.json();
         console.log(`✅ [OpenAI] Success on attempt ${attempt}`);
-        return data.choices[0].message.content;
+        
+        // Extract text from GPT-5 response format
+        let outputText = "";
+        if (data.output && Array.isArray(data.output)) {
+          for (const item of data.output) {
+            if (item.content && Array.isArray(item.content)) {
+              for (const content of item.content) {
+                if (content.text) {
+                  outputText += content.text;
+                }
+              }
+            }
+          }
+        }
+        
+        return outputText;
         
       } catch (error) {
         console.error(`❌ [OpenAI] Attempt ${attempt} failed:`, error.message);
@@ -183,7 +208,7 @@ class OpenAIService {
         { role: 'user', content: 'Say "API connection test successful"' }
       ];
 
-      const response = await this.callOpenAI(testMessages, 'gpt-3.5-turbo', 1);
+      const response = await this.callOpenAI(testMessages, 'gpt-5-nano', 1);
       
       return {
         success: true,

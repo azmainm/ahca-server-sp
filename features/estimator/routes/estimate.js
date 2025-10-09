@@ -226,7 +226,7 @@ IMPORTANT TYPE VALUES:
 - Use "extra" (singular) for extras category items`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -234,14 +234,18 @@ IMPORTANT TYPE VALUES:
       },
       body: JSON.stringify({
         model: 'gpt-5-nano',
-        messages: [
+        input: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.1,
-        max_output_tokens: 2000,
-        reasoning: { effort: 'medium' },
-        verbosity: "medium"
+        text: {
+          temperature: 0.1,
+          max_tokens: 2000,
+          verbosity: "medium"
+        },
+        reasoning: {
+          effort: "minimal"
+        }
       })
     });
 
@@ -250,7 +254,21 @@ IMPORTANT TYPE VALUES:
     }
 
     const result = await response.json();
-    let estimateText = result.choices[0].message.content.trim();
+    
+    // Extract text from GPT-5 response format
+    let estimateText = "";
+    if (result.output && Array.isArray(result.output)) {
+      for (const item of result.output) {
+        if (item.content && Array.isArray(item.content)) {
+          for (const content of item.content) {
+            if (content.text) {
+              estimateText += content.text;
+            }
+          }
+        }
+      }
+    }
+    estimateText = estimateText.trim();
     
     console.log('🤖 [LLM] Raw LLM response:', estimateText);
     
@@ -322,7 +340,7 @@ Key fixes needed:
 Return only the corrected JSON.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -330,14 +348,18 @@ Return only the corrected JSON.`;
       },
       body: JSON.stringify({
         model: 'gpt-5-nano',
-        messages: [
+        input: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0,
-        max_output_tokens: 2000,
-        reasoning: { effort: 'medium' },
-        verbosity: "medium"
+        text: {
+          temperature: 0,
+          max_tokens: 2000,
+          verbosity: "low"
+        },
+        reasoning: {
+          effort: "minimal"
+        }
       })
     });
 
@@ -346,7 +368,21 @@ Return only the corrected JSON.`;
     }
 
     const result = await response.json();
-    let repairedText = result.choices[0].message.content.trim();
+    
+    // Extract text from GPT-5 response format
+    let repairedText = "";
+    if (result.output && Array.isArray(result.output)) {
+      for (const item of result.output) {
+        if (item.content && Array.isArray(item.content)) {
+          for (const content of item.content) {
+            if (content.text) {
+              repairedText += content.text;
+            }
+          }
+        }
+      }
+    }
+    repairedText = repairedText.trim();
     
     // Clean up markdown if present
     if (repairedText.startsWith('```json') && repairedText.endsWith('```')) {

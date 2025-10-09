@@ -11,9 +11,7 @@ class FencingRAG {
   constructor() {
     this.llm = new ChatOpenAI({
       modelName: 'gpt-5-nano',
-      max_output_tokens: 1000,
-      reasoning: { effort: 'medium' },
-      verbosity: "medium",
+      max_tokens: 1000,
     });
 
     // Define response schema for structured output

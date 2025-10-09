@@ -200,7 +200,12 @@ Guidelines:
     ];
 
     try {
-      return await this.openAIService.callOpenAI(messages);
+      return await this.openAIService.callOpenAI(messages, 'gpt-5-nano', 3, {
+        verbosity: "medium",
+        reasoning: { effort: "medium" },
+        max_tokens: 300,
+        temperature: 0.7
+      });
     } catch (error) {
       console.error('❌ [ResponseGenerator] OpenAI call failed:', error);
       return "I'm having trouble with my AI service right now. Could you please try again, or call us at (303) 555-FENCE for immediate assistance?";
