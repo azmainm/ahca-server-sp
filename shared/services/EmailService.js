@@ -145,25 +145,47 @@ Guidelines:
   }
 
   /**
-   * Call OpenAI API for generating summaries
+   * Call OpenAI API for generating summaries (using prompt-eval-server pattern)
    * @param {Array} messages - Array of messages for GPT
    * @returns {Promise<string>} GPT response
    */
   async callOpenAI(messages) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const model = 'gpt-5-nano';
+    const useResponsesApi = /^gpt-5-/i.test(model);
+    
+    let url, requestBody;
+    
+    if (useResponsesApi) {
+      // GPT-5 models use Responses API
+      const combinedInput = messages
+        .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+        .join('\n\n');
+
+      url = 'https://api.openai.com/v1/responses';
+      requestBody = {
+        model,
+        input: combinedInput,
+        max_output_tokens: 1000,
+        reasoning: { effort: 'minimal' }
+      };
+    } else {
+      // Other models use Chat Completions API
+      url = 'https://api.openai.com/v1/chat/completions';
+      requestBody = {
+        model,
+        messages,
+        max_tokens: 1000,
+        temperature: 0.3
+      };
+    }
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY_CALL_AGENT}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'gpt-5-nano',
-        messages,
-        max_output_tokens: 1000,
-        temperature: 0.3,
-        reasoning: { effort: 'medium' },
-        verbosity: "medium"
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -171,7 +193,48 @@ Guidelines:
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
+    
+    // Extract text based on API type (copied from prompt-eval-server)
+    let messageContent = null;
+    
+    if (!useResponsesApi) {
+      // Chat Completions API response
+      const choice = data?.choices?.[0];
+      const message = choice?.message;
+      const content = message?.content;
+      if (typeof content === 'string' && content.trim().length > 0) {
+        messageContent = content;
+      }
+    } else {
+      // Responses API response (GPT-5)
+      if (typeof data.output_text === 'string' && data.output_text.trim().length > 0) {
+        messageContent = data.output_text;
+      } else if (Array.isArray(data.output)) {
+        const outputs = data.output.flatMap((o) => {
+          if (o?.type === 'message' && Array.isArray(o?.content)) {
+            return o.content
+              .filter((part) => (typeof part?.text === 'string') && part.text.trim() && part?.type !== 'reasoning')
+              .map((part) => part.text);
+          }
+          if (Array.isArray(o?.content)) {
+            return o.content
+              .filter((part) => (typeof part?.text === 'string') && part.text.trim() && part?.type !== 'reasoning')
+              .map((part) => part.text);
+          }
+          return [];
+        });
+        if (outputs.length > 0) {
+          messageContent = outputs.join('\n');
+        }
+      } else if (typeof data.text === 'string') {
+        const t = data.text.trim();
+        if (t && !/^rs_[a-z0-9]/i.test(t) && t.toLowerCase() !== 'reasoning') {
+          messageContent = t;
+        }
+      }
+    }
+    
+    return messageContent || "";
   }
 
 

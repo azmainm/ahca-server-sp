@@ -31,24 +31,27 @@ class IntentClassifier {
         /book.*consultation/i
       ],
       nameChange: [
-        /change.*name/i,
-        /update.*name/i,
-        /my name.*is/i,
-        /actually.*name/i,
-        /correct.*name/i,
-        /wrong.*name/i,
-        /name.*should.*be/i,
-        /call.*me/i
+        /^change.*name/i,
+        /^update.*name/i,
+        /^my name.*is/i,
+        /^actually.*my.*name/i,
+        /^correct.*name/i,
+        /^wrong.*name/i,
+        /^name.*should.*be/i,
+        /^call.*me/i
       ],
       emailChange: [
-        /change.*email/i,
-        /update.*email/i,
-        /my email.*is/i,
-        /actually.*email/i,
-        /correct.*email/i,
-        /wrong.*email/i,
-        /email.*should.*be/i,
-        /email.*address.*is/i
+        /^change.*email/i,
+        /^update.*email/i,
+        /^my email.*is/i,
+        /^actually.*my.*email/i,
+        /^correct.*email/i,
+        /^wrong.*email/i,
+        /^email.*should.*be/i,
+        /^email.*address.*is/i,
+        /^the email.*is/i,
+        /^real email/i,
+        /^right email/i
       ],
       followUpPositive: [
         /yes/i,
@@ -105,6 +108,10 @@ class IntentClassifier {
    * @returns {boolean} Whether text matches any pattern
    */
   matchesPatterns(text, patterns) {
+    // Skip if text contains negation
+    if (/don't|do not|not|no need|don't need/i.test(text)) {
+      return false;
+    }
     return patterns.some(pattern => pattern.test(text));
   }
 

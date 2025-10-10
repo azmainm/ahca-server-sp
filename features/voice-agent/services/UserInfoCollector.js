@@ -58,7 +58,11 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: extractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        reasoning: { effort: "minimal" },
+        max_output_tokens: 200,
+        temperature: 0.1
+      });
 
       return JSON.parse(response);
     } catch (error) {
@@ -178,7 +182,11 @@ Return ONLY: {"name": "John Doe"}`;
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: nameExtractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        reasoning: { effort: "minimal" },
+        max_output_tokens: 100,
+        temperature: 0.1
+      });
       
       const nameData = JSON.parse(response);
       return {
@@ -220,7 +228,11 @@ Return ONLY: {"email": "extracted@email.com"}`;
       const response = await this.openAIService.callOpenAI([
         { role: 'system', content: emailExtractionPrompt },
         { role: 'user', content: text }
-      ]);
+      ], 'gpt-5-nano', 3, {
+        reasoning: { effort: "minimal" },
+        max_output_tokens: 100,
+        temperature: 0.1
+      });
       
       const emailData = JSON.parse(response);
       return {
@@ -317,7 +329,12 @@ Return ONLY: {"email": "extracted@email.com"}`;
       /correct.*email/i,
       /wrong.*email/i,
       /email.*should.*be/i,
-      /email.*address.*is/i
+      /email.*address.*is/i,
+      /email.*actually/i,
+      /the email.*is/i,
+      /email.*correct/i,
+      /real email/i,
+      /right email/i
     ];
     
     return emailChangePatterns.some(pattern => pattern.test(text));

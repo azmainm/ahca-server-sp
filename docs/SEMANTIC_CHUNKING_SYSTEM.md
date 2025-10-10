@@ -210,7 +210,8 @@ semanticConfig: {
 
 ### Environment Variables:
 ```
-OPENAI_API_KEY=your_openai_key
+OPENAI_API_KEY_CALL_AGENT=your_openai_key_for_voice_agent
+OPENAI_API_KEY_ESTIMATOR=your_openai_key_for_estimator
 MONGODB_URI=your_mongodb_atlas_connection_string
 ```
 

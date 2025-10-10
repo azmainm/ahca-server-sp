@@ -110,7 +110,7 @@ async function transcribeAudio(audioFilePath) {
     
     const response = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY_ESTIMATOR}`,
         ...form.getHeaders()
       },
       maxBodyLength: Infinity,
@@ -226,23 +226,46 @@ IMPORTANT TYPE VALUES:
 - Use "extra" (singular) for extras category items`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const model = 'gpt-5-nano';
+    const useResponsesApi = /^gpt-5-/i.test(model);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ];
+    
+    let url, requestBody;
+    
+    if (useResponsesApi) {
+      // GPT-5 models use Responses API (like prompt-eval-server)
+      const combinedInput = messages
+        .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+        .join('\n\n');
+
+      url = 'https://api.openai.com/v1/responses';
+      requestBody = {
+        model,
+        input: combinedInput,
+        max_output_tokens: 2000,
+        reasoning: { effort: 'minimal' }
+      };
+    } else {
+      // Other models use Chat Completions API
+      url = 'https://api.openai.com/v1/chat/completions';
+      requestBody = {
+        model,
+        messages,
+        max_tokens: 2000,
+        temperature: 0.1
+      };
+    }
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY_ESTIMATOR}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'gpt-5-nano',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.1,
-        max_output_tokens: 2000,
-        reasoning: { effort: 'medium' },
-        verbosity: "medium"
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -250,7 +273,48 @@ IMPORTANT TYPE VALUES:
     }
 
     const result = await response.json();
-    let estimateText = result.choices[0].message.content.trim();
+    
+    // Extract text based on API type (copied from prompt-eval-server)
+    let estimateText = "";
+    
+    if (!useResponsesApi) {
+      // Chat Completions API response
+      const choice = result?.choices?.[0];
+      const message = choice?.message;
+      const content = message?.content;
+      if (typeof content === 'string' && content.trim().length > 0) {
+        estimateText = content;
+      }
+    } else {
+      // Responses API response (GPT-5)
+      if (typeof result.output_text === 'string' && result.output_text.trim().length > 0) {
+        estimateText = result.output_text;
+      } else if (Array.isArray(result.output)) {
+        const outputs = result.output.flatMap((o) => {
+          if (o?.type === 'message' && Array.isArray(o?.content)) {
+            return o.content
+              .filter((part) => (typeof part?.text === 'string') && part.text.trim() && part?.type !== 'reasoning')
+              .map((part) => part.text);
+          }
+          if (Array.isArray(o?.content)) {
+            return o.content
+              .filter((part) => (typeof part?.text === 'string') && part.text.trim() && part?.type !== 'reasoning')
+              .map((part) => part.text);
+          }
+          return [];
+        });
+        if (outputs.length > 0) {
+          estimateText = outputs.join('\n');
+        }
+      } else if (typeof result.text === 'string') {
+        const t = result.text.trim();
+        if (t && !/^rs_[a-z0-9]/i.test(t) && t.toLowerCase() !== 'reasoning') {
+          estimateText = t;
+        }
+      }
+    }
+    
+    estimateText = estimateText.trim();
     
     console.log('🤖 [LLM] Raw LLM response:', estimateText);
     
@@ -322,23 +386,46 @@ Key fixes needed:
 Return only the corrected JSON.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const model = 'gpt-5-nano';
+    const useResponsesApi = /^gpt-5-/i.test(model);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ];
+    
+    let url, requestBody;
+    
+    if (useResponsesApi) {
+      // GPT-5 models use Responses API (like prompt-eval-server)
+      const combinedInput = messages
+        .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+        .join('\n\n');
+
+      url = 'https://api.openai.com/v1/responses';
+      requestBody = {
+        model,
+        input: combinedInput,
+        max_output_tokens: 2000,
+        reasoning: { effort: 'minimal' }
+      };
+    } else {
+      // Other models use Chat Completions API
+      url = 'https://api.openai.com/v1/chat/completions';
+      requestBody = {
+        model,
+        messages,
+        max_tokens: 2000,
+        temperature: 0
+      };
+    }
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY_ESTIMATOR}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model: 'gpt-5-nano',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0,
-        max_output_tokens: 2000,
-        reasoning: { effort: 'medium' },
-        verbosity: "medium"
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -346,7 +433,48 @@ Return only the corrected JSON.`;
     }
 
     const result = await response.json();
-    let repairedText = result.choices[0].message.content.trim();
+    
+    // Extract text based on API type (copied from prompt-eval-server)
+    let repairedText = "";
+    
+    if (!useResponsesApi) {
+      // Chat Completions API response
+      const choice = result?.choices?.[0];
+      const message = choice?.message;
+      const content = message?.content;
+      if (typeof content === 'string' && content.trim().length > 0) {
+        repairedText = content;
+      }
+    } else {
+      // Responses API response (GPT-5)
+      if (typeof result.output_text === 'string' && result.output_text.trim().length > 0) {
+        repairedText = result.output_text;
+      } else if (Array.isArray(result.output)) {
+        const outputs = result.output.flatMap((o) => {
+          if (o?.type === 'message' && Array.isArray(o?.content)) {
+            return o.content
+              .filter((part) => (typeof part?.text === 'string') && part.text.trim() && part?.type !== 'reasoning')
+              .map((part) => part.text);
+          }
+          if (Array.isArray(o?.content)) {
+            return o.content
+              .filter((part) => (typeof part?.text === 'string') && part.text.trim() && part?.type !== 'reasoning')
+              .map((part) => part.text);
+          }
+          return [];
+        });
+        if (outputs.length > 0) {
+          repairedText = outputs.join('\n');
+        }
+      } else if (typeof result.text === 'string') {
+        const t = result.text.trim();
+        if (t && !/^rs_[a-z0-9]/i.test(t) && t.toLowerCase() !== 'reasoning') {
+          repairedText = t;
+        }
+      }
+    }
+    
+    repairedText = repairedText.trim();
     
     // Clean up markdown if present
     if (repairedText.startsWith('```json') && repairedText.endsWith('```')) {

@@ -16,12 +16,12 @@ async function setupKnowledgeBase() {
   try {
     console.log('🚀 Starting knowledge base setup...');
     
-    // Check if MONGODB_URI and OPENAI_API_KEY are set
+    // Check if MONGODB_URI and OPENAI_API_KEY_CALL_AGENT are set
     if (!process.env.MONGODB_URI) {
       throw new Error('MONGODB_URI environment variable is not set');
     }
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
+    if (!process.env.OPENAI_API_KEY_CALL_AGENT) {
+      throw new Error('OPENAI_API_KEY_CALL_AGENT environment variable is not set');
     }
     
     console.log('✅ Environment variables validated');

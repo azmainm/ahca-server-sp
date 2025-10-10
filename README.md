@@ -1,25 +1,96 @@
-# After Hours Call Agent (AHCA) - Voice AI System
+# After Hours Call Agent (AHCA) - Voice AI System with VAD
 
 ## Overview
 
-The After Hours Call Agent is an AI-powered voice assistant system designed for SherpaPrompt Fencing Company. It provides automated customer service through natural voice conversations, combining speech-to-text, intelligent text processing with RAG (Retrieval-Augmented Generation), and text-to-speech technologies.
+The After Hours Call Agent is an AI-powered voice assistant system designed for SherpaPrompt Fencing Company. It provides automated customer service through natural voice conversations with **automatic Voice Activity Detection (VAD)**, eliminating the need for push-to-talk buttons and enabling seamless hands-free interactions.
+
+## 🎤 Voice Activity Detection (VAD) Features
+
+- **Automatic Speech Detection**: Uses OpenAI's Realtime API for server-side VAD
+- **Hands-Free Operation**: No push-to-talk required - just speak naturally
+- **Real-Time Processing**: Continuous audio streaming with instant response
+- **Smart Silence Detection**: 2.5-second pause detection for natural conversation flow
+- **WebSocket Integration**: Real-time bidirectional communication with OpenAI
+- **Contextual Filler Phrases**: Immediate audio feedback based on request type
+  - *"Looking that up for you"* - General questions and RAG searches
+  - *"Please wait while I process that for you"* - Appointment requests
+  - *"Checking availability for you"* - Calendar and scheduling queries
 
 ## Architecture
 
-This system follows OpenAI's recommended **Chained Architecture** for voice agents:
+This system follows OpenAI's **Realtime API Architecture** with integrated VAD:
 
 ```
-Audio Input → STT (Whisper) → Text Processing (GPT-4 + RAG) → TTS (TTS-1) → Audio Output
+Audio Input → Realtime VAD → STT (Whisper) → GPT-5-nano → TTS → Audio Output
+     ↓              ↓              ↓              ↓         ↓
+WebM Audio → PCM16 Convert → Transcription → Processing → MP3 Response
 ```
 
 ### Key Components
 
-- **Frontend (ahca-client)**: React/Next.js web application with voice interface
-- **Backend (ahca-server)**: Node.js/Express API server with OpenAI integrations
-- **Database**: MongoDB Atlas with semantic vector search for knowledge base
-- **AI Services**: OpenAI Whisper (STT), GPT-4 (LLM), TTS-1 (Speech)
+- **Frontend (ahca-client)**: React/Next.js with RealtimeVADVoiceAgent component
+- **Backend (ahca-server)**: Node.js/Express with RealtimeVADService integration  
+- **VAD Processing**: OpenAI Realtime API with server-side voice activity detection
+- **AI Services**: GPT-5-nano (Responses API), Whisper (STT), TTS-1 (Speech)
+- **Calendar Integration**: Microsoft Graph API for appointment scheduling
+
+## 🚀 Quick Start with VAD
+
+### Prerequisites
+- Node.js 18+ installed
+- OpenAI API key with GPT-5-nano access
+- Microsoft Graph API credentials (for calendar integration)
+
+### Installation & Setup
+```bash
+# Install dependencies
+npm install
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start development server
+npm run dev
+```
+
+### Test VAD Voice Agent
+1. Open client at http://localhost:3000
+2. Click purple "Start Conversation" button
+3. Allow microphone access when prompted
+4. Speak naturally: "Hi, my name is John and my email is john@example.com"
+5. Continue conversation - no push-to-talk needed!
 
 ## Backend (ahca-server) - Detailed Implementation
+
+### VAD Integration Architecture
+
+#### RealtimeVADService.js
+Manages WebSocket connections to OpenAI Realtime API for automatic voice activity detection:
+
+```javascript
+// Key VAD Configuration
+server_vad: {
+  threshold: 0.5,                    // Voice activation threshold
+  prefix_padding_ms: 300,            // Audio before speech detection  
+  silence_duration_ms: 2500,         // 2.5s pause to end speech
+  create_response: false,            // Manual response handling
+  interrupt_response: true           // Allow interruptions
+}
+```
+
+**Key Methods:**
+- `startVADSession(sessionId)` - Creates WebSocket connection to OpenAI
+- `sendAudioChunk(sessionId, audioBuffer)` - Processes WebM → PCM16 → VAD
+- `getVADSessionStatus(sessionId)` - Returns real-time session status
+- `stopVADSession(sessionId)` - Cleanup and session termination
+
+#### Audio Processing Pipeline
+```javascript
+Client WebM Audio → AudioConverter → PCM16 → OpenAI Realtime API
+                                      ↓
+Speech Events ← Transcription ← Voice Activity Detection
+```
 
 ### Core Architecture
 
@@ -148,7 +219,8 @@ const goodbyePatterns = [
 
 ### Environment Variables Required
 ```env
-OPENAI_API_KEY=your_openai_api_key
+OPENAI_API_KEY_CALL_AGENT=your_openai_api_key_for_voice_agent
+OPENAI_API_KEY_ESTIMATOR=your_openai_api_key_for_estimator
 MONGODB_URI=your_mongodb_atlas_connection_string
 PORT=3001
 ```
