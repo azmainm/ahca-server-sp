@@ -32,6 +32,40 @@ class ConversationFlowHandler {
   }
 
   /**
+   * Get appropriate filler phrase for different processing types
+   * @param {string} processType - Type of processing (rag_search, appointment_processing, etc.)
+   * @returns {string} Appropriate filler phrase
+   */
+  getFillerPhrase(processType) {
+    const fillerPhrases = {
+      rag_search: [
+        "Looking that up for you",
+        "Let me find that information",
+        "One moment while I check that"
+      ],
+      appointment_processing: [
+        "Please wait while I process that for you",
+        "Let me handle that appointment request",
+        "Processing your appointment details",
+        "One moment while I set that up"
+      ],
+      calendar_check: [
+        "Checking availability for you",
+        "Let me see what times are available",
+        "Looking at the calendar"
+      ],
+      general_processing: [
+        "One moment please",
+        "Let me process that",
+        "Working on that for you"
+      ]
+    };
+
+    const phrases = fillerPhrases[processType] || fillerPhrases.general_processing;
+    return phrases[Math.floor(Math.random() * phrases.length)];
+  }
+
+  /**
    * Check if query is asking for basic contact info (phone, email, address)
    * @param {string} text - User input text
    * @returns {boolean} True if basic contact query
@@ -256,6 +290,9 @@ class ConversationFlowHandler {
       };
     }
 
+    // Set filler phrase for appointment processing
+    const fillerPhrase = this.getFillerPhrase('appointment_processing');
+
     // Process existing flow
     const result = await this.appointmentFlowManager.processFlow(
       session, 
@@ -267,7 +304,8 @@ class ConversationFlowHandler {
       response: result.response,
       hadFunctionCalls: false,
       calendarLink: result.calendarLink,
-      appointmentDetails: result.appointmentDetails
+      appointmentDetails: result.appointmentDetails,
+      fillerPhrase
     };
   }
 
@@ -346,9 +384,14 @@ class ConversationFlowHandler {
     const searchTerms = this.extractSearchTerms(text);
     let contextInfo = '';
     let hadFunctionCalls = true;
+    let fillerPhrase = null;
 
     if (searchTerms.length > 0) {
       console.log('🔍 [RAG] Searching for:', searchTerms);
+      
+      // Set filler phrase for RAG search
+      fillerPhrase = this.getFillerPhrase('rag_search');
+      
       const searchResults = await this.embeddingService.searchSimilarContent(searchTerms.join(' '), 5);
       
       if (searchResults && searchResults.length > 0) {
@@ -358,6 +401,10 @@ class ConversationFlowHandler {
     } else {
       // If no specific keywords found, try a general search with the full text
       console.log('🔍 [RAG] No specific keywords found, searching with full text');
+      
+      // Set filler phrase for general search
+      fillerPhrase = this.getFillerPhrase('rag_search');
+      
       const searchResults = await this.embeddingService.searchSimilarContent(text, 3);
       
       if (searchResults && searchResults.length > 0) {
@@ -395,7 +442,11 @@ class ConversationFlowHandler {
       this.stateManager.setAwaitingFollowUp(sessionId, true);
     }
 
-    return { response, hadFunctionCalls };
+    return { 
+      response, 
+      hadFunctionCalls,
+      fillerPhrase // Include filler phrase for immediate TTS playback
+    };
   }
 
   /**

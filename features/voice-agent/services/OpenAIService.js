@@ -6,7 +6,7 @@ const fetch = require('node-fetch');
 
 class OpenAIService {
   constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY;
+    this.apiKey = process.env.OPENAI_API_KEY_CALL_AGENT;
     this.baseURL = 'https://api.openai.com/v1';
   }
 

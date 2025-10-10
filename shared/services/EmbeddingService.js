@@ -11,7 +11,7 @@ class EmbeddingService {
   constructor() {
     this.embeddings = new OpenAIEmbeddings({
       model: "text-embedding-3-small",
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.OPENAI_API_KEY_CALL_AGENT,
     });
 
     // Fallback text splitter for initial sentence splitting

@@ -11,10 +11,10 @@ const { AudioConverter } = require('../utils/AudioConverter');
 class RealtimeVADService extends EventEmitter {
   constructor() {
     super();
-    this.apiKey = process.env.OPENAI_API_KEY;
+    this.apiKey = process.env.OPENAI_API_KEY_CALL_AGENT;
     
     if (!this.apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
+      throw new Error('OPENAI_API_KEY_CALL_AGENT environment variable is required');
     }
     
     // Active WebSocket connections per session

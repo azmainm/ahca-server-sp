@@ -110,7 +110,7 @@ async function transcribeAudio(audioFilePath) {
     
     const response = await axios.post('https://api.openai.com/v1/audio/transcriptions', form, {
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY_ESTIMATOR}`,
         ...form.getHeaders()
       },
       maxBodyLength: Infinity,
@@ -262,7 +262,7 @@ IMPORTANT TYPE VALUES:
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY_ESTIMATOR}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
@@ -422,7 +422,7 @@ Return only the corrected JSON.`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY_ESTIMATOR}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)

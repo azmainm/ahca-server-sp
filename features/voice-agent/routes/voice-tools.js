@@ -40,7 +40,7 @@ router.post('/search-knowledge', async (req, res) => {
     console.log(`[voice-tools][${requestId}] ✅ Validation passed: query="${String(query).slice(0, 120)}${String(query).length > 120 ? '…' : ''}"`);
     console.log(`🔍 Voice agent searching knowledge base for: "${query}"`);
     console.log('🔧 Environment check:');
-    console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'MISSING');
+    console.log('  - OPENAI_API_KEY_CALL_AGENT:', process.env.OPENAI_API_KEY_CALL_AGENT ? 'SET' : 'MISSING');
     console.log('  - MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'MISSING');
     
     // Search for similar content (fewer results for voice responses)

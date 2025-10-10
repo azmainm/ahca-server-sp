@@ -33,7 +33,7 @@ class AppointmentFlowManager {
       date: /change.*date/i,
       time: /change.*time/i,
       name: /change.*name/i,
-      email: /change.*email/i
+      email: /change.*email|update.*email|my email.*is|actually.*email|correct.*email|wrong.*email|email.*should.*be|email.*address.*is|the email.*is/i
     };
 
     // Direct change patterns (with new values in same message)
@@ -42,7 +42,7 @@ class AppointmentFlowManager {
       date: /change.*date.*to\s+(.+)|date.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
       time: /change.*time.*to\s+(.+)|time.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
       name: /change.*name.*to\s+(.+)|name.*should.*be\s+(.+)|call.*me\s+(.+)/i,
-      email: /change.*email.*to\s+(.+)|email.*should.*be\s+(.+)/i
+      email: /change.*email.*to\s+(.+)|email.*should.*be\s+(.+)|my email.*is\s+(.+)|actually.*email.*is\s+(.+)|correct.*email.*is\s+(.+)|email.*address.*is\s+(.+)|the email.*is\s+(.+)/i
     };
   }
 
@@ -350,7 +350,7 @@ class AppointmentFlowManager {
     
     return {
       success: true,
-      response: `I didn't catch what you'd like to change. Please say "sounds good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", "time", "name", or "email".`,
+      response: `I didn't catch what you'd like to change. Please say "sounds good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", "time", "name", or "email". and what you'd like to change it to.`,
       step: this.steps.REVIEW
     };
   }

@@ -209,7 +209,8 @@ Stops a Realtime VAD session.
 
 **Server (.env):**
 ```bash
-OPENAI_API_KEY=sk-proj-...
+OPENAI_API_KEY_CALL_AGENT=sk-proj-...
+OPENAI_API_KEY_ESTIMATOR=sk-proj-...
 MICROSOFT_CLIENT_ID=your-client-id
 MICROSOFT_CLIENT_SECRET=your-client-secret
 MICROSOFT_TENANT_ID=your-tenant-id

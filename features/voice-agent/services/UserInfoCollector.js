@@ -329,7 +329,12 @@ Return ONLY: {"email": "extracted@email.com"}`;
       /correct.*email/i,
       /wrong.*email/i,
       /email.*should.*be/i,
-      /email.*address.*is/i
+      /email.*address.*is/i,
+      /email.*actually/i,
+      /the email.*is/i,
+      /email.*correct/i,
+      /real email/i,
+      /right email/i
     ];
     
     return emailChangePatterns.some(pattern => pattern.test(text));

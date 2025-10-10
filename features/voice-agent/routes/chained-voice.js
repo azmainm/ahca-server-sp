@@ -60,6 +60,37 @@ realtimeVADService.on('transcriptionCompleted', async ({ sessionId, transcript, 
   try {
     console.log('📝 [RealtimeVAD] Transcription completed for session:', sessionId, 'Text:', transcript);
     
+    // Check if we need to play a filler phrase
+    const needsFiller = global.pendingFillers?.get(sessionId);
+    if (needsFiller) {
+      // Determine filler type based on transcript content
+      let fillerType = 'general_processing';
+      
+      if (/appointment|schedule|book|meeting|consultation/i.test(transcript)) {
+        fillerType = 'appointment_processing';
+      } else if (/available|time|date|calendar/i.test(transcript)) {
+        fillerType = 'calendar_check';
+      } else {
+        fillerType = 'rag_search';
+      }
+      
+      // Get appropriate filler phrase
+      const fillerPhrase = conversationFlowHandler.getFillerPhrase(fillerType);
+      console.log('🔊 [RealtimeVAD] Playing contextual filler phrase:', fillerPhrase, 'Type:', fillerType);
+      
+      try {
+        const fillerSynthesis = await openAIService.synthesizeText(fillerPhrase);
+        if (fillerSynthesis.success) {
+          realtimeVADService.queueResponseAudio(sessionId, fillerSynthesis.audio);
+        }
+      } catch (fillerError) {
+        console.error('❌ [RealtimeVAD] Error playing filler phrase:', fillerError);
+      }
+      
+      // Clear the pending filler
+      global.pendingFillers.delete(sessionId);
+    }
+    
     // Process the transcribed text using existing pipeline
     const processResponse = await conversationFlowHandler.processConversation(transcript, sessionId);
     
@@ -94,8 +125,12 @@ realtimeVADService.on('speechStarted', ({ sessionId }) => {
   console.log('🎤 [RealtimeVAD] Speech started for session:', sessionId);
 });
 
-realtimeVADService.on('speechStopped', ({ sessionId, speech }) => {
+realtimeVADService.on('speechStopped', async ({ sessionId, speech }) => {
   console.log('🔇 [RealtimeVAD] Speech stopped for session:', sessionId, 'Duration:', speech?.duration, 'ms');
+  
+  // Store that we need to play a filler phrase when transcription comes in
+  if (!global.pendingFillers) global.pendingFillers = new Map();
+  global.pendingFillers.set(sessionId, true);
 });
 
 realtimeVADService.on('error', ({ sessionId, error }) => {
