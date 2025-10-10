@@ -11,6 +11,10 @@ The After Hours Call Agent is an AI-powered voice assistant system designed for 
 - **Real-Time Processing**: Continuous audio streaming with instant response
 - **Smart Silence Detection**: 2.5-second pause detection for natural conversation flow
 - **WebSocket Integration**: Real-time bidirectional communication with OpenAI
+- **Contextual Filler Phrases**: Immediate audio feedback based on request type
+  - *"Looking that up for you"* - General questions and RAG searches
+  - *"Please wait while I process that for you"* - Appointment requests
+  - *"Checking availability for you"* - Calendar and scheduling queries
 
 ## Architecture
 
