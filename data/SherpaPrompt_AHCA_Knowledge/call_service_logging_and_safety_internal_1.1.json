@@ -1,0 +1,62 @@
+{
+  "doc_id": "call_service_logging_and_safety",
+  "title": "SherpaPrompt Automated Call Service: Logging, Safety, and Compliance Policy",
+  "source_path": "Internal Operations and Compliance",
+  "source_type": "kb",
+  "version": "v1.0-DRAFT",
+  "last_modified": "2025-10-10T00:00:00Z",
+  "product_area": ["call_service"],
+  "access_tags": ["internal", "compliance"],
+  "security_notes": "Internal reference only. Contains no live data or credentials. All examples anonymized.",
+  "sections": [
+    {
+      "section_id": "logging_safety#overview",
+      "heading_level": 1,
+      "heading": "Overview",
+      "path": "Internal Operations and Compliance > Overview",
+      "raw_markdown": "This document defines SherpaPrompt’s draft policies and procedures for call logging, data handling, redaction, and audit readiness across the automated call service platform.  \nIt is written to describe **intended practices** and must be validated against live infrastructure and development logs."
+    },
+    {
+      "section_id": "logging_safety#logging_schema",
+      "heading_level": 2,
+      "heading": "Event Logging Schema",
+      "path": "Internal Operations and Compliance > Event Logging Schema",
+      "raw_markdown": "| Field | Description | Status | Verification Method |\n|--------|--------------|---------|---------------------|\n| call_id | Unique identifier for every inbound/outbound call session. | **Implemented** | Confirm appears in all call summaries and DB logs. |\n| timestamp_start / end | UTC timestamps marking start and end of call. | **Implemented** | Cross-check Twilio/Vonage event metadata. |\n| agent_persona | Persona label active during session (default: Scout). | **Implemented** | Verify context logged during call initialization. |\n| caller_number_masked | Caller number stored in masked format (XXX-XXX-0134). | **Partially Implemented** | Review masked outputs in call logs. |\n| intent_detected | Primary intent classification (sales, support, emergency). | **Implemented** | Validate against LLM or routing logs. |\n| system_actions | Ordered list of backend actions (create_lead, schedule_event, send_sms). | **Implemented** | Compare with workflow orchestration logs once deployed. |\n| escalation_target | On-call or human escalation endpoint (if triggered). | **Implemented** | Check failover and SMS audit trail. |\n| outcome_code | Final status (completed, transferred, failed, timeout). | **Implemented** | Inspect call summary payload. |\n| log_level | Severity level (INFO, WARN, ERROR). | **Implemented** | Review configuration in Python logging setup. |\n| trace_id | Identifier for correlation across subsystems. | **Planned** | Implement distributed tracing (e.g., OpenTelemetry). |"
+    },
+    {
+      "section_id": "logging_safety#data_redaction",
+      "heading_level": 2,
+      "heading": "Data Redaction and Masking Policy",
+      "path": "Internal Operations and Compliance > Data Redaction and Masking Policy",
+      "raw_markdown": "| Rule | Description | Status | Verification Method |\n|-------|--------------|---------|---------------------|\n| PII masking | Phone numbers, emails, and street addresses are masked before storage. | **Implemented** | Inspect masked logs during QA test calls. |\n| Log retention | Full call and event logs retained for 30 days, summaries retained indefinitely. | **Proposed** | Confirm rotation and archival policies. |\n| Audio data | Audio recordings stored for 24 hours for QA then deleted automatically. | **Planned** | Verify S3 or equivalent cleanup job exists. |\n| Transcripts | Stored as text files with caller PII replaced by tokens (e.g., <NAME>, <PHONE>). | **Implemented** | Check processed transcript samples. |\n| Sensitive keywords | Filtered before indexing into vector database. | **Implemented** | Validate retrieval logs for sanitized output. |\n| Shared environments | Logs visible only to authorized internal roles. | **Implemented** | Review access controls on logging dashboard. |"
+    },
+    {
+      "section_id": "logging_safety#consent_and_disclosure",
+      "heading_level": 2,
+      "heading": "Consent and Disclosure Language",
+      "path": "Internal Operations and Compliance > Consent and Disclosure Language",
+      "raw_markdown": "| Scenario | Required Disclosure | Status | Verification Method |\n|-----------|----------------------|---------|---------------------|\n| Recorded calls | “This call may be recorded for training and quality assurance.” | **Implemented** | Add prompt at greeting in call flow. |\n| AI assistance disclosure | No explicit mention of automation unless legally required. | **Implemented** | Check dialogue templates in brand voice doc. |\n| Emergency calls | “I’m connecting you to SherpaPrompt’s on-call team now.” | **Implemented** | Verify greeting consistency in emergency script. |\n| Support follow-up | “You’ll receive a confirmation message shortly.” | **Implemented** | Confirm message dispatch logs. |"
+    },
+    {
+      "section_id": "logging_safety#audit_and_retention",
+      "heading_level": 2,
+      "heading": "Audit Trails and Retention Controls",
+      "path": "Internal Operations and Compliance > Audit Trails and Retention Controls",
+      "raw_markdown": "| Component | Policy | Status | Verification Method |\n|------------|---------|---------|---------------------|\n| Call logs | Each call generates a structured JSON summary with outcome and timestamps. | **Implemented** | Inspect cloud log exports. |\n| Failover events | Evidence bundles include call_id, transfer attempt order, SMS message_id. | **Implemented** | Validate oncall_escalation test logs. |\n| Access logs | Authentication and API key usage tracked in audit logs. | **Planned** | Add to dev ops monitoring stack. |\n| Log retention | Detailed logs 30 days, aggregated metrics 1 year. | **Proposed** | Configure log retention policy in cloud storage. |\n| Export & Review | Logs exportable in CSV/JSON for internal audits. | **Implemented** | Confirm export via admin tools. |"
+    },
+    {
+      "section_id": "logging_safety#security_controls",
+      "heading_level": 2,
+      "heading": "Security and Access Controls",
+      "path": "Internal Operations and Compliance > Security and Access Controls",
+      "raw_markdown": "| Control | Description | Status | Verification Method |\n|----------|--------------|---------|---------------------|\n| Encryption | Logs encrypted at rest using AES-256 or cloud-native encryption. | **Implemented** | Confirm encryption settings in cloud storage. |\n| Role-based access | Only internal users with compliance or dev roles can view logs. | **Implemented** | Review IAM policy in cloud console. |\n| Transport security | All log traffic secured via HTTPS/TLS 1.2+. | **Implemented** | Check API gateway configuration. |\n| Secrets management | API keys and credentials stored in secure vault. | **Implemented** | Verify secret retrieval logs. |\n| Monitoring alerts | Real-time alerts for failed transfers, sync errors, or abnormal call durations. | **Planned** | Connect to observability dashboard. |"
+    },
+    {
+      "section_id": "logging_safety#compliance_alignment",
+      "heading_level": 2,
+      "heading": "Compliance Alignment Roadmap",
+      "path": "Internal Operations and Compliance > Compliance Alignment Roadmap",
+      "raw_markdown": "SherpaPrompt’s long-term goal is to align with SOC 2 and GDPR-equivalent data handling standards. This section maps planned improvements to compliance categories.\n\n| Area | Planned Action | Timeline | Owner |\n|------|----------------|-----------|--------|\n| Logging Consistency | Adopt centralized event schema across all microservices. | Q1 2026 | Engineering |\n| Retention and Deletion | Implement automatic cleanup jobs for expired audio/transcript data. | Q1 2026 | DevOps |\n| Access Controls | Integrate fine-grained IAM with least-privilege model. | Ongoing | Security Lead |\n| Incident Reporting | Create internal template for breach notification and escalation. | Q2 2026 | Compliance Lead |\n| Annual Review | Formal review and update of this document. | Annually | CTO |"
+    }
+  ]
+}

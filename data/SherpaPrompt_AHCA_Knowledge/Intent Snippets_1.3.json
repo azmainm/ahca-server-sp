@@ -1,0 +1,62 @@
+{
+  "doc_id": "intent_snippets",
+  "title": "AHCA Intent Catalog",
+  "version": "1.2",
+  "labels": ["routing", "intents", "kb"],
+  "file_path": "knowledge/Intent Snippets_1.2.json",
+  "public_facing": false,
+  "sections": [
+    {
+      "section_id": "intents#v1",
+      "heading_level": 1,
+      "heading": "Intent Examples and Actions",
+      "path": "Intent Snippets",
+      "raw_markdown": "Intent examples, tags, reads/writes, actions, and escalation routing.",
+      "structured": {
+        "intents": [
+          {"intent":"sales","utterance":"What does SherpaPrompt do for a small trades business?","tags":["sales","overview","trades"],"reads":["crm"],"actions":["qualify","offer_demo","send_recap"],"escalation":"sales_handoff_if_enterprise"},
+          {"intent":"sales","utterance":"Do you integrate with Salesforce and Google Calendar?","tags":["sales","integration","crm","calendar"],"reads":["crm"],"actions":["confirm_integrations","capture_requirements","book_demo"],"escalation":"none"},
+          {"intent":"sales","utterance":"Can your agent answer product questions and move leads forward?","tags":["sales","agent","funnel"],"reads":["crm"],"actions":["explain_capabilities","qualify","schedule"],"escalation":"none"},
+          {"intent":"sales","utterance":"We want our own persona instead of Scout. Possible?","tags":["sales","persona","branding"],"reads":["crm"],"actions":["confirm_custom_persona","gather_brand_tone","book_setup"],"escalation":"none"},
+          {"intent":"sales","utterance":"Can you create estimates inside Jobber from a call?","tags":["sales","estimate","jobber"],"reads":["crm"],"actions":["explain_v2e_flow","verify_platform","offer_trial"],"escalation":"none"},
+          {"intent":"sales","utterance":"How hard is onboarding if we already have transcripts and a CRM?","tags":["sales","onboarding","transcripts","crm"],"reads":["crm"],"actions":["confirm_preexisting_sources","outline_setup","schedule_kickoff"],"escalation":"none"},
+
+          {"intent":"support","utterance":"My estimate did not sync to QuickBooks.","tags":["support","estimate","quickbooks","sync"],"reads":["crm","estimating_platform"],"actions":["troubleshoot_sync","log_ticket","notify_user"],"escalation":"live_agent_if_blocked"},
+          {"intent":"support","utterance":"How do I connect OneDrive and GitHub?","tags":["support","integrations","storage","repo"],"reads":["crm"],"actions":["provide_steps","verify_permissions","offer_screen_share"],"escalation":"none"},
+          {"intent":"support","utterance":"Your agent is not seeing returning callers in the CRM.","tags":["support","crm_lookup","caller_id"],"reads":["crm"],"actions":["check_identity_match","reindex_contacts","create_ticket"],"escalation":"live_agent_if_urgent"},
+          {"intent":"support","utterance":"Can I chat with a transcript to find action items?","tags":["support","transcript_chat","tasks"],"reads":["transcript_store"],"actions":["open_chat_on_transcript","extract_tasks","push_to_pm"],"escalation":"none"},
+          {"intent":"support","utterance":"Change the escalation rule for emergencies to on-call cell.","tags":["support","policy","escalation"],"reads":["crm"],"actions":["update_rule","confirm_target","test_call"],"escalation":"none"},
+
+          {"intent":"scheduling","utterance":"Book a demo for this week in the afternoon.","tags":["scheduling","demo","calendar","duration_default"],"reads":["calendar","crm"],"actions":["offer_slots","place_event","email_invite"],"escalation":"none"},
+          {"intent":"scheduling","utterance":"Reschedule my onboarding to tomorrow at 3 pm.","tags":["scheduling","reschedule","onboarding","timezone"],"reads":["calendar","crm"],"actions":["move_event","notify_attendees","update_crm_note"],"escalation":"none"},
+          {"intent":"scheduling","utterance":"Set a call with support about Salesforce integration.","tags":["scheduling","support","salesforce","duration_default"],"reads":["calendar","crm"],"actions":["book_support_session","attach_context","send_reminder"],"escalation":"none"},
+          {"intent":"scheduling","utterance":"Hold 30 minutes for estimate review with my foreman.","tags":["scheduling","estimate_review","field_team","timezone"],"reads":["calendar","crm","estimating_platform"],"actions":["create_event","link_estimate","confirm_sms"],"escalation":"none"},
+
+          {"intent":"estimate","utterance":"Start a hands-free fence estimate in the browser.","tags":["estimate","voice_to_estimate","hands_free"],"reads":["crm","materials_db"],"actions":["launch_web_app","guide_bluetooth_check","begin_capture"],"escalation":"none"},
+          {"intent":"estimate","utterance":"Use my materials pricing database to calculate costs.","tags":["estimate","pricing_db","costs"],"reads":["materials_db"],"actions":["bind_price_source","map_skus","confirm_units"],"escalation":"none"},
+          {"intent":"estimate","utterance":"Create the quote inside ServiceTitan and email me a link.","tags":["estimate","servicetitan","delivery"],"reads":["estimating_platform","crm"],"actions":["generate_estimate","save_in_platform","send_link"],"escalation":"none"},
+          {"intent":"estimate","utterance":"Add two gates and cedar boards at six foot height.","tags":["estimate","line_items","materials"],"reads":["materials_db"],"actions":["append_items","reprice_total","readback_changes"],"escalation":"none"},
+          {"intent":"estimate","utterance":"Convert this estimate to a proposal and attach terms.","tags":["estimate","proposal","docs"],"reads":["estimating_platform","doc_store"],"actions":["generate_proposal","attach_terms","email_customer"],"escalation":"none"},
+
+          {"intent":"transcript_to_task","utterance":"Ingest yesterday's Zoom file and create tasks for owners.","tags":["transcript_to_task","zoom","task_extraction"],"reads":["transcript_source","pm_tool"],"actions":["transcribe_or_import","extract_tasks","assign"],"escalation":"none"},
+          {"intent":"transcript_to_task","utterance":"We already have Teams transcripts. Use those instead.","tags":["transcript_to_task","teams","existing_transcripts"],"reads":["transcript_store"],"actions":["import_existing","analyze","push_tasks"],"escalation":"none"},
+          {"intent":"transcript_to_task","utterance":"Summarize decisions and due dates, then post to ClickUp.","tags":["transcript_to_task","summary","clickup"],"reads":["transcript_store","pm_tool"],"actions":["summarize","create_tasks","post_update"],"escalation":"none"},
+          {"intent":"transcript_to_task","utterance":"Open a chat over the board meeting transcript.","tags":["transcript_chat","board_meeting"],"reads":["transcript_store"],"actions":["start_chat","answer_queries","bookmark_sections"],"escalation":"none"},
+          {"intent":"transcript_to_task","utterance":"Tag action items by department and owner.","tags":["transcript_to_task","tagging","routing"],"reads":["transcript_store","pm_tool"],"actions":["classify","assign","notify"],"escalation":"none"},
+
+          {"intent":"pricing","utterance":"What does it cost for a five person team?","tags":["pricing","teams","public"],"reads":["crm"],"actions":["present_tiers","qualify_usage","offer_pilot"],"escalation":"sales_handoff_if_custom"},
+          {"intent":"pricing","utterance":"Do you charge per estimate or per seat?","tags":["pricing","model","public"],"reads":["crm"],"actions":["explain_model","map_to_use_case","offer_followup"],"escalation":"none"},
+          {"intent":"pricing","utterance":"Enterprise plan with SSO and governance?","tags":["pricing","enterprise","security"],"reads":["crm"],"actions":["outline_enterprise","capture_requirements","book_enterprise_call"],"escalation":"sales_handoff"},
+          {"intent":"pricing","utterance":"Any implementation fees for integrating our CRM and Jobber?","tags":["pricing","implementation","integrations"],"reads":["crm"],"actions":["explain_setup_scope","estimate_services","send_SOW_sample"],"escalation":"sales_handoff"},
+          {"intent":"pricing","utterance":"Is there a trial for call automation and transcript to task?","tags":["pricing","trial","public"],"reads":["crm"],"actions":["confirm_trial_options","set_trial_dates","create_success_criteria"],"escalation":"none"},
+
+          {"intent":"emergency","utterance":"We have a burst pipe and need help now.","tags":["emergency","on_call_transfer","sev1"],"reads":["on_call_roster"],"actions":["instant_transfer","log_summary","timestamp"],"escalation":"immediate_human"},
+          {"intent":"emergency","utterance":"Production is down for our call agent.","tags":["emergency","outage","support_priority","sev1"],"reads":["on_call_roster","status_page"],"actions":["hot_transfer_support","create_priority_ticket","notify_ops"],"escalation":"immediate_human"},
+          {"intent":"emergency","utterance":"Safety issue on site, call me back now.","tags":["emergency","callback","sev1"],"reads":["on_call_roster"],"actions":["place_callback","record_voicemail","notify_manager"],"escalation":"immediate_human"},
+          {"intent":"emergency","utterance":"Escalate after-hours to the field supervisor.","tags":["emergency","after_hours","routing","sev1"],"reads":["on_call_roster"],"actions":["transfer_to_supervisor","confirm_connection","log_chain"],"escalation":"immediate_human"},
+          {"intent":"emergency","utterance":"Customer stranded at job site, dispatch needed.","tags":["emergency","dispatch","sev1"],"reads":["on_call_roster","crm"],"actions":["warm_transfer_dispatch","create_case","send_sms_update"],"escalation":"immediate_human"}
+        ]
+      }
+    }
+  ]
+}

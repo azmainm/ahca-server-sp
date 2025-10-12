@@ -1,0 +1,83 @@
+{
+  "doc_id": "call_service_metrics",
+  "title": "SherpaPrompt Automated Call Service: Metrics and Performance KPIs",
+  "source_path": "Operational Metrics and Reporting",
+  "source_type": "kb",
+  "version": "v1.0",
+  "last_modified": "2025-10-10T00:00:00Z",
+  "product_area": ["call_service"],
+  "access_tags": ["internal", "analytics"],
+  "security_notes": "Contains metric definitions and example formulas only. No customer data.",
+  "sections": [
+    {
+      "section_id": "metrics#overview",
+      "heading_level": 1,
+      "heading": "Overview",
+      "path": "Operational Metrics and Reporting > Overview",
+      "raw_markdown": "This document defines SherpaPromptâ€™s core metrics and KPIs for the Automated Call Service platform. These indicators measure reliability, response speed, conversion rates, and customer experience quality.  \nMetrics are used internally for continuous improvement, product validation, and SLA tracking."
+    },
+    {
+      "section_id": "metrics#categories",
+      "heading_level": 2,
+      "heading": "Metric Categories",
+      "path": "Operational Metrics and Reporting > Metric Categories",
+      "raw_markdown": "| Category | Purpose | Examples |\n|-----------|----------|-----------|\n| **Performance Metrics** | Measure platform efficiency and call processing times. | Latency, uptime, throughput. |\n| **Reliability Metrics** | Track successful execution rates across automations. | Call completion, failover success. |\n| **Sales Metrics** | Assess how well SherpaPrompt converts calls into booked estimates. | Lead conversion, booking rate. |\n| **Support Metrics** | Evaluate responsiveness and case resolution speed. | First-response time, resolution time. |\n| **Customer Experience Metrics** | Measure satisfaction and engagement quality. | CSAT, handoff success, recap delivery rate. |\n| **Cost Metrics** | Track infrastructure and API usage costs. | Cost per call, cost per lead. |"
+    },
+    {
+      "section_id": "metrics#performance",
+      "heading_level": 2,
+      "heading": "Performance Metrics",
+      "path": "Operational Metrics and Reporting > Performance Metrics",
+      "raw_markdown": "| Metric | Definition | Target | Calculation |\n|---------|-------------|---------|--------------|\n| **Average Call Latency** | Time between call initiation and first agent response. | < 2.5 seconds | (Sum of all response times) / total calls |\n| **System Uptime** | Percentage of time call routing and API systems are operational. | 99.9% | (Uptime hours / total hours) * 100 |\n| **Throughput per Minute** | Number of concurrent calls processed successfully. | >= 20 | count(successful_calls) / minute |\n| **Voice Recognition Accuracy** | Percentage of correctly transcribed utterances. | > 95% | (accurate_utterances / total_utterances) * 100 |\n\nRequired log fields for these metrics\n- Average Call Latency: call_id, timestamp_start, first_agent_response_timestamp\n- System Uptime: uptime_window_start, uptime_window_end, service_status_events\n- Throughput per Minute: call_id, outcome_code, timestamp_start\n- Voice Recognition Accuracy: transcript_token_count, accurate_token_count or utterance counts"
+    },
+    {
+      "section_id": "metrics#reliability",
+      "heading_level": 2,
+      "heading": "Reliability Metrics",
+      "path": "Operational Metrics and Reporting > Reliability Metrics",
+      "raw_markdown": "| Metric | Definition | Target | Calculation |\n|---------|-------------|---------|--------------|\n| **Call Completion Rate** | Ratio of successfully completed calls vs. initiated calls. | > 98% | completed_calls / initiated_calls |\n| **Failover Success Rate** | Percentage of emergency calls successfully routed to secondary contact. | 100% | successful_failovers / failover_attempts |\n| **CRM Writeback Success Rate** | Successful CRM update events over total attempts. | > 99% | successful_writes / total_writes |\n| **Error Rate** | Logged error events vs. total actions executed. | < 1% | total_errors / total_actions |\n\nRequired log fields for these metrics\n- Call Completion Rate: call_id, outcome_code\n- Failover Success Rate: call_id, transfer_attempt_order, targets_attempted, outcome_code\n- CRM Writeback Success Rate: request_id, http_status_code, crm_object_type, outcome_code\n- Error Rate: action_name, error_code, request_id, outcome_code"
+    },
+    {
+      "section_id": "metrics#sales",
+      "heading_level": 2,
+      "heading": "Sales and Conversion Metrics",
+      "path": "Operational Metrics and Reporting > Sales and Conversion Metrics",
+      "raw_markdown": "| Metric | Definition | Target | Calculation |\n|---------|-------------|---------|--------------|\n| **Lead Qualification Rate** | Ratio of qualified leads to total inbound calls. | > 80% | qualified_leads / inbound_calls |\n| **Booking Conversion Rate** | Percent of estimates that result in booked appointments. | > 60% | booked_estimates / total_estimates |\n| **Average Time to Book** | Time between initial inquiry and confirmed appointment. | < 10 minutes | average(booking_time - inquiry_time) |\n| **Follow-Up Completion Rate** | Ratio of recaps or confirmations successfully sent. | 100% | successful_recaps / total_bookings |\n\nRequired log fields for these metrics\n- Lead Qualification Rate: call_id, funnel_state_before, funnel_state_after, timestamp\n- Booking Conversion Rate: contact_id, estimate_id, booked_event_id\n- Average Time to Book: inquiry_timestamp, booking_timestamp, contact_id\n- Follow-Up Completion Rate: recap_message_id, recap_delivery_status, contact_id"
+    },
+    {
+      "section_id": "metrics#support",
+      "heading_level": 2,
+      "heading": "Support and Troubleshooting Metrics",
+      "path": "Operational Metrics and Reporting > Support and Troubleshooting Metrics",
+      "raw_markdown": "| Metric | Definition | Target | Calculation |\n|---------|-------------|---------|--------------|\n| **First Response Time (FRT)** | Average time from customer issue to initial automated response. | < 30 seconds | (sum(response_times) / total_cases) |\n| **Resolution Time** | Average time from issue report to resolution or escalation. | < 10 minutes | sum(resolution_durations) / total_cases |\n| **Escalation Success Rate** | Successful transfers to human agents for high-severity issues. | 100% | successful_transfers / total_emergency_cases |\n| **Knowledge Accuracy Rate** | Accuracy of retrieved KB responses vs. verified solutions. | > 95% | verified_correct / total_answers |\n\nRequired log fields for these metrics\n- First Response Time: case_id, case_open_timestamp, first_agent_response_timestamp\n- Resolution Time: case_id, resolution_timestamp\n- Escalation Success Rate: case_id, transfer_attempt_order, outcome_code\n- Knowledge Accuracy Rate: answer_id, verification_flag, source_doc_reference"
+    },
+    {
+      "section_id": "metrics#customer_experience",
+      "heading_level": 2,
+      "heading": "Customer Experience Metrics",
+      "path": "Operational Metrics and Reporting > Customer Experience Metrics",
+      "raw_markdown": "| Metric | Definition | Target | Calculation |\n|---------|-------------|---------|--------------|\n| **CSAT (Customer Satisfaction)** | Post-call satisfaction survey average (1â€"5). | > 4.5 | avg(survey_score) |\n| **Handoff Smoothness Score** | Customer-rated ease of transition to human agent. | > 4.7 | avg(hand_off_feedback) |\n| **Recap Delivery Rate** | Percent of callers receiving recap SMS or email. | 100% | successful_recaps / total_calls |\n| **NPS (Net Promoter Score)** | Customer likelihood to recommend SherpaPrompt. | > 50 | promoters% - detractors% |\n\nRequired log fields for these metrics\n- CSAT: survey_id, survey_score, case_id or call_id\n- Handoff Smoothness Score: handoff_survey_id, score, call_id\n- Recap Delivery Rate: recap_message_id, delivery_status, contact_id\n- NPS: survey_id, promoter_detractor_flag"
+    },
+    {
+      "section_id": "metrics#costs",
+      "heading_level": 2,
+      "heading": "Cost and Efficiency Metrics",
+      "path": "Operational Metrics and Reporting > Cost and Efficiency Metrics",
+      "raw_markdown": "| Metric | Definition | Target | Calculation |\n|---------|-------------|---------|--------------|\n| **Cost per Call** | Average infrastructure and API cost per call. | < $0.10 | total_call_costs / total_calls |\n| **Cost per Qualified Lead** | Cost to generate one qualified lead. | < $1.50 | total_call_costs / qualified_leads |\n| **API Utilization Efficiency** | Ratio of successful API calls vs. total API requests. | > 98% | successful_api_calls / total_api_calls |\n| **System Resource Utilization** | Average CPU and memory load of active call services. | < 75% | avg(resource_usage%) |\n\nRequired log fields for these metrics\n- Cost per Call: call_id, api_call_cost, compute_cost, total_call_cost\n- Cost per Qualified Lead: call_id, qualification_flag, total_call_cost\n- API Utilization Efficiency: request_id, http_status_code, outcome_code\n- System Resource Utilization: sample_window_start, sample_window_end, cpu_percent, memory_percent"
+    },
+    {
+      "section_id": "metrics#reporting",
+      "heading_level": 2,
+      "heading": "Reporting and Review Schedule",
+      "path": "Operational Metrics and Reporting > Reporting and Review Schedule",
+      "raw_markdown": "| Frequency | Report Type | Recipients | Description |\n|------------|-------------|-------------|--------------|\n| Daily | Quick Status Summary | Operations, Engineering | Automated dashboard showing call volume, uptime, and issues. |\n| Weekly | Metrics Digest | Product, Leadership | Aggregated KPI trends and anomalies. |\n| Monthly | Performance Review | Exec Team | Strategic insights, conversion data, and cost efficiency updates. |\n| Quarterly | SLA and Compliance Review | Compliance, Security | Audit of uptime, retention, and safety adherence. |\n| Annually | System Benchmarking | All Departments | Evaluate progress toward reliability and performance targets. |\n\nOperational notes\n- Daily Quick Status includes evidence counters for recap_delivery_rate and failover_success_rate.\n- Weekly Metrics Digest highlights variance from prior week and lists top 3 failure modes by frequency."
+    },
+    {
+      "section_id": "metrics#log_to_kpi_mapping",
+      "heading_level": 2,
+      "heading": "Log to KPI Field Mapping",
+      "path": "Operational Metrics and Reporting > Log to KPI Field Mapping",
+      "raw_markdown": "| Metric | Required Events | Required Fields | Calculation Note |\n|--------|------------------|-----------------|------------------|\n| Failover Success Rate | transfer_attempt, transfer_result | call_id, transfer_attempt_order, targets_attempted, outcome_code | successful_failovers / failover_attempts |\n| Recap Delivery Rate | recap_dispatch | recap_message_id, delivery_status | successful_recaps / total_calls |\n| Booking Conversion Rate | booking_created | contact_id, estimate_id, booked_event_id | booked_estimates / total_estimates |\n| CRM Writeback Success Rate | crm_write_attempt | request_id, http_status_code, crm_object_type | successful_writes / total_writes |\n| Average Call Latency | call_started, first_agent_response | call_id, timestamp_start, first_agent_response_timestamp | average(first_agent_response_timestamp - timestamp_start) |"
+    }
+  ]
+}

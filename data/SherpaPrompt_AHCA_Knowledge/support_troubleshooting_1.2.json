@@ -1,0 +1,788 @@
+{
+  "doc_id": "support_troubleshooting",
+  "title": "Support and Troubleshooting",
+  "source_path": "Support and Troubleshooting > 10. Quick Reference Checklists",
+  "source_type": "kb",
+  "precedence_rank": 1,
+  "version": "7b2977d2637a",
+  "last_modified": "2025-10-09T18:53:18.058492+00:00",
+  "product_area": [
+    "call_service",
+    "transcript_service",
+    "voice_to_estimate",
+    "app"
+  ],
+  "access_tags": [
+    "internal"
+  ],
+  "security_notes": "On-call policies referenced; no contact details included.",
+  "sections": [
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting",
+      "heading_level": 1,
+      "heading": "Support and Troubleshooting",
+      "path": "Support and Troubleshooting",
+      "raw_markdown": "Purpose\nProvide fast, accurate resolution paths for the four SherpaPrompt areas of capability. Focus on reproducible steps, clear ownership, and minimal handoffs. This document is written for both internal staff and clients.\n\nScope\n\n1. Call Service Automation\n2. Transcript to Task Integration\n3. Voice to Estimate Web App\n4. SherpaPrompt App for Prompt Orchestration\n\nConventions\n\n* "Agent" refers to the caller-facing assistant persona. Our internal persona is Scout. Clients may use their own persona.\n* "Client systems" refers to the CRM, calendar, estimating platform, project manager, or document store used by the client.\n* Keep logs, IDs, and timestamps for every action taken.\n* Always verify fixes with a concrete test case before closing.\n* For evidence fields and status definitions, cross-reference the Logging & Safety policy.\n\n---",
+      "normalized_text": "H1: Support and Troubleshooting\n\nPurpose\nProvide fast, accurate resolution paths for the four SherpaPrompt areas of capability. Focus on reproducible steps, clear ownership, and minimal handoffs. This document is written for both internal staff and clients.\n\nScope\n\n1. Call Service Automation\n2. Transcript to Task Integration\n3. Voice to Estimate Web App\n4. SherpaPrompt App for Prompt Orchestration\n\nConventions\n- "Agent" refers to the caller-facing assistant persona. Our internal persona is Scout. Clients may use their own persona.\n- "Client systems" refers to the CRM, calendar, estimating platform, project manager, or document store used by the client.\n- Keep logs, IDs, and timestamps for every action taken.\n- Always verify fixes with a concrete test case before closing.\n- For evidence fields and status definitions, cross-reference the Logging & Safety policy.\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting::0",
+          "embedding_input": "H1: Support and Troubleshooting\n\nPurpose\nProvide fast, accurate resolution paths for the four SherpaPrompt areas of capability. Focus on reproducible steps, clear ownership, and minimal handoffs. This document is written for both internal staff and clients.\n\nScope\n\n1. Call Service Automation\n2. Transcript to Task Integration\n3. Voice to Estimate Web App\n4. SherpaPrompt App for Prompt Orchestration\n\nConventions\n- "Agent" refers to the caller-facing assistant persona. Our internal persona is Scout. Clients may use their own persona.\n- "Client systems" refers to the CRM, calendar, estimating platform, project manager, or document store used by the client.\n- Keep logs, IDs, and timestamps for every action taken.\n- Always verify fixes with a concrete test case before closing.\n- For evidence fields and status definitions, cross-reference the Logging & Safety policy.\n\n---",
+          "token_estimate": 135,
+          "overlap_with_prev": 0,
+          "qa_shape": "procedure",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_0_first_response_playbook",
+      "heading_level": 2,
+      "heading": "0. First Response Playbook",
+      "path": "Support and Troubleshooting > 0. First Response Playbook",
+      "raw_markdown": "Triage questions\n\n1. What was the user trying to do and what happened instead\n2. When did it occur, and is it reproducible\n3. Which systems are involved and which accounts were used\n4. What error message or behavior was observed\n5. Did this ever work before or is this a first-time setup\n\nSeverity\n\n* Sev 1: Production outage, emergency routing failure, data loss, repeated failed transfers\n* Sev 2: Critical feature blocked without workaround, sync failures affecting many users\n* Sev 3: Single user issues, intermittent behavior, minor defects\n* Sev 4: How-to questions, requests for configuration changes\n\nEvidence to collect\n\n* Exact time window and timezone\n* Caller or user identifiers (phone, email, CRM ID)\n* Platform trace: request ID, transcript snippet, API status codes\n* Screenshots or short screen recording if UI involved\n* Message identifiers for any SMS or summary email sent during the session\n* Evidence bundle fields when applicable: call_id, transfer attempt order, and final outcome\n\n---",
+      "normalized_text": "H2: 0. First Response Playbook\n\nTriage questions\n\n1. What was the user trying to do and what happened instead\n2. When did it occur, and is it reproducible\n3. Which systems are involved and which accounts were used\n4. What error message or behavior was observed\n5. Did this ever work before or is this a first-time setup\n\nSeverity\n- Sev 1: Production outage, emergency routing failure, data loss, repeated failed transfers\n- Sev 2: Critical feature blocked without workaround, sync failures affecting many users\n- Sev 3: Single user issues, intermittent behavior, minor defects\n- Sev 4: How-to questions, requests for configuration changes\n\nEvidence to collect\n- Exact time window and timezone\n- Caller or user identifiers (phone, email, CRM ID)\n- Platform trace: request ID, transcript snippet, API status codes\n- Screenshots or short screen recording if UI involved\n- Message identifiers for any SMS or summary email sent during the session\n- Evidence bundle fields when applicable: call_id, transfer attempt order, and final outcome\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_0_first_response_playbook::0",
+          "embedding_input": "H2: 0. First Response Playbook\n\nTriage questions\n\n1. What was the user trying to do and what happened instead\n2. When did it occur, and is it reproducible\n3. Which systems are involved and which accounts were used\n4. What error message or behavior was observed\n5. Did this ever work before or is this a first-time setup\n\nSeverity\n- Sev 1: Production outage, emergency routing failure, data loss, repeated failed transfers\n- Sev 2: Critical feature blocked without workaround, sync failures affecting many users\n- Sev 3: Single user issues, intermittent behavior, minor defects\n- Sev 4: How-to questions, requests for configuration changes\n\nEvidence to collect\n- Exact time window and timezone\n- Caller or user identifiers (phone, email, CRM ID)\n- Platform trace: request ID, transcript snippet, API status codes\n- Screenshots or short screen recording if UI involved\n- Message identifiers for any SMS or summary email sent during the session\n- Evidence bundle fields when applicable: call_id, transfer attempt order, and final outcome\n\n---",
+          "token_estimate": 170,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_0_first_response_playbook",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_1_call_service_automation",
+      "heading_level": 2,
+      "heading": "1. Call Service Automation",
+      "path": "Support and Troubleshooting > 1. Call Service Automation",
+      "raw_markdown": "The agent answers questions, advances sales, provides basic technical support, reads the CRM for personalization, updates client systems, schedules calendar items, and forwards emergencies to humans on call.",
+      "normalized_text": "H2: 1. Call Service Automation\n\nThe agent answers questions, advances sales, provides basic technical support, reads the CRM for personalization, updates client systems, schedules calendar items, and forwards emergencies to humans on call.",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_1_call_service_automation::0",
+          "embedding_input": "H2: 1. Call Service Automation\n\nThe agent answers questions, advances sales, provides basic technical support, reads the CRM for personalization, updates client systems, schedules calendar items, and forwards emergencies to humans on call.",
+          "token_estimate": 33,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_1_call_service_automation",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_1_call_service_automation_1_1_common_issues_and_fixes",
+      "heading_level": 3,
+      "heading": "1.1 Common Issues and Fixes",
+      "path": "Support and Troubleshooting > 1. Call Service Automation > 1.1 Common Issues and Fixes",
+      "raw_markdown": "A. Agent does not recognize a returning caller\nSymptoms\n\n* Agent fails to greet by name or find history\n  Likely causes\n* Caller ID mismatch, CRM contact duplication, stale cache\n  Quick checks\n* Confirm phone number formatting in CRM\n* Verify CRM connector credentials and scopes\n* Check last successful CRM read in logs\n  Resolution\n\n1. Reindex contacts or enable fuzzy match on phone and email.\n2. Deduplicate contact records in CRM.\n3. Clear agent cache and retest with the same number.\n   Verification\n\n* Test call from known number. Confirm personalized greeting and correct record linkage.\n\nB. CRM writebacks fail\nSymptoms\n\n* Notes, leads, or cases are missing\n  Likely causes\n* Expired OAuth token, insufficient scopes, object mapping mismatch\n  Quick checks\n* Check connector status. Review recent API failures in logs.\n* Confirm required fields and object types in CRM\n  Resolution\n\n1. Re-authenticate connector and grant required scopes.\n2. Map fields explicitly for lead, contact, case, and note objects.\n3. Retry writeback with a minimal payload.\n   Verification\n\n* Create a test note from a call summary and locate it in CRM.\n* Log fields captured: request_id, HTTP status code, and timestamp.\n\nC. Calendar scheduling does not place events\nSymptoms\n\n* No event created or wrong calendar used\n  Likely causes\n* Calendar permission not granted, organizer mismatch, invalid timezone\n  Quick checks\n* Check which calendar the agent is writing to\n* Verify organizer account and time zone configuration\n  Resolution\n\n1. Reconnect Microsoft 365 or Google Calendar with write permissions.\n2. Align agent default timezone with organization setting.\n3. Confirm organizer mapping for team events.\n   Verification\n\n* Book a 15-minute test event and confirm invite delivery.\n* Confirm end time defaults to start + 1 hour and timezone is correct.\n\nD. Emergency calls not forwarding to human\nSymptoms\n\n* Agent acknowledges emergency but no live transfer\n  Likely causes\n* On-call roster misconfigured, phone number invalid, call bridge failure\n  Quick checks\n* Inspect on-call rotation list and target numbers\n* Verify outbound call capability and carrier status\n* Confirm 20-second timeout and single attempt per destination are configured\n  Resolution\n\n1. Update on-call roster and test each destination.\n2. Configure backup destination and timeouts.\n3. Enable failover SMS with callback link and summary email fallback.\n   Verification\n\n* Run an emergency simulation and confirm warm transfer.\n* Evidence bundle includes: call_id, transfer attempt order, SMS message_id, summary email message_id, and final outcome.\n\nE. Agent gives incomplete product or support answers\nSymptoms\n\n* Vague responses, missed details\n  Likely causes\n* Knowledge base gaps, stale documents, disabled sources\n  Quick checks\n* Confirm the KB node for the topic exists and is tagged\n* Check retrieval logs for zero-hit queries\n  Resolution\n\n1. Add or update the relevant KB article.\n2. Tag with intent and persona labels.\n3. Rebuild retrieval index.\n   Verification\n\n* Ask the original question and confirm improved answer quality.\n\n---",
+      "normalized_text": "H3: 1.1 Common Issues and Fixes\n\nA. Agent does not recognize a returning caller\nSymptoms\n- Agent fails to greet by name or find history\n  Likely causes\n- Caller ID mismatch, CRM contact duplication, stale cache\n  Quick checks\n- Confirm phone number formatting in CRM\n- Verify CRM connector credentials and scopes\n- Check last successful CRM read in logs\n  Resolution\n\n1. Reindex contacts or enable fuzzy match on phone and email.\n2. Deduplicate contact records in CRM.\n3. Clear agent cache and retest with the same number.\n   Verification\n- Test call from known number. Confirm personalized greeting and correct record linkage.\n\nB. CRM writebacks fail\nSymptoms\n- Notes, leads, or cases are missing\n  Likely causes\n- Expired OAuth token, insufficient scopes, object mapping mismatch\n  Quick checks\n- Check connector status. Review recent API failures in logs.\n- Confirm required fields and object types in CRM\n  Resolution\n\n1. Re-authenticate connector and grant required scopes.\n2. Map fields explicitly for lead, contact, case, and note objects.\n3. Retry writeback with a minimal payload.\n   Verification\n- Create a test note from a call summary and locate it in CRM.\n- Log fields captured: request_id, HTTP status code, and timestamp.\n\nC. Calendar scheduling does not place events\nSymptoms\n- No event created or wrong calendar used\n  Likely causes\n- Calendar permission not granted, organizer mismatch, invalid timezone\n  Quick checks\n- Check which calendar the agent is writing to\n- Verify organizer account and time zone configuration\n  Resolution\n\n1. Reconnect Microsoft 365 or Google Calendar with write permissions.\n2. Align agent default timezone with organization setting.\n3. Confirm organizer mapping for team events.\n   Verification\n- Book a 15-minute test event and confirm invite delivery.\n- Confirm end time defaults to start + 1 hour and timezone is correct.\n\nD. Emergency calls not forwarding to human\nSymptoms\n- Agent acknowledges emergency but no live transfer\n  Likely causes\n- On-call roster misconfigured, phone number invalid, call bridge failure\n  Quick checks\n- Inspect on-call rotation list and target numbers\n- Verify outbound call capability and carrier status\n- Confirm 20-second timeout and single attempt per destination are configured\n  Resolution\n\n1. Update on-call roster and test each destination.\n2. Configure backup destination and timeouts.\n3. Enable failover SMS with callback link and summary email fallback.\n   Verification\n- Run an emergency simulation and confirm warm transfer.\n- Evidence bundle includes: call_id, transfer attempt order, SMS message_id, summary email message_id, and final outcome.\n\nE. Agent gives incomplete product or support answers\nSymptoms\n- Vague responses, missed details\n  Likely causes\n- Knowledge base gaps, stale documents, disabled sources\n  Quick checks\n- Confirm the KB node for the topic exists and is tagged\n- Check retrieval logs for zero-hit queries\n  Resolution\n\n1. Add or update the relevant KB article.\n2. Tag with intent and persona labels.\n3. Rebuild retrieval index.\n   Verification\n- Ask the original question and confirm improved answer quality.\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_1_call_service_automation_1_1_common_issues_and_fixes::0",
+          "embedding_input": "H3: 1.1 Common Issues and Fixes\n\nA. Agent does not recognize a returning caller\nSymptoms\n- Agent fails to greet by name or find history\n  Likely causes\n- Caller ID mismatch, CRM contact duplication, stale cache\n  Quick checks\n- Confirm phone number formatting in CRM\n- Verify CRM connector credentials and scopes\n- Check last successful CRM read in logs\n  Resolution\n\n1. Reindex contacts or enable fuzzy match on phone and email.\n2. Deduplicate contact records in CRM.\n3. Clear agent cache and retest with the same number.\n   Verification\n- Test call from known number. Confirm personalized greeting and correct record linkage.\n\nB. CRM writebacks fail\nSymptoms\n- Notes, leads, or cases are missing\n  Likely causes\n- Expired OAuth token, insufficient scopes, object mapping mismatch\n  Quick checks\n- Check connector status. Review recent API failures in logs.\n- Confirm required fields and object types in CRM\n  Resolution\n\n1. Re-authenticate connector and grant required scopes.\n2. Map fields explicitly for lead, contact, case, and note objects.\n3. Retry writeback with a minimal payload.\n   Verification\n- Create a test note from a call summary and locate it in CRM.\n- Log fields captured: request_id, HTTP status code, and timestamp.\n\nC. Calendar scheduling does not place events\nSymptoms\n- No event created or wrong calendar used\n  Likely causes\n- Calendar permission not granted, organizer mismatch, invalid timezone\n  Quick checks\n- Check which calendar the agent is writing to\n- Verify organizer account and time zone configuration\n  Resolution\n\n1. Reconnect Microsoft 365 or Google Calendar with write permissions.\n2. Align agent default timezone with organization setting.\n3. Confirm organizer mapping for team events.\n   Verification\n- Book a 15-minute test event and confirm invite delivery.\n- Confirm end time defaults to start + 1 hour and timezone is correct.\n\nD. Emergency calls not forwarding to human\nSymptoms\n- Agent acknowledges emergency but no live transfer\n  Likely causes\n- On-call roster misconfigured, phone number invalid, call bridge failure\n  Quick checks\n- Inspect on-call rotation list and target numbers\n- Verify outbound call capability and carrier status\n- Confirm 20-second timeout and single attempt per destination are configured\n  Resolution\n\n1. Update on-call roster and test each destination.\n2. Configure backup destination and timeouts.\n3. Enable failover SMS with callback link and summary email fallback.\n   Verification\n- Run an emergency simulation and confirm warm transfer.\n- Evidence bundle includes: call_id, transfer attempt order, SMS message_id, summary email message_id, and final outcome.\n\nE. Agent gives incomplete product or support answers\nSymptoms\n- Vague responses, missed details\n  Likely causes\n- Knowledge base gaps, stale documents, disabled sources\n  Quick checks\n- Confirm the KB node for the topic exists and is tagged\n- Check retrieval logs for zero-hit queries\n  Resolution\n\n1. Add or update the relevant KB article.\n2. Tag with intent and persona labels.\n3. Rebuild retrieval index.\n   Verification\n- Ask the original question and confirm improved answer quality.\n\n---",
+          "token_estimate": 490,
+          "overlap_with_prev": 0,
+          "qa_shape": "procedure",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_1_call_service_automation_1_1_common_issues_and_fixes",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_2_transcript_to_task_integration",
+      "heading_level": 2,
+      "heading": "2. Transcript to Task Integration",
+      "path": "Support and Troubleshooting > 2. Transcript to Task Integration",
+      "raw_markdown": "We can transcribe new audio or import existing transcripts, extract tasks and decisions, allow users to chat with their transcripts, and write tasks to client project managers or CRMs.",
+      "normalized_text": "H2: 2. Transcript to Task Integration\n\nWe can transcribe new audio or import existing transcripts, extract tasks and decisions, allow users to chat with their transcripts, and write tasks to client project managers or CRMs.",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_2_transcript_to_task_integration::0",
+          "embedding_input": "H2: 2. Transcript to Task Integration\n\nWe can transcribe new audio or import existing transcripts, extract tasks and decisions, allow users to chat with their transcripts, and write tasks to client project managers or CRMs.",
+          "token_estimate": 35,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_2_transcript_to_task_integration",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_2_transcript_to_task_integration_2_1_common_issues_and_fixes",
+      "heading_level": 3,
+      "heading": "2.1 Common Issues and Fixes",
+      "path": "Support and Troubleshooting > 2. Transcript to Task Integration > 2.1 Common Issues and Fixes",
+      "raw_markdown": "A. Transcripts missing or empty after import\nSymptoms\n\n* File appears but has no content\n  Likely causes\n* Unsupported format, permission denied, failed fetch from source\n  Quick checks\n* Confirm source location and access rights\n* Validate file type and encoding\n  Resolution\n\n1. Re-ingest from the source with proper credentials.\n2. Convert file to a supported format and retry.\n3. For external providers, use their export API rather than UI download if available.\n   Verification\n\n* Open transcript preview and confirm content and speaker markers.\n\nB. Tasks not created in the project manager\nSymptoms\n\n* Summary exists but no tasks in Asana, ClickUp, or Monday\n  Likely causes\n* API scopes missing, project mapping not set, rate limits\n  Quick checks\n* Review connector status and recent writebacks\n* Verify target project or board mapping\n  Resolution\n\n1. Re-authorize connector with create permissions.\n2. Set default project per team.\n3. Implement backoff and retry for rate-limited calls.\n   Verification\n\n* Create a sample task from transcript and confirm in target board.\n\nC. "Chat with transcript" returns irrelevant answers\nSymptoms\n\n* Model references wrong section or external info\n  Likely causes\n* Missing transcript tags, poor chunking, outdated index\n  Quick checks\n* View transcript tags and chunk sizes\n* Inspect retrieval hits for the question\n  Resolution\n\n1. Re-chunk transcript with time-aligned segments and speaker labels.\n2. Add tags for agenda items, decisions, owners, and deadlines.\n3. Rebuild the index and retry the query.\n   Verification\n\n* Ask the same question and confirm citations to the correct section.\n\nD. Owner assignment is incorrect\nSymptoms\n\n* Tasks assigned to the wrong person or unassigned\n  Likely causes\n* Directory mismatch, nickname vs legal name, email alias issues\n  Quick checks\n* Compare participant list to directory and PM tool users\n  Resolution\n\n1. Normalize names to primary email identity.\n2. Map nicknames and common aliases.\n3. Require explicit owner confirmation when confidence is low.\n   Verification\n\n* Re-run assignment on a sample transcript and confirm owners.\n\n---",
+      "normalized_text": "H3: 2.1 Common Issues and Fixes\n\nA. Transcripts missing or empty after import\nSymptoms\n- File appears but has no content\n  Likely causes\n- Unsupported format, permission denied, failed fetch from source\n  Quick checks\n- Confirm source location and access rights\n- Validate file type and encoding\n  Resolution\n\n1. Re-ingest from the source with proper credentials.\n2. Convert file to a supported format and retry.\n3. For external providers, use their export API rather than UI download if available.\n   Verification\n- Open transcript preview and confirm content and speaker markers.\n\nB. Tasks not created in the project manager\nSymptoms\n- Summary exists but no tasks in Asana, ClickUp, or Monday\n  Likely causes\n- API scopes missing, project mapping not set, rate limits\n  Quick checks\n- Review connector status and recent writebacks\n- Verify target project or board mapping\n  Resolution\n\n1. Re-authorize connector with create permissions.\n2. Set default project per team.\n3. Implement backoff and retry for rate-limited calls.\n   Verification\n- Create a sample task from transcript and confirm in target board.\n\nC. "Chat with transcript" returns irrelevant answers\nSymptoms\n- Model references wrong section or external info\n  Likely causes\n- Missing transcript tags, poor chunking, outdated index\n  Quick checks\n- View transcript tags and chunk sizes\n- Inspect retrieval hits for the question\n  Resolution\n\n1. Re-chunk transcript with time-aligned segments and speaker labels.\n2. Add tags for agenda items, decisions, owners, and deadlines.\n3. Rebuild the index and retry the query.\n   Verification\n- Ask the same question and confirm citations to the correct section.\n\nD. Owner assignment is incorrect\nSymptoms\n- Tasks assigned to the wrong person or unassigned\n  Likely causes\n- Directory mismatch, nickname vs legal name, email alias issues\n  Quick checks\n- Compare participant list to directory and PM tool users\n  Resolution\n\n1. Normalize names to primary email identity.\n2. Map nicknames and common aliases.\n3. Require explicit owner confirmation when confidence is low.\n   Verification\n- Re-run assignment on a sample transcript and confirm owners.\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_2_transcript_to_task_integration_2_1_common_issues_and_fixes::0",
+          "embedding_input": "H3: 2.1 Common Issues and Fixes\n\nA. Transcripts missing or empty after import\nSymptoms\n- File appears but has no content\n  Likely causes\n- Unsupported format, permission denied, failed fetch from source\n  Quick checks\n- Confirm source location and access rights\n- Validate file type and encoding\n  Resolution\n\n1. Re-ingest from the source with proper credentials.\n2. Convert file to a supported format and retry.\n3. For external providers, use their export API rather than UI download if available.\n   Verification\n- Open transcript preview and confirm content and speaker markers.\n\nB. Tasks not created in the project manager\nSymptoms\n- Summary exists but no tasks in Asana, ClickUp, or Monday\n  Likely causes\n- API scopes missing, project mapping not set, rate limits\n  Quick checks\n- Review connector status and recent writebacks\n- Verify target project or board mapping\n  Resolution\n\n1. Re-authorize connector with create permissions.\n2. Set default project per team.\n3. Implement backoff and retry for rate-limited calls.\n   Verification\n- Create a sample task from transcript and confirm in target board.\n\nC. "Chat with transcript" returns irrelevant answers\nSymptoms\n- Model references wrong section or external info\n  Likely causes\n- Missing transcript tags, poor chunking, outdated index\n  Quick checks\n- View transcript tags and chunk sizes\n- Inspect retrieval hits for the question\n  Resolution\n\n1. Re-chunk transcript with time-aligned segments and speaker labels.\n2. Add tags for agenda items, decisions, owners, and deadlines.\n3. Rebuild the index and retry the query.\n   Verification\n- Ask the same question and confirm citations to the correct section.\n\nD. Owner assignment is incorrect\nSymptoms\n- Tasks assigned to the wrong person or unassigned\n  Likely causes\n- Directory mismatch, nickname vs legal name, email alias issues\n  Quick checks\n- Compare participant list to directory and PM tool users\n  Resolution\n\n1. Normalize names to primary email identity.\n2. Map nicknames and common aliases.\n3. Require explicit owner confirmation when confidence is low.\n   Verification\n- Re-run assignment on a sample transcript and confirm owners.\n\n---",
+          "token_estimate": 329,
+          "overlap_with_prev": 0,
+          "qa_shape": "procedure",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_2_transcript_to_task_integration_2_1_common_issues_and_fixes",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app",
+      "heading_level": 2,
+      "heading": "3. Voice to Estimate Web App",
+      "path": "Support and Troubleshooting > 3. Voice to Estimate Web App",
+      "raw_markdown": "Browser-based, hands-free workflow for field estimating. Optimized for Bluetooth headsets. Pulls pricing from the client's database or estimating platform and can create estimates directly in that platform.",
+      "normalized_text": "H2: 3. Voice to Estimate Web App\n\nBrowser-based, hands-free workflow for field estimating. Optimized for Bluetooth headsets. Pulls pricing from the client's database or estimating platform and can create estimates directly in that platform.",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app::0",
+          "embedding_input": "H2: 3. Voice to Estimate Web App\n\nBrowser-based, hands-free workflow for field estimating. Optimized for Bluetooth headsets. Pulls pricing from the client's database or estimating platform and can create estimates directly in that platform.",
+          "token_estimate": 34,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app_3_1_setup_checklist",
+      "heading_level": 3,
+      "heading": "3.1 Setup Checklist",
+      "path": "Support and Troubleshooting > 3. Voice to Estimate Web App > 3.1 Setup Checklist",
+      "raw_markdown": "* Verify browser permissions for microphone.\n* Pair and test Bluetooth headset with mic.\n* Confirm pricing source: database, spreadsheet, or platform API.\n* Map materials, labor categories, units, and taxes.\n* Configure target platform for estimate creation and status updates.",
+      "normalized_text": "H3: 3.1 Setup Checklist\n- Verify browser permissions for microphone.\n- Pair and test Bluetooth headset with mic.\n- Confirm pricing source: database, spreadsheet, or platform API.\n- Map materials, labor categories, units, and taxes.\n- Configure target platform for estimate creation and status updates.",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app_3_1_setup_checklist::0",
+          "embedding_input": "H3: 3.1 Setup Checklist\n- Verify browser permissions for microphone.\n- Pair and test Bluetooth headset with mic.\n- Confirm pricing source: database, spreadsheet, or platform API.\n- Map materials, labor categories, units, and taxes.\n- Configure target platform for estimate creation and status updates.",
+          "token_estimate": 45,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app_3_1_setup_checklist",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app_3_2_common_issues_and_fixes",
+      "heading_level": 3,
+      "heading": "3.2 Common Issues and Fixes",
+      "path": "Support and Troubleshooting > 3. Voice to Estimate Web App > 3.2 Common Issues and Fixes",
+      "raw_markdown": "A. Speech not captured or intermittent\nSymptoms\n\n* No transcription, gaps in text\n  Likely causes\n* Browser mic permission denied, headset not selected, low battery\n  Quick checks\n* Check browser permissions and audio input selection\n* Test headset in an audio recorder\n  Resolution\n\n1. Select the Bluetooth mic explicitly in the app.\n2. Replace or recharge headset.\n3. Reduce background noise and wind.\n   Verification\n\n* Speak a short materials list and confirm live text.\n\nB. Materials not recognized or misclassified\nSymptoms\n\n* Wrong category, missing SKU\n  Likely causes\n* Vocabulary gap, SKU mapping not loaded\n  Quick checks\n* Inspect materials dictionary and mapping table\n  Resolution\n\n1. Add synonyms and common trade terms.\n2. Map SKUs to canonical names and units.\n3. Re-run classification and confirm category.\n   Verification\n\n* Dictate the same item and confirm correct line item.\n\nC. Pricing incorrect or missing\nSymptoms\n\n* Zero price or outdated totals\n  Likely causes\n* Stale price source, wrong units, API failure\n  Quick checks\n* Verify last price sync time and unit conversions\n* Review API status and credentials\n  Resolution\n\n1. Refresh price source or switch to fallback sheet.\n2. Fix unit conversions and taxes.\n3. Retry pricing with a single item to isolate the issue.\n   Verification\n\n* Compare app total to platform total for a known job.\n\nD. Estimate not created in the client platform\nSymptoms\n\n* Draft exists in app but not in Jobber, ServiceTitan, or QuickBooks\n  Likely causes\n* Missing scopes, object type mismatch, duplicate prevention\n  Quick checks\n* Review platform connector and required fields\n* Inspect logs for object creation errors\n  Resolution\n\n1. Re-authenticate and grant create permissions for estimates or quotes.\n2. Map required fields such as customer, site address, and currency.\n3. Disable duplicate suppression for the test job or change reference number.\n   Verification\n\n* Create a test estimate and confirm it appears in the platform.\n\n---",
+      "normalized_text": "H3: 3.2 Common Issues and Fixes\n\nA. Speech not captured or intermittent\nSymptoms\n- No transcription, gaps in text\n  Likely causes\n- Browser mic permission denied, headset not selected, low battery\n  Quick checks\n- Check browser permissions and audio input selection\n- Test headset in an audio recorder\n  Resolution\n\n1. Select the Bluetooth mic explicitly in the app.\n2. Replace or recharge headset.\n3. Reduce background noise and wind.\n   Verification\n- Speak a short materials list and confirm live text.\n\nB. Materials not recognized or misclassified\nSymptoms\n- Wrong category, missing SKU\n  Likely causes\n- Vocabulary gap, SKU mapping not loaded\n  Quick checks\n- Inspect materials dictionary and mapping table\n  Resolution\n\n1. Add synonyms and common trade terms.\n2. Map SKUs to canonical names and units.\n3. Re-run classification and confirm category.\n   Verification\n- Dictate the same item and confirm correct line item.\n\nC. Pricing incorrect or missing\nSymptoms\n- Zero price or outdated totals\n  Likely causes\n- Stale price source, wrong units, API failure\n  Quick checks\n- Verify last price sync time and unit conversions\n- Review API status and credentials\n  Resolution\n\n1. Refresh price source or switch to fallback sheet.\n2. Fix unit conversions and taxes.\n3. Retry pricing with a single item to isolate the issue.\n   Verification\n- Compare app total to platform total for a known job.\n\nD. Estimate not created in the client platform\nSymptoms\n- Draft exists in app but not in Jobber, ServiceTitan, or QuickBooks\n  Likely causes\n- Missing scopes, object type mismatch, duplicate prevention\n  Quick checks\n- Review platform connector and required fields\n- Inspect logs for object creation errors\n  Resolution\n\n1. Re-authenticate and grant create permissions for estimates or quotes.\n2. Map required fields such as customer, site address, and currency.\n3. Disable duplicate suppression for the test job or change reference number.\n   Verification\n- Create a test estimate and confirm it appears in the platform.\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app_3_2_common_issues_and_fixes::0",
+          "embedding_input": "H3: 3.2 Common Issues and Fixes\n\nA. Speech not captured or intermittent\nSymptoms\n- No transcription, gaps in text\n  Likely causes\n- Browser mic permission denied, headset not selected, low battery\n  Quick checks\n- Check browser permissions and audio input selection\n- Test headset in an audio recorder\n  Resolution\n\n1. Select the Bluetooth mic explicitly in the app.\n2. Replace or recharge headset.\n3. Reduce background noise and wind.\n   Verification\n- Speak a short materials list and confirm live text.\n\nB. Materials not recognized or misclassified\nSymptoms\n- Wrong category, missing SKU\n  Likely causes\n- Vocabulary gap, SKU mapping not loaded\n  Quick checks\n- Inspect materials dictionary and mapping table\n  Resolution\n\n1. Add synonyms and common trade terms.\n2. Map SKUs to canonical names and units.\n3. Re-run classification and confirm category.\n   Verification\n- Dictate the same item and confirm correct line item.\n\nC. Pricing incorrect or missing\nSymptoms\n- Zero price or outdated totals\n  Likely causes\n- Stale price source, wrong units, API failure\n  Quick checks\n- Verify last price sync time and unit conversions\n- Review API status and credentials\n  Resolution\n\n1. Refresh price source or switch to fallback sheet.\n2. Fix unit conversions and taxes.\n3. Retry pricing with a single item to isolate the issue.\n   Verification\n- Compare app total to platform total for a known job.\n\nD. Estimate not created in the client platform\nSymptoms\n- Draft exists in app but not in Jobber, ServiceTitan, or QuickBooks\n  Likely causes\n- Missing scopes, object type mismatch, duplicate prevention\n  Quick checks\n- Review platform connector and required fields\n- Inspect logs for object creation errors\n  Resolution\n\n1. Re-authenticate and grant create permissions for estimates or quotes.\n2. Map required fields such as customer, site address, and currency.\n3. Disable duplicate suppression for the test job or change reference number.\n   Verification\n- Create a test estimate and confirm it appears in the platform.\n\n---",
+          "token_estimate": 316,
+          "overlap_with_prev": 0,
+          "qa_shape": "procedure",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_3_voice_to_estimate_web_app_3_2_common_issues_and_fixes",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_4_sherpaprompt_app_for_prompt_orchestration",
+      "heading_level": 2,
+      "heading": "4. SherpaPrompt App for Prompt Orchestration",
+      "path": "Support and Troubleshooting > 4. SherpaPrompt App for Prompt Orchestration",
+      "raw_markdown": "The app helps users produce correct first drafts with role-based prompting, objective precision, constraint enforcement, reasoning strategy selection, and snippet-level retrieval. Integrations include Google Drive, GitHub, OneDrive, and local directories.",
+      "normalized_text": "H2: 4. SherpaPrompt App for Prompt Orchestration\n\nThe app helps users produce correct first drafts with role-based prompting, objective precision, constraint enforcement, reasoning strategy selection, and snippet-level retrieval. Integrations include Google Drive, GitHub, OneDrive, and local directories.",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_4_sherpaprompt_app_for_prompt_orchestration::0",
+          "embedding_input": "H2: 4. SherpaPrompt App for Prompt Orchestration\n\nThe app helps users produce correct first drafts with role-based prompting, objective precision, constraint enforcement, reasoning strategy selection, and snippet-level retrieval. Integrations include Google Drive, GitHub, OneDrive, and local directories.",
+          "token_estimate": 37,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_4_sherpaprompt_app_for_prompt_orchestration",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_4_sherpaprompt_app_for_prompt_orchestration_4_1_common_issues_and_fixes",
+      "heading_level": 3,
+      "heading": "4.1 Common Issues and Fixes",
+      "path": "Support and Troubleshooting > 4. SherpaPrompt App for Prompt Orchestration > 4.1 Common Issues and Fixes",
+      "raw_markdown": "A. Retrieval brings irrelevant or missing context\nSymptoms\n\n* Extra noise or absent key passages\n  Likely causes\n* Poor tagging, mis-scoped search, outdated index\n  Quick checks\n* Review included files and tags for the project\n* Inspect retrieval hits for the prompt objective\n  Resolution\n\n1. Tighten objective wording and constraints.\n2. Add or adjust tags and include only authoritative sources.\n3. Rebuild the index for updated files.\n   Verification\n\n* Re-generate the same draft and spot check citations.\n\nB. File access errors from storage providers\nSymptoms\n\n* Cannot read certain files or folders\n  Likely causes\n* Permission changes, moved folders, expired tokens\n  Quick checks\n* Confirm user access at the provider\n* Check connector auth status\n  Resolution\n\n1. Re-authenticate and request the smallest necessary scopes.\n2. Update folder paths or relink moved content.\n3. Retry with a single authoritative file to validate access.\n   Verification\n\n* Successfully retrieve snippets from the target file.\n\nC. Output violates constraints\nSymptoms\n\n* Over length, wrong format, missing compliance phrases\n  Likely causes\n* Conflicting constraints, weak enforcement in prompt\n  Quick checks\n* Review constraints for specificity and conflicts\n  Resolution\n\n1. Convert constraints to explicit, testable checks in the prompt.\n2. Place constraints before content instructions.\n3. Add a final validation step instructing the model to verify constraints.\n   Verification\n\n* Re-run with a short sample and confirm compliance.\n\n---",
+      "normalized_text": "H3: 4.1 Common Issues and Fixes\n\nA. Retrieval brings irrelevant or missing context\nSymptoms\n- Extra noise or absent key passages\n  Likely causes\n- Poor tagging, mis-scoped search, outdated index\n  Quick checks\n- Review included files and tags for the project\n- Inspect retrieval hits for the prompt objective\n  Resolution\n\n1. Tighten objective wording and constraints.\n2. Add or adjust tags and include only authoritative sources.\n3. Rebuild the index for updated files.\n   Verification\n- Re-generate the same draft and spot check citations.\n\nB. File access errors from storage providers\nSymptoms\n- Cannot read certain files or folders\n  Likely causes\n- Permission changes, moved folders, expired tokens\n  Quick checks\n- Confirm user access at the provider\n- Check connector auth status\n  Resolution\n\n1. Re-authenticate and request the smallest necessary scopes.\n2. Update folder paths or relink moved content.\n3. Retry with a single authoritative file to validate access.\n   Verification\n- Successfully retrieve snippets from the target file.\n\nC. Output violates constraints\nSymptoms\n- Over length, wrong format, missing compliance phrases\n  Likely causes\n- Conflicting constraints, weak enforcement in prompt\n  Quick checks\n- Review constraints for specificity and conflicts\n  Resolution\n\n1. Convert constraints to explicit, testable checks in the prompt.\n2. Place constraints before content instructions.\n3. Add a final validation step instructing the model to verify constraints.\n   Verification\n- Re-run with a short sample and confirm compliance.\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_4_sherpaprompt_app_for_prompt_orchestration_4_1_common_issues_and_fixes::0",
+          "embedding_input": "H3: 4.1 Common Issues and Fixes\n\nA. Retrieval brings irrelevant or missing context\nSymptoms\n- Extra noise or absent key passages\n  Likely causes\n- Poor tagging, mis-scoped search, outdated index\n  Quick checks\n- Review included files and tags for the project\n- Inspect retrieval hits for the prompt objective\n  Resolution\n\n1. Tighten objective wording and constraints.\n2. Add or adjust tags and include only authoritative sources.\n3. Rebuild the index for updated files.\n   Verification\n- Re-generate the same draft and spot check citations.\n\nB. File access errors from storage providers\nSymptoms\n- Cannot read certain files or folders\n  Likely causes\n- Permission changes, moved folders, expired tokens\n  Quick checks\n- Confirm user access at the provider\n- Check connector auth status\n  Resolution\n\n1. Re-authenticate and request the smallest necessary scopes.\n2. Update folder paths or relink moved content.\n3. Retry with a single authoritative file to validate access.\n   Verification\n- Successfully retrieve snippets from the target file.\n\nC. Output violates constraints\nSymptoms\n- Over length, wrong format, missing compliance phrases\n  Likely causes\n- Conflicting constraints, weak enforcement in prompt\n  Quick checks\n- Review constraints for specificity and conflicts\n  Resolution\n\n1. Convert constraints to explicit, testable checks in the prompt.\n2. Place constraints before content instructions.\n3. Add a final validation step instructing the model to verify constraints.\n   Verification\n- Re-run with a short sample and confirm compliance.\n\n---",
+          "token_estimate": 228,
+          "overlap_with_prev": 0,
+          "qa_shape": "procedure",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_4_sherpaprompt_app_for_prompt_orchestration_4_1_common_issues_and_fixes",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_5_diagnostics_and_logging",
+      "heading_level": 2,
+      "heading": "5. Diagnostics and Logging",
+      "path": "Support and Troubleshooting > 5. Diagnostics and Logging",
+      "raw_markdown": "Enable detailed logging during investigations\n\n* Correlate: call ID, user ID, CRM record ID, estimate ID, transcript ID\n* Capture: request and response timestamps, HTTP status codes, payload hashes\n* Redact PII in copies shared outside secure channels\n\nArtifacts to attach when escalating\n\n* Error message and stack or API status\n* Minimal reproducible steps\n* Configuration snapshot: connectors, scopes, target systems\n* Relevant transcript or call snippet with timestamps\n\n---",
+      "normalized_text": "H2: 5. Diagnostics and Logging\n\nEnable detailed logging during investigations\n- Correlate: call ID, user ID, CRM record ID, estimate ID, transcript ID\n- Capture: request and response timestamps, HTTP status codes, payload hashes\n- Redact PII in copies shared outside secure channels\n\nArtifacts to attach when escalating\n- Error message and stack or API status\n- Minimal reproducible steps\n- Configuration snapshot: connectors, scopes, target systems\n- Relevant transcript or call snippet with timestamps\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_5_diagnostics_and_logging::0",
+          "embedding_input": "H2: 5. Diagnostics and Logging\n\nEnable detailed logging during investigations\n- Correlate: call ID, user ID, CRM record ID, estimate ID, transcript ID\n- Capture: request and response timestamps, HTTP status codes, payload hashes\n- Redact PII in copies shared outside secure channels\n\nArtifacts to attach when escalating\n- Error message and stack or API status\n- Minimal reproducible steps\n- Configuration snapshot: connectors, scopes, target systems\n- Relevant transcript or call snippet with timestamps\n\n---",
+          "token_estimate": 76,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_5_diagnostics_and_logging",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_6_configuration_changes_and_safe_rollbacks",
+      "heading_level": 2,
+      "heading": "6. Configuration Changes and Safe Rollbacks",
+      "path": "Support and Troubleshooting > 6. Configuration Changes and Safe Rollbacks",
+      "raw_markdown": "When updating routing, mappings, or connectors\n\n1. Stage changes in a non-production tenant if available\n2. Export current configuration as a rollback point\n3. Apply change, run a scripted smoke test\n4. Monitor for 24 hours and review error rates\n\nRollback triggers\n\n* Sustained failure rate above baseline\n* Emergency routing test fails\n* CRM writebacks error out for multiple users\n\n---",
+      "normalized_text": "H2: 6. Configuration Changes and Safe Rollbacks\n\nWhen updating routing, mappings, or connectors\n\n1. Stage changes in a non-production tenant if available\n2. Export current configuration as a rollback point\n3. Apply change, run a scripted smoke test\n4. Monitor for 24 hours and review error rates\n\nRollback triggers\n- Sustained failure rate above baseline\n- Emergency routing test fails\n- CRM writebacks error out for multiple users\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_6_configuration_changes_and_safe_rollbacks::0",
+          "embedding_input": "H2: 6. Configuration Changes and Safe Rollbacks\n\nWhen updating routing, mappings, or connectors\n\n1. Stage changes in a non-production tenant if available\n2. Export current configuration as a rollback point\n3. Apply change, run a scripted smoke test\n4. Monitor for 24 hours and review error rates\n\nRollback triggers\n- Sustained failure rate above baseline\n- Emergency routing test fails\n- CRM writebacks error out for multiple users\n\n---",
+          "token_estimate": 69,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_6_configuration_changes_and_safe_rollbacks",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_7_test_scripts",
+      "heading_level": 2,
+      "heading": "7. Test Scripts",
+      "path": "Support and Troubleshooting > 7. Test Scripts",
+      "raw_markdown": "Call automation smoke test\n\n* New caller: create lead, log note, book demo, send recap\n* Returning caller: personalized greeting, append note to existing record\n* Emergency: transfer to on-call, capture summary\n\nTranscript to task smoke test\n\n* Import existing transcript, extract 3 tasks, assign owners, post to PM tool\n* Ask two questions in chat and verify citations to transcript sections\n\nVoice to estimate smoke test\n\n* Dictate three materials and one labor category with quantities\n* Verify price source, totals, and estimate creation inside the client platform\n\nApp retrieval smoke test\n\n* Connect storage, set objective and constraints, verify snippet citations from intended files\n\n---",
+      "normalized_text": "H2: 7. Test Scripts\n\nCall automation smoke test\n- New caller: create lead, log note, book demo, send recap\n- Returning caller: personalized greeting, append note to existing record\n- Emergency: transfer to on-call, capture summary\n\nTranscript to task smoke test\n- Import existing transcript, extract 3 tasks, assign owners, post to PM tool\n- Ask two questions in chat and verify citations to transcript sections\n\nVoice to estimate smoke test\n- Dictate three materials and one labor category with quantities\n- Verify price source, totals, and estimate creation inside the client platform\n\nApp retrieval smoke test\n- Connect storage, set objective and constraints, verify snippet citations from intended files\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_7_test_scripts::0",
+          "embedding_input": "H2: 7. Test Scripts\n\nCall automation smoke test\n- New caller: create lead, log note, book demo, send recap\n- Returning caller: personalized greeting, append note to existing record\n- Emergency: transfer to on-call, capture summary\n\nTranscript to task smoke test\n- Import existing transcript, extract 3 tasks, assign owners, post to PM tool\n- Ask two questions in chat and verify citations to transcript sections\n\nVoice to estimate smoke test\n- Dictate three materials and one labor category with quantities\n- Verify price source, totals, and estimate creation inside the client platform\n\nApp retrieval smoke test\n- Connect storage, set objective and constraints, verify snippet citations from intended files\n\n---",
+          "token_estimate": 111,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_7_test_scripts",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_8_when_to_escalate_to_a_human_immediately",
+      "heading_level": 2,
+      "heading": "8. When to Escalate to a Human Immediately",
+      "path": "Support and Troubleshooting > 8. When to Escalate to a Human Immediately",
+      "raw_markdown": "* Emergency or safety language from a caller\n* Financial impact from failed estimates or invoices\n* Repeated CRM or platform writeback failures\n* Data exposure risks or suspected account compromise\n\n---",
+      "normalized_text": "H2: 8. When to Escalate to a Human Immediately\n- Emergency or safety language from a caller\n- Financial impact from failed estimates or invoices\n- Repeated CRM or platform writeback failures\n- Data exposure risks or suspected account compromise\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_8_when_to_escalate_to_a_human_immediately::0",
+          "embedding_input": "H2: 8. When to Escalate to a Human Immediately\n- Emergency or safety language from a caller\n- Financial impact from failed estimates or invoices\n- Repeated CRM or platform writeback failures\n- Data exposure risks or suspected account compromise\n\n---",
+          "token_estimate": 41,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_8_when_to_escalate_to_a_human_immediately",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_9_contact_and_handover",
+      "heading_level": 2,
+      "heading": "9. Contact and Handover",
+      "path": "Support and Troubleshooting > 9. Contact and Handover",
+      "raw_markdown": "For clients\n\n* Provide a single contact channel for Sev 1 and Sev 2 incidents\n* Include recent change log and the last successful operation time when reporting\n\nFor internal handoffs\n\n* Attach evidence bundle and a one paragraph summary of hypothesis and attempted fixes\n* State the next verification step clearly\n\n---",
+      "normalized_text": "H2: 9. Contact and Handover\n\nFor clients\n- Provide a single contact channel for Sev 1 and Sev 2 incidents\n- Include recent change log and the last successful operation time when reporting\n\nFor internal handoffs\n- Attach evidence bundle and a one paragraph summary of hypothesis and attempted fixes\n- State the next verification step clearly\n\n---",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_9_contact_and_handover::0",
+          "embedding_input": "H2: 9. Contact and Handover\n\nFor clients\n- Provide a single contact channel for Sev 1 and Sev 2 incidents\n- Include recent change log and the last successful operation time when reporting\n\nFor internal handoffs\n- Attach evidence bundle and a one paragraph summary of hypothesis and attempted fixes\n- State the next verification step clearly\n\n---",
+          "token_estimate": 58,
+          "overlap_with_prev": 0,
+          "qa_shape": "procedure",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_9_contact_and_handover",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "support_troubleshooting#support_and_troubleshooting_10_quick_reference_checklists",
+      "heading_level": 2,
+      "heading": "10. Quick Reference Checklists",
+      "path": "Support and Troubleshooting > 10. Quick Reference Checklists",
+      "raw_markdown": "Connectivity\n\n* CRM connected with read and write scopes\n* Calendar can create events for the correct organizer\n* Estimating platform authorized for estimate creation\n* Storage connectors can read target folders\n\nData hygiene\n\n* Contacts deduplicated, consistent phone and email formats\n* Materials dictionary mapped to SKUs and units\n* Transcript tags present for decisions, owners, due dates\n\nSafety and escalation\n\n* On-call roster current and tested\n* Backup destination configured\n* Failover SMS or email enabled",
+      "normalized_text": "H2: 10. Quick Reference Checklists\n\nConnectivity\n- CRM connected with read and write scopes\n- Calendar can create events for the correct organizer\n- Estimating platform authorized for estimate creation\n- Storage connectors can read target folders\n\nData hygiene\n- Contacts deduplicated, consistent phone and email formats\n- Materials dictionary mapped to SKUs and units\n- Transcript tags present for decisions, owners, due dates\n\nSafety and escalation\n- On-call roster current and tested\n- Backup destination configured\n- Failover SMS or email enabled",
+      "labels": {
+        "intents": [
+          "support",
+          "emergency",
+          "scheduling"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": true
+      },
+      "chunks": [
+        {
+          "chunk_id": "support_troubleshooting#support_and_troubleshooting_10_quick_reference_checklists::0",
+          "embedding_input": "H2: 10. Quick Reference Checklists\n\nConnectivity\n- CRM connected with read and write scopes\n- Calendar can create events for the correct organizer\n- Estimating platform authorized for estimate creation\n- Storage connectors can read target folders\n\nData hygiene\n- Contacts deduplicated, consistent phone and email formats\n- Materials dictionary mapped to SKUs and units\n- Transcript tags present for decisions, owners, due dates\n\nSafety and escalation\n- On-call roster current and tested\n- Backup destination configured\n- Failover SMS or email enabled",
+          "token_estimate": 83,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "support_troubleshooting",
+            "section_id": "support_troubleshooting#support_and_troubleshooting_10_quick_reference_checklists",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    }
+  ],
+  "entities": {
+    "systems": [
+      "Asana",
+      "ClickUp",
+      "GitHub",
+      "Google Calendar",
+      "Jobber",
+      "Microsoft 365",
+      "OneDrive",
+      "QuickBooks",
+      "SMS",
+      "ServiceTitan"
+    ],
+    "personas": [
+      "Developers",
+      "Enterprise",
+      "Trades"
+    ]
+  }
+}

@@ -1,0 +1,336 @@
+{
+  "doc_id": "company_mission",
+  "title": "Company Mission and Values",
+  "source_path": "Company Mission and Values",
+  "source_type": "kb",
+  "precedence_rank": 1,
+  "version": "d41d8cd98f00",
+  "last_modified": "2025-10-09T18:53:18.849817+00:00",
+  "product_area": [
+    "general"
+  ],
+  "access_tags": [
+    "internal",
+    "public"
+  ],
+  "security_notes": "",
+  "sections": [
+    {
+      "section_id": "company_mission#our_mission",
+      "heading_level": 2,
+      "heading": "Our Mission",
+      "path": "Our Mission",
+      "raw_markdown": "At SherpaPrompt, we believe that every conversation holds value — but too often, that value is lost.\n\nOur mission is to **turn unstructured human communication into structured, actionable outcomes** — automatically, accurately, and without friction.\n\nWe help businesses capture what matters, understand what's needed, and execute what was promised — so nothing falls through the cracks, and every interaction moves work forward.",
+      "normalized_text": "H2: Our Mission\n\nAt SherpaPrompt, we believe that every conversation holds value — but too often, that value is lost.\n\nOur mission is to turn unstructured human communication into structured, actionable outcomes — automatically, accurately, and without friction.\n\nWe help businesses capture what matters, understand what's needed, and execute what was promised — so nothing falls through the cracks, and every interaction moves work forward.",
+      "labels": {
+        "intents": [
+          "faq",
+          "sales"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Marketing",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "company_mission#our_mission::0",
+          "embedding_input": "H2: Our Mission\n\nAt SherpaPrompt, we believe that every conversation holds value — but too often, that value is lost.\n\nOur mission is to turn unstructured human communication into structured, actionable outcomes — automatically, accurately, and without friction.\n\nWe help businesses capture what matters, understand what's needed, and execute what was promised — so nothing falls through the cracks, and every interaction moves work forward.",
+          "token_estimate": 68,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "company_mission",
+            "section_id": "company_mission#our_mission",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "company_mission#our_vision",
+      "heading_level": 2,
+      "heading": "Our Vision",
+      "path": "Our Vision",
+      "raw_markdown": "We envision a world where technology amplifies human intent rather than replacing it.\n\nWhere AI systems don't just respond — they **understand, act, and integrate** seamlessly into the flow of real work.\n\nWhere professionals in any industry can trust that their tools will handle the details, so they can focus on what only humans can do: think strategically, build relationships, and solve complex problems.",
+      "normalized_text": "H2: Our Vision\n\nWe envision a world where technology amplifies human intent rather than replacing it.\n\nWhere AI systems don't just respond — they understand, act, and integrate seamlessly into the flow of real work.\n\nWhere professionals in any industry can trust that their tools will handle the details, so they can focus on what only humans can do: think strategically, build relationships, and solve complex problems.",
+      "labels": {
+        "intents": [
+          "faq",
+          "sales"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Marketing",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "company_mission#our_vision::0",
+          "embedding_input": "H2: Our Vision\n\nWe envision a world where technology amplifies human intent rather than replacing it.\n\nWhere AI systems don't just respond — they understand, act, and integrate seamlessly into the flow of real work.\n\nWhere professionals in any industry can trust that their tools will handle the details, so they can focus on what only humans can do: think strategically, build relationships, and solve complex problems.",
+          "token_estimate": 67,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "company_mission",
+            "section_id": "company_mission#our_vision",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "company_mission#core_values",
+      "heading_level": 2,
+      "heading": "Core Values",
+      "path": "Core Values",
+      "raw_markdown": "**1. Human-Centered Automation**\nWe design automation that supports human decision-making, not replaces it. Our systems handle repetitive, error-prone tasks so people can focus on judgment, creativity, and strategy.\n\n**2. Precision Over Volume**\nWe prioritize getting it right the first time. Quality, accuracy, and reliability matter more than speed alone.\n\n**3. Integration, Not Disruption**\nWe meet clients where they are. Our tools adapt to existing workflows and systems rather than forcing businesses to change how they work.\n\n**4. Transparency and Trust**\nWe build explainable, auditable systems. Every action our platform takes can be traced, reviewed, and understood.\n\n**5. Continuous Improvement**\nWe listen, iterate, and evolve. Feedback drives our product roadmap, and we're committed to solving real problems — not chasing trends.\n\n---",
+      "normalized_text": "H2: Core Values\n\n1. Human-Centered Automation\nWe design automation that supports human decision-making, not replaces it. Our systems handle repetitive, error-prone tasks so people can focus on judgment, creativity, and strategy.\n\n2. Precision Over Volume\nWe prioritize getting it right the first time. Quality, accuracy, and reliability matter more than speed alone.\n\n3. Integration, Not Disruption\nWe meet clients where they are. Our tools adapt to existing workflows and systems rather than forcing businesses to change how they work.\n\n4. Transparency and Trust\nWe build explainable, auditable systems. Every action our platform takes can be traced, reviewed, and understood.\n\n5. Continuous Improvement\nWe listen, iterate, and evolve. Feedback drives our product roadmap, and we're committed to solving real problems — not chasing trends.\n\n---",
+      "labels": {
+        "intents": [
+          "faq",
+          "sales"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Marketing",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "company_mission#core_values::0",
+          "embedding_input": "H2: Core Values\n\n1. Human-Centered Automation\nWe design automation that supports human decision-making, not replaces it. Our systems handle repetitive, error-prone tasks so people can focus on judgment, creativity, and strategy.\n\n2. Precision Over Volume\nWe prioritize getting it right the first time. Quality, accuracy, and reliability matter more than speed alone.\n\n3. Integration, Not Disruption\nWe meet clients where they are. Our tools adapt to existing workflows and systems rather than forcing businesses to change how they work.\n\n4. Transparency and Trust\nWe build explainable, auditable systems. Every action our platform takes can be traced, reviewed, and understood.\n\n5. Continuous Improvement\nWe listen, iterate, and evolve. Feedback drives our product roadmap, and we're committed to solving real problems — not chasing trends.\n\n---",
+          "token_estimate": 124,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "company_mission",
+            "section_id": "company_mission#core_values",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "company_mission#who_we_serve",
+      "heading_level": 2,
+      "heading": "Who We Serve",
+      "path": "Who We Serve",
+      "raw_markdown": "We serve **businesses that rely on conversations to get work done** — from sales and customer service to field operations and internal collaboration.\n\nOur clients include:\n\n* **Trades and Service Professionals:** Contractors, electricians, HVAC technicians, plumbers, and other field service providers who need to estimate, schedule, and document work efficiently.\n* **Enterprise Teams:** Sales, operations, and support teams that need to scale communication without losing accuracy or accountability.\n* **Knowledge Workers:** Developers, consultants, and strategists who need precise outputs from complex inputs — fast.\n\nWhether you're answering customer calls, extracting tasks from meetings, building estimates on-site, or generating documentation from scattered notes, SherpaPrompt helps you work smarter, not harder.\n\n---",
+      "normalized_text": "H2: Who We Serve\n\nWe serve businesses that rely on conversations to get work done — from sales and customer service to field operations and internal collaboration.\n\nOur clients include:\n- Trades and Service Professionals: Contractors, electricians, HVAC technicians, plumbers, and other field service providers who need to estimate, schedule, and document work efficiently.\n- Enterprise Teams: Sales, operations, and support teams that need to scale communication without losing accuracy or accountability.\n- Knowledge Workers: Developers, consultants, and strategists who need precise outputs from complex inputs — fast.\n\nWhether you're answering customer calls, extracting tasks from meetings, building estimates on-site, or generating documentation from scattered notes, SherpaPrompt helps you work smarter, not harder.\n\n---",
+      "labels": {
+        "intents": [
+          "faq",
+          "sales"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Marketing",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "company_mission#who_we_serve::0",
+          "embedding_input": "H2: Who We Serve\n\nWe serve businesses that rely on conversations to get work done — from sales and customer service to field operations and internal collaboration.\n\nOur clients include:\n- Trades and Service Professionals: Contractors, electricians, HVAC technicians, plumbers, and other field service providers who need to estimate, schedule, and document work efficiently.\n- Enterprise Teams: Sales, operations, and support teams that need to scale communication without losing accuracy or accountability.\n- Knowledge Workers: Developers, consultants, and strategists who need precise outputs from complex inputs — fast.\n\nWhether you're answering customer calls, extracting tasks from meetings, building estimates on-site, or generating documentation from scattered notes, SherpaPrompt helps you work smarter, not harder.\n\n---",
+          "token_estimate": 119,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "company_mission",
+            "section_id": "company_mission#who_we_serve",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "company_mission#what_sets_us_apart",
+      "heading_level": 2,
+      "heading": "What Sets Us Apart",
+      "path": "What Sets Us Apart",
+      "raw_markdown": "**End-to-End Integration**\nWe don't just transcribe or summarize. We extract, structure, execute, and integrate — turning passive data into live action across your systems.\n\n**Custom-Fit, Not One-Size-Fits-All**\nEvery business is different. We tailor our solutions to fit your workflows, your tools, and your needs.\n\n**Built for Real Work**\nOur platform is designed for professionals working in noisy job sites, fast-paced call centers, high-stakes meetings, and complex documentation environments. We understand the messy reality of getting work done.\n\n**Auditable and Reliable**\nEvery decision our platform makes is traceable. You can see why something happened, review it, and adjust it. We build trust through transparency.\n\n---",
+      "normalized_text": "H2: What Sets Us Apart\n\nEnd-to-End Integration\nWe don't just transcribe or summarize. We extract, structure, execute, and integrate — turning passive data into live action across your systems.\n\nCustom-Fit, Not One-Size-Fits-All\nEvery business is different. We tailor our solutions to fit your workflows, your tools, and your needs.\n\nBuilt for Real Work\nOur platform is designed for professionals working in noisy job sites, fast-paced call centers, high-stakes meetings, and complex documentation environments. We understand the messy reality of getting work done.\n\nAuditable and Reliable\nEvery decision our platform makes is traceable. You can see why something happened, review it, and adjust it. We build trust through transparency.\n\n---",
+      "labels": {
+        "intents": [
+          "faq",
+          "sales"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Marketing",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "company_mission#what_sets_us_apart::0",
+          "embedding_input": "H2: What Sets Us Apart\n\nEnd-to-End Integration\nWe don't just transcribe or summarize. We extract, structure, execute, and integrate — turning passive data into live action across your systems.\n\nCustom-Fit, Not One-Size-Fits-All\nEvery business is different. We tailor our solutions to fit your workflows, your tools, and your needs.\n\nBuilt for Real Work\nOur platform is designed for professionals working in noisy job sites, fast-paced call centers, high-stakes meetings, and complex documentation environments. We understand the messy reality of getting work done.\n\nAuditable and Reliable\nEvery decision our platform makes is traceable. You can see why something happened, review it, and adjust it. We build trust through transparency.\n\n---",
+          "token_estimate": 114,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "company_mission",
+            "section_id": "company_mission#what_sets_us_apart",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "company_mission#our_commitment",
+      "heading_level": 2,
+      "heading": "Our Commitment",
+      "path": "Our Commitment",
+      "raw_markdown": "SherpaPrompt is committed to:\n\n* **Accuracy:** We get the details right.\n* **Usability:** Our tools fit into real workflows without friction.\n* **Transparency:** You always know what's happening and why.\n* **Partnership:** We're here to solve problems, not just sell software.\n\nWe don't believe in black-box automation or over-promising flashy features. We believe in building systems that work — reliably, intelligently, and in service of the people who use them.\n\n---",
+      "normalized_text": "H2: Our Commitment\n\nSherpaPrompt is committed to:\n- Accuracy: We get the details right.\n- Usability: Our tools fit into real workflows without friction.\n- Transparency: You always know what's happening and why.\n- Partnership: We're here to solve problems, not just sell software.\n\nWe don't believe in black-box automation or over-promising flashy features. We believe in building systems that work — reliably, intelligently, and in service of the people who use them.\n\n---",
+      "labels": {
+        "intents": [
+          "faq",
+          "sales"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Marketing",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "company_mission#our_commitment::0",
+          "embedding_input": "H2: Our Commitment\n\nSherpaPrompt is committed to:\n- Accuracy: We get the details right.\n- Usability: Our tools fit into real workflows without friction.\n- Transparency: You always know what's happening and why.\n- Partnership: We're here to solve problems, not just sell software.\n\nWe don't believe in black-box automation or over-promising flashy features. We believe in building systems that work — reliably, intelligently, and in service of the people who use them.\n\n---",
+          "token_estimate": 74,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "company_mission",
+            "section_id": "company_mission#our_commitment",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    },
+    {
+      "section_id": "company_mission#in_short",
+      "heading_level": 2,
+      "heading": "In Short",
+      "path": "In Short",
+      "raw_markdown": "**SherpaPrompt turns conversations into outcomes.**\n\nWe help businesses capture intent, understand context, and execute action — automatically and accurately.\n\nFrom call centers to construction sites, from meeting rooms to field operations, we bridge the gap between human communication and digital systems — so nothing gets lost, and everything gets done.",
+      "normalized_text": "H2: In Short\n\nSherpaPrompt turns conversations into outcomes.\n\nWe help businesses capture intent, understand context, and execute action — automatically and accurately.\n\nFrom call centers to construction sites, from meeting rooms to field operations, we bridge the gap between human communication and digital systems — so nothing gets lost, and everything gets done.",
+      "labels": {
+        "intents": [
+          "faq",
+          "sales"
+        ],
+        "audience_profiles": [
+          "Developers",
+          "Enterprise",
+          "Marketing",
+          "Trades"
+        ],
+        "systems_read": [],
+        "systems_write": []
+      },
+      "policy_flags": {
+        "pricing_unvalidated": false,
+        "sensitive": false
+      },
+      "chunks": [
+        {
+          "chunk_id": "company_mission#in_short::0",
+          "embedding_input": "H2: In Short\n\nSherpaPrompt turns conversations into outcomes.\n\nWe help businesses capture intent, understand context, and execute action — automatically and accurately.\n\nFrom call centers to construction sites, from meeting rooms to field operations, we bridge the gap between human communication and digital systems — so nothing gets lost, and everything gets done.",
+          "token_estimate": 54,
+          "overlap_with_prev": 0,
+          "qa_shape": "narrative",
+          "routing_hints": {
+            "intent_primary": null
+          },
+          "provenance": {
+            "doc_id": "company_mission",
+            "section_id": "company_mission#in_short",
+            "line_start": 0,
+            "line_end": 0
+          }
+        }
+      ]
+    }
+  ],
+  "entities": {
+    "systems": [],
+    "personas": [
+      "Developers",
+      "Enterprise",
+      "Marketing",
+      "Trades"
+    ]
+  }
+}
