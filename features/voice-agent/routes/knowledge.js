@@ -53,6 +53,7 @@ router.post('/process', async (req, res) => {
   }
 });
 
+
 /**
  * Check if knowledge base embeddings exist
  * GET /api/knowledge/status
@@ -187,6 +188,107 @@ router.get('/overview', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to get knowledge base overview',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Process only core knowledge files for SherpaPrompt
+ * POST /api/knowledge/process-core-knowledge
+ */
+router.post('/process-core-knowledge', async (req, res) => {
+  try {
+    console.log('🚀 Starting SherpaPrompt CORE knowledge base processing...');
+    
+    // Core knowledge files only (not playbooks or troubleshooting)
+    const coreKnowledgeFiles = [
+      'company_mission_1.1.json',
+      'product_knowledge_1.2.json', 
+      'pricing_1.1.json'
+    ];
+    
+    console.log('📋 Processing only core knowledge files for vector embeddings');
+    console.log('🏠 Keeping playbooks and troubleshooting as local reference files');
+    console.log('');
+    
+    // Clear existing embeddings first
+    console.log('🧹 Clearing existing embeddings...');
+    await embeddingService.clearAllEmbeddings();
+    console.log('✅ Existing embeddings cleared');
+    
+    const results = [];
+    let totalChunks = 0;
+    
+    // Process each core knowledge file
+    for (const filename of coreKnowledgeFiles) {
+      try {
+        const filePath = path.join(__dirname, '../../../data/SherpaPrompt_AHCA_Knowledge', filename);
+        console.log(`📄 Processing ${filename}...`);
+        
+        let fileData = await fs.readFile(filePath, 'utf8');
+        
+        // Fix common encoding issues that cause JSON parsing errors
+        fileData = fileData
+          .replace(/â€"/g, '—')    // Fix em-dash encoding
+          .replace(/â€™/g, "'")    // Fix apostrophe encoding
+          .replace(/â€œ/g, '"')    // Fix left double quote
+          .replace(/â€/g, '"')     // Fix right double quote
+          .replace(/â€¦/g, '...')  // Fix ellipsis encoding
+          .replace(/Â/g, '')       // Remove extra Â characters
+          .replace(/\u00A0/g, ' '); // Replace non-breaking spaces
+        
+        let jsonData;
+        try {
+          jsonData = JSON.parse(fileData);
+        } catch (parseError) {
+          console.warn(`⚠️ JSON parsing failed for ${filename}, skipping...`);
+          results.push({ filename, error: parseError.message, chunksStored: 0 });
+          continue;
+        }
+        
+        // Process using SherpaPrompt-specific method
+        const result = await embeddingService.processSherpaPromptDocument(
+          jsonData,
+          filename
+        );
+        
+        console.log(`✅ ${filename}: ${result.chunksStored} chunks stored`);
+        totalChunks += result.chunksStored;
+        results.push({ filename, chunksStored: result.chunksStored });
+        
+      } catch (error) {
+        console.error(`❌ Error processing ${filename}:`, error.message);
+        results.push({ filename, error: error.message, chunksStored: 0 });
+      }
+    }
+    
+    console.log('');
+    console.log('📊 CORE KNOWLEDGE PROCESSING COMPLETE');
+    console.log(`📁 Files processed: ${results.filter(r => !r.error).length}/${coreKnowledgeFiles.length}`);
+    console.log(`📦 Total chunks stored: ${totalChunks}`);
+    
+    res.json({
+      success: true,
+      message: 'Core knowledge base processing completed',
+      filesProcessed: results.filter(r => !r.error).length,
+      totalFiles: coreKnowledgeFiles.length,
+      totalChunks,
+      results,
+      coreFiles: coreKnowledgeFiles,
+      localReferenceFiles: [
+        'audience_playbooks_1.2.json',
+        'support_troubleshooting_1.2.json',
+        'Intent Snippets_1.3.json',
+        'call_service_*'
+      ]
+    });
+    
+  } catch (error) {
+    console.error('💥 Error processing core knowledge base:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process core knowledge base',
       message: error.message
     });
   }

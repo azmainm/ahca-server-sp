@@ -69,8 +69,8 @@
       "heading_level": 2,
       "heading": "Overview",
       "path": "Overview",
-      "raw_markdown": "SherpaPrompt is a unified automation platform that connects human communication with structured reasoning and data-driven execution.\nWe offer four complementary products and services that transform unstructured, passive data into structured, actionable intelligence.\n\nTogether, these components form an end-to-end automation ecosystem that captures information wherever it's created â€" in calls, transcripts, or documents â€" and turns it into precise, auditable outcomes.\n\n---",
-      "normalized_text": "H2: Overview\n\nSherpaPrompt is a unified automation platform that connects human communication with structured reasoning and data-driven execution.\nWe offer four complementary products and services that transform unstructured, passive data into structured, actionable intelligence.\n\nTogether, these components form an end-to-end automation ecosystem that captures information wherever it's created â€" in calls, transcripts, or documents â€" and turns it into precise, auditable outcomes.\n\n---",
+      "raw_markdown": "SherpaPrompt is a unified automation platform that connects human communication with structured reasoning and data-driven execution.\nWe offer four complementary products and services that transform unstructured, passive data into structured, actionable intelligence.\n\nTogether, these components form an end-to-end automation ecosystem that captures information wherever it's created — in calls, transcripts, or documents — and turns it into precise, auditable outcomes.\n\n---",
+      "normalized_text": "H2: Overview\n\nSherpaPrompt is a unified automation platform that connects human communication with structured reasoning and data-driven execution.\nWe offer four complementary products and services that transform unstructured, passive data into structured, actionable intelligence.\n\nTogether, these components form an end-to-end automation ecosystem that captures information wherever it's created — in calls, transcripts, or documents — and turns it into precise, auditable outcomes.\n\n---",
       "labels": {
         "intents": [
           "sales",
@@ -95,7 +95,7 @@
       "chunks": [
         {
           "chunk_id": "product_knowledge#overview::0",
-          "embedding_input": "H2: Overview\n\nSherpaPrompt is a unified automation platform that connects human communication with structured reasoning and data-driven execution.\nWe offer four complementary products and services that transform unstructured, passive data into structured, actionable intelligence.\n\nTogether, these components form an end-to-end automation ecosystem that captures information wherever it's created â€" in calls, transcripts, or documents â€" and turns it into precise, auditable outcomes.\n\n---",
+          "embedding_input": "H2: Overview\n\nSherpaPrompt is a unified automation platform that connects human communication with structured reasoning and data-driven execution.\nWe offer four complementary products and services that transform unstructured, passive data into structured, actionable intelligence.\n\nTogether, these components form an end-to-end automation ecosystem that captures information wherever it's created — in calls, transcripts, or documents — and turns it into precise, auditable outcomes.\n\n---",
           "token_estimate": 63,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -163,8 +163,8 @@
       "heading_level": 3,
       "heading": "What It Does",
       "path": "1. Call Service Automation > What It Does",
-      "raw_markdown": "SherpaPrompt's **Call Service Automation** handles inbound and after-hours calls using a voice-based AI assistant.\nInternally, we use an assistant named **Scout**, but clients can customize or design their own persona to fit their brand's tone and personality.\n\nThe assistant listens, understands intent, and performs the next logical steps automatically â€" whether that means updating a CRM, scheduling an appointment, creating a follow-up task, answering product questions, or producing a service estimate.\nIt can also move callers through the sales funnel, provide technical support, and escalate urgent calls to a live on-call team member.",
-      "normalized_text": "H3: What It Does\n\nSherpaPrompt's Call Service Automation handles inbound and after-hours calls using a voice-based AI assistant.\nInternally, we use an assistant named Scout, but clients can customize or design their own persona to fit their brand's tone and personality.\n\nThe assistant listens, understands intent, and performs the next logical steps automatically â€" whether that means updating a CRM, scheduling an appointment, creating a follow-up task, answering product questions, or producing a service estimate.\nIt can also move callers through the sales funnel, provide technical support, and escalate urgent calls to a live on-call team member.",
+      "raw_markdown": "SherpaPrompt's **Call Service Automation** handles inbound and after-hours calls using a voice-based AI assistant.\nInternally, we use an assistant named **Scout**, but clients can customize or design their own persona to fit their brand's tone and personality.\n\nThe assistant listens, understands intent, and performs the next logical steps automatically — whether that means updating a CRM, scheduling an appointment, creating a follow-up task, answering product questions, or producing a service estimate.\nIt can also move callers through the sales funnel, provide technical support, and escalate urgent calls to a live on-call team member.",
+      "normalized_text": "H3: What It Does\n\nSherpaPrompt's Call Service Automation handles inbound and after-hours calls using a voice-based AI assistant.\nInternally, we use an assistant named Scout, but clients can customize or design their own persona to fit their brand's tone and personality.\n\nThe assistant listens, understands intent, and performs the next logical steps automatically — whether that means updating a CRM, scheduling an appointment, creating a follow-up task, answering product questions, or producing a service estimate.\nIt can also move callers through the sales funnel, provide technical support, and escalate urgent calls to a live on-call team member.",
       "labels": {
         "intents": [
           "sales",
@@ -189,7 +189,7 @@
       "chunks": [
         {
           "chunk_id": "product_knowledge#1_call_service_automation_what_it_does::0",
-          "embedding_input": "H3: What It Does\n\nSherpaPrompt's Call Service Automation handles inbound and after-hours calls using a voice-based AI assistant.\nInternally, we use an assistant named Scout, but clients can customize or design their own persona to fit their brand's tone and personality.\n\nThe assistant listens, understands intent, and performs the next logical steps automatically â€" whether that means updating a CRM, scheduling an appointment, creating a follow-up task, answering product questions, or producing a service estimate.\nIt can also move callers through the sales funnel, provide technical support, and escalate urgent calls to a live on-call team member.",
+          "embedding_input": "H3: What It Does\n\nSherpaPrompt's Call Service Automation handles inbound and after-hours calls using a voice-based AI assistant.\nInternally, we use an assistant named Scout, but clients can customize or design their own persona to fit their brand's tone and personality.\n\nThe assistant listens, understands intent, and performs the next logical steps automatically — whether that means updating a CRM, scheduling an appointment, creating a follow-up task, answering product questions, or producing a service estimate.\nIt can also move callers through the sales funnel, provide technical support, and escalate urgent calls to a live on-call team member.",
           "token_estimate": 97,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -443,8 +443,8 @@
       "heading_level": 3,
       "heading": "What It Does",
       "path": "2. Transcript-to-Task Integration > What It Does",
-      "raw_markdown": "The **Transcript-to-Task Integration** service converts any conversation â€" from meetings to impromptu field calls â€" into structured, actionable tasks.\nThis is a **customized integration service**, configured to the client's existing software environment so they can keep using the tools they already know.\n\nSherpaPrompt can either transcribe audio or video files directly, or connect to existing transcription sources to extract, analyze, and structure data.\nUsers can also **chat directly with their transcripts** to ask follow-up questions, clarify decisions, or locate important details from prior discussions.",
-      "normalized_text": "H3: What It Does\n\nThe Transcript-to-Task Integration service converts any conversation â€" from meetings to impromptu field calls â€" into structured, actionable tasks.\nThis is a customized integration service, configured to the client's existing software environment so they can keep using the tools they already know.\n\nSherpaPrompt can either transcribe audio or video files directly, or connect to existing transcription sources to extract, analyze, and structure data.\nUsers can also chat directly with their transcripts to ask follow-up questions, clarify decisions, or locate important details from prior discussions.",
+      "raw_markdown": "The **Transcript-to-Task Integration** service converts any conversation — from meetings to impromptu field calls — into structured, actionable tasks.\nThis is a **customized integration service**, configured to the client's existing software environment so they can keep using the tools they already know.\n\nSherpaPrompt can either transcribe audio or video files directly, or connect to existing transcription sources to extract, analyze, and structure data.\nUsers can also **chat directly with their transcripts** to ask follow-up questions, clarify decisions, or locate important details from prior discussions.",
+      "normalized_text": "H3: What It Does\n\nThe Transcript-to-Task Integration service converts any conversation — from meetings to impromptu field calls — into structured, actionable tasks.\nThis is a customized integration service, configured to the client's existing software environment so they can keep using the tools they already know.\n\nSherpaPrompt can either transcribe audio or video files directly, or connect to existing transcription sources to extract, analyze, and structure data.\nUsers can also chat directly with their transcripts to ask follow-up questions, clarify decisions, or locate important details from prior discussions.",
       "labels": {
         "intents": [
           "sales",
@@ -469,7 +469,7 @@
       "chunks": [
         {
           "chunk_id": "product_knowledge#2_transcript_to_task_integration_what_it_does::0",
-          "embedding_input": "H3: What It Does\n\nThe Transcript-to-Task Integration service converts any conversation â€" from meetings to impromptu field calls â€" into structured, actionable tasks.\nThis is a customized integration service, configured to the client's existing software environment so they can keep using the tools they already know.\n\nSherpaPrompt can either transcribe audio or video files directly, or connect to existing transcription sources to extract, analyze, and structure data.\nUsers can also chat directly with their transcripts to ask follow-up questions, clarify decisions, or locate important details from prior discussions.",
+          "embedding_input": "H3: What It Does\n\nThe Transcript-to-Task Integration service converts any conversation — from meetings to impromptu field calls — into structured, actionable tasks.\nThis is a customized integration service, configured to the client's existing software environment so they can keep using the tools they already know.\n\nSherpaPrompt can either transcribe audio or video files directly, or connect to existing transcription sources to extract, analyze, and structure data.\nUsers can also chat directly with their transcripts to ask follow-up questions, clarify decisions, or locate important details from prior discussions.",
           "token_estimate": 88,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -678,8 +678,8 @@
       "heading_level": 3,
       "heading": "What It Does",
       "path": "3. Voice-to-Estimate Automation > What It Does",
-      "raw_markdown": "The **Voice-to-Estimate Automation** is a **browser-based web app** that allows users to generate complete estimates using voice input â€" hands-free and in real time.\nIt's designed for trades and service professionals who need to build estimates while on-site or in the field.\n\nUsing a Bluetooth headset with a microphone, users can speak freely as they work â€" identifying materials, labor categories, quantities, and other job details.\nThe system transcribes and categorizes the information, calculates costs, and generates a structured estimate automatically.",
-      "normalized_text": "H3: What It Does\n\nThe Voice-to-Estimate Automation is a browser-based web app that allows users to generate complete estimates using voice input â€" hands-free and in real time.\nIt's designed for trades and service professionals who need to build estimates while on-site or in the field.\n\nUsing a Bluetooth headset with a microphone, users can speak freely as they work â€" identifying materials, labor categories, quantities, and other job details.\nThe system transcribes and categorizes the information, calculates costs, and generates a structured estimate automatically.",
+      "raw_markdown": "The **Voice-to-Estimate Automation** is a **browser-based web app** that allows users to generate complete estimates using voice input — hands-free and in real time.\nIt's designed for trades and service professionals who need to build estimates while on-site or in the field.\n\nUsing a Bluetooth headset with a microphone, users can speak freely as they work — identifying materials, labor categories, quantities, and other job details.\nThe system transcribes and categorizes the information, calculates costs, and generates a structured estimate automatically.",
+      "normalized_text": "H3: What It Does\n\nThe Voice-to-Estimate Automation is a browser-based web app that allows users to generate complete estimates using voice input — hands-free and in real time.\nIt's designed for trades and service professionals who need to build estimates while on-site or in the field.\n\nUsing a Bluetooth headset with a microphone, users can speak freely as they work — identifying materials, labor categories, quantities, and other job details.\nThe system transcribes and categorizes the information, calculates costs, and generates a structured estimate automatically.",
       "labels": {
         "intents": [
           "sales",
@@ -704,7 +704,7 @@
       "chunks": [
         {
           "chunk_id": "product_knowledge#3_voice_to_estimate_automation_what_it_does::0",
-          "embedding_input": "H3: What It Does\n\nThe Voice-to-Estimate Automation is a browser-based web app that allows users to generate complete estimates using voice input â€" hands-free and in real time.\nIt's designed for trades and service professionals who need to build estimates while on-site or in the field.\n\nUsing a Bluetooth headset with a microphone, users can speak freely as they work â€" identifying materials, labor categories, quantities, and other job details.\nThe system transcribes and categorizes the information, calculates costs, and generates a structured estimate automatically.",
+          "embedding_input": "H3: What It Does\n\nThe Voice-to-Estimate Automation is a browser-based web app that allows users to generate complete estimates using voice input — hands-free and in real time.\nIt's designed for trades and service professionals who need to build estimates while on-site or in the field.\n\nUsing a Bluetooth headset with a microphone, users can speak freely as they work — identifying materials, labor categories, quantities, and other job details.\nThe system transcribes and categorizes the information, calculates costs, and generates a structured estimate automatically.",
           "token_estimate": 85,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -864,10 +864,10 @@
     {
       "section_id": "product_knowledge#4_sherpaprompt_app_prompt_orchestration_platform",
       "heading_level": 2,
-      "heading": "4. SherpaPrompt App â€" Prompt Orchestration Platform",
-      "path": "4. SherpaPrompt App â€" Prompt Orchestration Platform",
+      "heading": "4. SherpaPrompt App — Prompt Orchestration Platform",
+      "path": "4. SherpaPrompt App — Prompt Orchestration Platform",
       "raw_markdown": "",
-      "normalized_text": "H2: 4. SherpaPrompt App â€" Prompt Orchestration Platform",
+      "normalized_text": "H2: 4. SherpaPrompt App — Prompt Orchestration Platform",
       "labels": {
         "intents": [
           "sales",
@@ -892,7 +892,7 @@
       "chunks": [
         {
           "chunk_id": "product_knowledge#4_sherpaprompt_app_prompt_orchestration_platform::0",
-          "embedding_input": "H2: 4. SherpaPrompt App â€" Prompt Orchestration Platform",
+          "embedding_input": "H2: 4. SherpaPrompt App — Prompt Orchestration Platform",
           "token_estimate": 8,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -912,9 +912,9 @@
       "section_id": "product_knowledge#4_sherpaprompt_app_prompt_orchestration_platform_what_it_does",
       "heading_level": 3,
       "heading": "What It Does",
-      "path": "4. SherpaPrompt App â€" Prompt Orchestration Platform > What It Does",
-      "raw_markdown": "The **SherpaPrompt App** (available in Cloud, VS Code, and Desktop versions) helps professionals produce correct first drafts on the first attempt through structured orchestration and context retrieval.\n\nIt combines:\n\n* **Role-Based Prompting:** Choose or create roles that define tone, reasoning boundaries, and domain context.\n* **Objective Precision Tool:** Refines vague goals into precise, actionable objectives.\n* **Constraint & Format Enforcement:** Ensures outputs comply with brand, compliance, or technical requirements.\n* **Reasoning Strategy Selector:** Matches reasoning approach (compare/contrast, hypothesis/evidence, etc.) to task type.\n* **Snippet-Level Retrieval:** Retrieves exactly the relevant information from connected files â€" no context bloat or hallucinations.",
-      "normalized_text": "H3: What It Does\n\nThe SherpaPrompt App (available in Cloud, VS Code, and Desktop versions) helps professionals produce correct first drafts on the first attempt through structured orchestration and context retrieval.\n\nIt combines:\n- Role-Based Prompting: Choose or create roles that define tone, reasoning boundaries, and domain context.\n- Objective Precision Tool: Refines vague goals into precise, actionable objectives.\n- Constraint & Format Enforcement: Ensures outputs comply with brand, compliance, or technical requirements.\n- Reasoning Strategy Selector: Matches reasoning approach (compare/contrast, hypothesis/evidence, etc.) to task type.\n- Snippet-Level Retrieval: Retrieves exactly the relevant information from connected files â€" no context bloat or hallucinations.",
+      "path": "4. SherpaPrompt App — Prompt Orchestration Platform > What It Does",
+      "raw_markdown": "The **SherpaPrompt App** (available in Cloud, VS Code, and Desktop versions) helps professionals produce correct first drafts on the first attempt through structured orchestration and context retrieval.\n\nIt combines:\n\n* **Role-Based Prompting:** Choose or create roles that define tone, reasoning boundaries, and domain context.\n* **Objective Precision Tool:** Refines vague goals into precise, actionable objectives.\n* **Constraint & Format Enforcement:** Ensures outputs comply with brand, compliance, or technical requirements.\n* **Reasoning Strategy Selector:** Matches reasoning approach (compare/contrast, hypothesis/evidence, etc.) to task type.\n* **Snippet-Level Retrieval:** Retrieves exactly the relevant information from connected files — no context bloat or hallucinations.",
+      "normalized_text": "H3: What It Does\n\nThe SherpaPrompt App (available in Cloud, VS Code, and Desktop versions) helps professionals produce correct first drafts on the first attempt through structured orchestration and context retrieval.\n\nIt combines:\n- Role-Based Prompting: Choose or create roles that define tone, reasoning boundaries, and domain context.\n- Objective Precision Tool: Refines vague goals into precise, actionable objectives.\n- Constraint & Format Enforcement: Ensures outputs comply with brand, compliance, or technical requirements.\n- Reasoning Strategy Selector: Matches reasoning approach (compare/contrast, hypothesis/evidence, etc.) to task type.\n- Snippet-Level Retrieval: Retrieves exactly the relevant information from connected files — no context bloat or hallucinations.",
       "labels": {
         "intents": [
           "sales",
@@ -939,7 +939,7 @@
       "chunks": [
         {
           "chunk_id": "product_knowledge#4_sherpaprompt_app_prompt_orchestration_platform_what_it_does::0",
-          "embedding_input": "H3: What It Does\n\nThe SherpaPrompt App (available in Cloud, VS Code, and Desktop versions) helps professionals produce correct first drafts on the first attempt through structured orchestration and context retrieval.\n\nIt combines:\n- Role-Based Prompting: Choose or create roles that define tone, reasoning boundaries, and domain context.\n- Objective Precision Tool: Refines vague goals into precise, actionable objectives.\n- Constraint & Format Enforcement: Ensures outputs comply with brand, compliance, or technical requirements.\n- Reasoning Strategy Selector: Matches reasoning approach (compare/contrast, hypothesis/evidence, etc.) to task type.\n- Snippet-Level Retrieval: Retrieves exactly the relevant information from connected files â€" no context bloat or hallucinations.",
+          "embedding_input": "H3: What It Does\n\nThe SherpaPrompt App (available in Cloud, VS Code, and Desktop versions) helps professionals produce correct first drafts on the first attempt through structured orchestration and context retrieval.\n\nIt combines:\n- Role-Based Prompting: Choose or create roles that define tone, reasoning boundaries, and domain context.\n- Objective Precision Tool: Refines vague goals into precise, actionable objectives.\n- Constraint & Format Enforcement: Ensures outputs comply with brand, compliance, or technical requirements.\n- Reasoning Strategy Selector: Matches reasoning approach (compare/contrast, hypothesis/evidence, etc.) to task type.\n- Snippet-Level Retrieval: Retrieves exactly the relevant information from connected files — no context bloat or hallucinations.",
           "token_estimate": 103,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -959,7 +959,7 @@
       "section_id": "product_knowledge#4_sherpaprompt_app_prompt_orchestration_platform_integrations",
       "heading_level": 3,
       "heading": "Integrations",
-      "path": "4. SherpaPrompt App â€" Prompt Orchestration Platform > Integrations",
+      "path": "4. SherpaPrompt App — Prompt Orchestration Platform > Integrations",
       "raw_markdown": "* **Cloud Storage:** Google Drive, GitHub, OneDrive, and local directories.",
       "normalized_text": "H3: Integrations\n- Cloud Storage: Google Drive, GitHub, OneDrive, and local directories.",
       "labels": {
@@ -1006,7 +1006,7 @@
       "section_id": "product_knowledge#4_sherpaprompt_app_prompt_orchestration_platform_benefits",
       "heading_level": 3,
       "heading": "Benefits",
-      "path": "4. SherpaPrompt App â€" Prompt Orchestration Platform > Benefits",
+      "path": "4. SherpaPrompt App — Prompt Orchestration Platform > Benefits",
       "raw_markdown": "* Produces higher-quality drafts on the first attempt.\n* Makes prompting structured, repeatable, and auditable.\n* Integrates naturally with other SherpaPrompt automations.\n* Reduces revision cycles and increases output consistency.\n\n---",
       "normalized_text": "H3: Benefits\n- Produces higher-quality drafts on the first attempt.\n- Makes prompting structured, repeatable, and auditable.\n- Integrates naturally with other SherpaPrompt automations.\n- Reduces revision cycles and increases output consistency.\n\n---",
       "labels": {
@@ -1146,8 +1146,8 @@
       "heading_level": 2,
       "heading": "Key Takeaway",
       "path": "Key Takeaway",
-      "raw_markdown": "SherpaPrompt provides a complete automation layer that bridges human language and digital systems.\nFrom calls and transcripts to estimates and documents, our platform turns unstructured communication into structured action â€" without forcing clients to change the tools they already use.\n\nBy aligning human intent with automated precision, SherpaPrompt helps businesses move faster, operate smarter, and stay connected from conversation to completion.",
-      "normalized_text": "H2: Key Takeaway\n\nSherpaPrompt provides a complete automation layer that bridges human language and digital systems.\nFrom calls and transcripts to estimates and documents, our platform turns unstructured communication into structured action â€" without forcing clients to change the tools they already use.\n\nBy aligning human intent with automated precision, SherpaPrompt helps businesses move faster, operate smarter, and stay connected from conversation to completion.",
+      "raw_markdown": "SherpaPrompt provides a complete automation layer that bridges human language and digital systems.\nFrom calls and transcripts to estimates and documents, our platform turns unstructured communication into structured action — without forcing clients to change the tools they already use.\n\nBy aligning human intent with automated precision, SherpaPrompt helps businesses move faster, operate smarter, and stay connected from conversation to completion.",
+      "normalized_text": "H2: Key Takeaway\n\nSherpaPrompt provides a complete automation layer that bridges human language and digital systems.\nFrom calls and transcripts to estimates and documents, our platform turns unstructured communication into structured action — without forcing clients to change the tools they already use.\n\nBy aligning human intent with automated precision, SherpaPrompt helps businesses move faster, operate smarter, and stay connected from conversation to completion.",
       "labels": {
         "intents": [
           "sales",
@@ -1172,7 +1172,7 @@
       "chunks": [
         {
           "chunk_id": "product_knowledge#key_takeaway::0",
-          "embedding_input": "H2: Key Takeaway\n\nSherpaPrompt provides a complete automation layer that bridges human language and digital systems.\nFrom calls and transcripts to estimates and documents, our platform turns unstructured communication into structured action â€" without forcing clients to change the tools they already use.\n\nBy aligning human intent with automated precision, SherpaPrompt helps businesses move faster, operate smarter, and stay connected from conversation to completion.",
+          "embedding_input": "H2: Key Takeaway\n\nSherpaPrompt provides a complete automation layer that bridges human language and digital systems.\nFrom calls and transcripts to estimates and documents, our platform turns unstructured communication into structured action — without forcing clients to change the tools they already use.\n\nBy aligning human intent with automated precision, SherpaPrompt helps businesses move faster, operate smarter, and stay connected from conversation to completion.",
           "token_estimate": 64,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",

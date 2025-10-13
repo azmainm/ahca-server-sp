@@ -8,13 +8,15 @@ This document provides a comprehensive guide for migrating the After Hours Call 
 
 1. [Current System Architecture](#current-system-architecture)
 2. [Migration Strategy Overview](#migration-strategy-overview)
-3. [Vector Database Migration](#vector-database-migration)
-4. [Local Configuration Updates](#local-configuration-updates)
-5. [Code Changes Required](#code-changes-required)
-6. [Content Updates](#content-updates)
-7. [Implementation Steps](#implementation-steps)
-8. [Testing & Validation](#testing--validation)
-9. [Rollback Plan](#rollback-plan)
+3. [Critical Security & Compliance Fixes](#critical-security--compliance-fixes)
+4. [Vector Database Migration](#vector-database-migration)
+5. [Local Configuration Updates](#local-configuration-updates)
+6. [Code Changes Required](#code-changes-required)
+7. [Content Updates](#content-updates)
+8. [Performance & Technical Optimizations](#performance--technical-optimizations)
+9. [Implementation Steps](#implementation-steps)
+10. [Testing & Validation](#testing--validation)
+11. [Rollback Plan](#rollback-plan)
 
 ---
 
@@ -68,19 +70,146 @@ Audio Input → STT (Whisper) → Text Processing (GPT-5-nano + RAG) → TTS (TT
 
 ---
 
+## Critical Security & Compliance Fixes
+
+### Overview
+Before proceeding with the migration, we must address critical security and compliance issues identified during review. These fixes ensure data safety, privacy compliance, and proper escalation handling.
+
+### 🚨 Security Issues to Fix
+
+#### 1. Search Filter Security (CRITICAL)
+**Issue**: Vector search doesn't exclude sensitive or unvalidated content by default.
+**Risk**: Users could receive internal information or incorrect pricing.
+
+**Fix Implementation**:
+```javascript
+// Default safety filters for all searches
+const DEFAULT_SAFETY_FILTERS = {
+  "metadata.sensitive": { $ne: true },
+  "metadata.pricing_unvalidated": { $ne: true },
+  "metadata.access_tags": { $nin: ["internal", "compliance"] }
+};
+
+async searchSherpaPromptContent(query, maxResults = 5, filters = {}) {
+  const safeFilters = {
+    ...DEFAULT_SAFETY_FILTERS,
+    "metadata.content_type": "knowledge",
+    ...filters  // User filters applied after safety filters
+  };
+  
+  const retriever = vectorStore.asRetriever({
+    k: maxResults,
+    searchType: "similarity",
+    searchKwargs: { filter: safeFilters }
+  });
+}
+```
+
+#### 2. Emergency Detection Missing (CRITICAL)
+**Issue**: No intent patterns for emergency/escalation despite having escalation infrastructure.
+**Risk**: Urgent situations won't trigger proper escalation.
+
+**Fix Implementation**:
+```javascript
+// Add to IntentClassifier patterns
+emergency: [
+  /emergency/i,
+  /urgent/i,
+  /outage/i,
+  /down/i,
+  /critical.*issue/i,
+  /production.*down/i,
+  /safety.*issue/i,
+  /immediate.*help/i,
+  /escalate/i,
+  /need.*help.*now/i
+],
+escalationRequired: [
+  /transfer.*human/i,
+  /speak.*person/i,
+  /talk.*someone/i,
+  /escalate.*manager/i,
+  /supervisor/i
+]
+```
+
+#### 3. PII Redaction in Logs (COMPLIANCE CRITICAL)
+**Issue**: Logging configuration doesn't explicitly redact PII.
+**Risk**: Privacy compliance violations.
+
+**Fix Implementation**:
+```javascript
+// PII redaction middleware
+const piiRedactionPatterns = {
+  email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+  phone: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g,
+  ssn: /\b\d{3}-\d{2}-\d{4}\b/g,
+  creditCard: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g
+};
+
+function redactPII(logData) {
+  let sanitized = JSON.stringify(logData);
+  Object.entries(piiRedactionPatterns).forEach(([type, pattern]) => {
+    sanitized = sanitized.replace(pattern, `[REDACTED_${type.toUpperCase()}]`);
+  });
+  return JSON.parse(sanitized);
+}
+```
+
+#### 4. Lead Capture Flow (BUSINESS CRITICAL)
+**Issue**: Demo offers might not properly capture user information.
+**Risk**: Lost potential customers.
+
+**Fix Implementation**:
+```javascript
+// Enhanced demo flow with mandatory lead capture
+generateDemoOfferResponse() {
+  return "I'd be happy to show you SherpaPrompt in action! To schedule your personalized demo, I'll need to collect a few details. What's the best email address to send you the demo link and calendar invite?";
+}
+
+// Ensure CRM integration captures demo requests
+async handleDemoRequest(sessionId, userInfo) {
+  // Validate user info is complete
+  if (!userInfo.name || !userInfo.email) {
+    return "To schedule your demo, I'll need your name and email address. Could you provide those for me?";
+  }
+  
+  // Create lead in CRM with demo intent
+  await this.crmService.createLead({
+    ...userInfo,
+    intent: 'demo_request',
+    source: 'voice_agent',
+    status: 'demo_requested'
+  });
+}
+```
+
+---
+
 ## Vector Database Migration
 
 ### Files to Store in Vector Database
 
-**🔥 High Priority for RAG (Semantic Search)**
+**🔥 Core Knowledge Base (for RAG Semantic Search)**
 
 | File | Purpose | Why Vector DB |
 |------|---------|---------------|
 | `company_mission_1.1.json` | Company values, mission, differentiators | Core brand messaging for "What is SherpaPrompt?" queries |
 | `product_knowledge_1.2.json` | Product features, capabilities, integrations | Detailed product information for feature questions |
-| `audience_playbooks_1.2.json` | Customer personas and tailored responses | Context-aware responses based on caller type |
-| `support_troubleshooting_1.2.json` | Technical solutions and guides | Problem-solving knowledge for support queries |
 | `pricing_1.1.json` | Pricing tiers and trial information | Cost and pricing questions |
+
+### Files to Keep Local (Reference Configuration)
+
+**🏠 Local Configuration Files (for System Behavior)**
+
+| File | Purpose | Why Local |
+|------|---------|-----------|
+| `audience_playbooks_1.2.json` | Conversation patterns, intent routing, response templates | Defines HOW to respond, not WHAT to say |
+| `support_troubleshooting_1.2.json` | Internal troubleshooting procedures | Internal operations manual, not customer-facing |
+| `call_service_*` files | Service configuration, flows, mappings | System behavior configuration |
+| `Intent Snippets_1.3.json` | Intent classification patterns | Routing logic, not content |
+| `oncall_escalation_1.1.json` | Escalation procedures | Internal process flows |
+| `sales_funnel_outlook_1.3.json` | CRM integration mapping | System integration config |
 
 ### Enhanced Vector Storage Schema
 
@@ -164,21 +293,23 @@ const chunkingConfig = {
 
 ## Local Configuration Updates
 
-### Files to Keep as Local Configuration
+### Files to Keep as Local Reference
 
-**🏗️ System Behavior Files (Local Config)**
+**🏗️ System Behavior & Reference Files (Local Storage)**
 
-| File | Purpose | Storage Location |
-|------|---------|------------------|
-| `Intent Snippets_1.3.json` | Intent→Action mapping | `/config/sherpaprompt/intents/` |
-| `call_service_conversation_flows_1.2.json` | Conversation scripts | `/config/sherpaprompt/conversations/` |
-| `call_service_crm_field_mapping_outlook_1.1.json` | CRM integration | `/config/sherpaprompt/integrations/` |
-| `sales_funnel_outlook_1.3.json` | Sales process rules | `/config/sherpaprompt/integrations/` |
-| `oncall_escalation_1.1.json` | Emergency procedures | `/config/sherpaprompt/operations/` |
-| `call_service_edge_cases_1.1.json` | Error handling | `/config/sherpaprompt/operations/` |
-| `call_service_logging_and_safety_internal_1.1.json` | Logging rules | `/config/sherpaprompt/operations/` |
-| `call_service_metrics_internal_1.1.json` | Performance tracking | `/config/sherpaprompt/operations/` |
-| `call_service_test_scripts_1.1.json` | Testing procedures | `/config/sherpaprompt/operations/` |
+| File | Purpose | Usage Pattern |
+|------|---------|---------------|
+| `audience_playbooks_1.2.json` | Conversation patterns, intent routing, persona responses | Load at startup, reference for conversation flow |
+| `support_troubleshooting_1.2.json` | Internal troubleshooting procedures | Reference for agent decision-making and escalation |
+| `Intent Snippets_1.3.json` | Intent→Action mapping | Load for intent classification |
+| `call_service_conversation_flows_1.2.json` | Conversation scripts and flows | Reference for conversation management |
+| `call_service_crm_field_mapping_outlook_1.1.json` | CRM integration mapping | Configuration for CRM operations |
+| `sales_funnel_outlook_1.3.json` | Sales process rules | Reference for lead qualification |
+| `oncall_escalation_1.1.json` | Emergency procedures | Reference for escalation logic |
+| `call_service_edge_cases_1.1.json` | Error handling patterns | Reference for error recovery |
+| `call_service_logging_and_safety_internal_1.1.json` | Logging and safety rules | Configuration for compliance |
+| `call_service_metrics_internal_1.1.json` | Performance tracking | Configuration for analytics |
+| `call_service_test_scripts_1.1.json` | Testing procedures | Reference for validation |
 
 ### New Configuration Structure
 
@@ -220,7 +351,7 @@ class SherpaPromptRAG {
     // Updated system prompt for SherpaPrompt
     this.chatPrompt = ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(`
-You are Scout, a helpful AI assistant for SherpaPrompt - the automation platform that turns conversations into outcomes.
+You are a helpful AI assistant for SherpaPrompt - the automation platform that turns conversations into outcomes.
 
 SherpaPrompt offers four core products:
 1. Call Service Automation: AI agents that handle customer calls, qualify leads, and schedule appointments
@@ -290,6 +421,32 @@ class IntentClassifier {
         /error/i,
         /support/i
       ],
+      
+      // CRITICAL: Emergency and escalation patterns (MISSING IN ORIGINAL)
+      emergency: [
+        /emergency/i,
+        /urgent/i,
+        /outage/i,
+        /down/i,
+        /critical.*issue/i,
+        /production.*down/i,
+        /safety.*issue/i,
+        /immediate.*help/i,
+        /escalate/i,
+        /need.*help.*now/i,
+        /system.*failure/i,
+        /service.*down/i
+      ],
+      escalationRequired: [
+        /transfer.*human/i,
+        /speak.*person/i,
+        /talk.*someone/i,
+        /escalate.*manager/i,
+        /supervisor/i,
+        /human.*agent/i,
+        /live.*person/i
+      ],
+      
       // Keep existing patterns for goodbye, appointment, etc.
       goodbye: [
         /thank you.*no more/i,
@@ -324,12 +481,34 @@ class ResponseGenerator {
     return responses[productArea] || "SherpaPrompt turns conversations into outcomes through our four core automation services: Call Service, Transcript to Task, Voice to Estimate, and our orchestration App.";
   }
 
+  // CRITICAL: Enhanced demo flow with mandatory lead capture
   generateDemoOfferResponse() {
-    return "I'd be happy to show you SherpaPrompt in action! Would you like to schedule a personalized demo to see how our automation platform can streamline your workflows and turn your conversations into actionable outcomes?";
+    return "I'd be happy to show you SherpaPrompt in action! To schedule your personalized demo, I'll need to collect a few details. What's the best email address to send you the demo link and calendar invite?";
   }
 
   generatePricingResponse() {
     return "SherpaPrompt offers transparent pricing tiers designed to scale with your business. We have options for small teams starting at our Starter tier, growing businesses with our Professional tier, and Enterprise solutions with custom integrations. Would you like me to walk you through the specific features and pricing for each tier?";
+  }
+
+  generateEmergencyEscalationResponse() {
+    return "I understand this is urgent. Let me connect you to our on-call team immediately. This call may be recorded for training and quality assurance. Do you want me to connect you to our on-call person now?";
+  }
+
+  // Symbol replacement only for TTS - NOT for technical content
+  formatForTTS(text, isCodeContent = false) {
+    if (isCodeContent) {
+      return text; // Don't modify code examples or technical content
+    }
+    
+    return text
+      .replace(/\s*=\s*/g, ' is ')
+      .replace(/(\d+)\s*[-–—]\s*(\d+)/g, '$1 to $2')
+      .replace(/(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[-–—]\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/gi, '$1 to $2')
+      .replace(/\$(\d+)/g, '$1 dollars')
+      .replace(/\s*&\s*/g, ' and ')
+      .replace(/@/g, ' at ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 }
 ```
@@ -473,25 +652,34 @@ class EmbeddingService {
   }
 
   /**
-   * Enhanced search with SherpaPrompt context
+   * Enhanced search with SherpaPrompt context and safety filters
    */
   async searchSherpaPromptContent(query, maxResults = 5, filters = {}) {
     try {
       console.log('🔍 Searching SherpaPrompt knowledge for:', query);
       
-      // Enhanced query preprocessing for SherpaPrompt
-      const enhancedQuery = this.preprocessSherpaPromptQuery(query);
+      // CRITICAL: Default safety filters to prevent sensitive/unvalidated content
+      const DEFAULT_SAFETY_FILTERS = {
+        "metadata.sensitive": { $ne: true },
+        "metadata.pricing_unvalidated": { $ne: true },
+        "metadata.access_tags": { $nin: ["internal", "compliance"] }
+      };
+      
+      // Direct search with user's query
       
       const vectorStore = await this.getVectorStore();
+      
+      // Apply safety filters first, then user filters
+      const safeFilters = {
+        ...DEFAULT_SAFETY_FILTERS,
+        "metadata.content_type": "knowledge",
+        ...filters  // User filters applied after safety filters
+      };
+      
       const retriever = vectorStore.asRetriever({
         k: maxResults,
         searchType: "similarity",
-        searchKwargs: {
-          filter: {
-            "metadata.content_type": "knowledge",
-            ...filters
-          }
-        }
+        searchKwargs: { filter: safeFilters }
       });
       
       const docs = await retriever.getRelevantDocuments(enhancedQuery);
@@ -505,36 +693,7 @@ class EmbeddingService {
     }
   }
 
-  /**
-   * Preprocess search query for SherpaPrompt context
-   */
-  preprocessSherpaPromptQuery(query) {
-    if (!query) return '';
-    
-    let enhancedQuery = query.toLowerCase();
-    
-    // SherpaPrompt-specific query mappings
-    const queryMappings = {
-      'what does sherpaprompt do': 'company mission products overview automation platform',
-      'call automation': 'call service automation voice agent customer service',
-      'transcript to task': 'transcript service meeting action items task extraction',
-      'voice to estimate': 'voice estimate hands-free field work estimation',
-      'pricing cost': 'pricing tiers plans trial enterprise professional starter',
-      'demo': 'demonstration walkthrough trial setup onboarding',
-      'integrate': 'integration api crm salesforce microsoft calendar',
-      'how it works': 'workflow process automation conversation outcomes',
-      'support help': 'troubleshooting support technical help setup'
-    };
-    
-    // Apply mappings
-    Object.keys(queryMappings).forEach(pattern => {
-      if (enhancedQuery.includes(pattern)) {
-        enhancedQuery += ' ' + queryMappings[pattern];
-      }
-    });
-    
-    return enhancedQuery;
-  }
+
 }
 ```
 
@@ -551,7 +710,7 @@ class EmbeddingService {
 const initialGreeting = "Hi there! Welcome to SherpaPrompt Fencing Company. I'm here to help with your fencing needs. Could you tell me your name and email address to get started?";
 
 // New (SherpaPrompt)
-const initialGreeting = "Hi there! Welcome to SherpaPrompt, the automation platform that turns conversations into outcomes. I'm Scout, and I'm here to help you learn about our automation solutions. Could you tell me your name and email address to get started?";
+const initialGreeting = "Hi there! Welcome to SherpaPrompt, the automation platform that turns conversations into outcomes. I'm here to help you learn about our automation solutions. Could you tell me your name and email address to get started?";
 ```
 
 **2. Update Example Dialogues**
@@ -588,28 +747,130 @@ const companyInfo = {
 
 ---
 
+## Performance & Technical Optimizations
+
+### Performance Expectations & Timing Budget
+
+**Realistic End-to-End Timing Breakdown**:
+
+| Component | Target Time | Optimization Strategy |
+|-----------|-------------|----------------------|
+| **VAD Detection** | 100-300ms | Server-side processing, WebSocket streaming |
+| **STT (Whisper)** | 500-1000ms | Batch processing, audio compression |
+| **RAG Query** | 800-1500ms | Vector index optimization |
+| **LLM Processing** | 1000-2000ms | Model optimization |
+| **TTS Generation** | 500-1000ms | Audio streaming, pre-generation |
+| **Network Latency** | 200-500ms | CDN, regional deployment |
+| **Total Target** | **3.1-6.3 seconds** | **Realistic range** |
+
+
+### Code Renaming & Import Management
+
+**Backward Compatibility Strategy**:
+```javascript
+// 1. Create new SherpaPromptRAG.js
+// 2. Keep FencingRAG.js with deprecation warning
+// shared/services/FencingRAG.js
+const { SherpaPromptRAG } = require('./SherpaPromptRAG');
+
+console.warn('⚠️ FencingRAG is deprecated. Use SherpaPromptRAG instead.');
+
+// Backward compatibility export
+class FencingRAG extends SherpaPromptRAG {
+  constructor() {
+    super();
+    console.warn('⚠️ Please update imports to use SherpaPromptRAG');
+  }
+}
+
+module.exports = { FencingRAG, SherpaPromptRAG };
+```
+
+**Import Update Checklist**:
+```bash
+# Find all references to FencingRAG
+grep -r "FencingRAG" --include="*.js" --include="*.jsx" .
+
+# Update imports systematically
+find . -name "*.js" -exec sed -i 's/FencingRAG/SherpaPromptRAG/g' {} \;
+
+# Verify no broken imports
+npm run build && npm test
+```
+
+### Query Expansion Configuration
+
+**A/B Testing Setup**:
+```javascript
+// Environment-based configuration
+const QUERY_EXPANSION_CONFIG = {
+  enabled: process.env.ENABLE_QUERY_EXPANSION !== 'false',
+  level: process.env.QUERY_EXPANSION_LEVEL || 'moderate', // off, minimal, moderate, aggressive
+  testGroup: process.env.QUERY_EXPANSION_TEST_GROUP || 'control' // control, treatment
+};
+
+// A/B testing implementation
+async searchWithABTest(query, sessionId) {
+  const testGroup = this.getTestGroup(sessionId);
+  const useExpansion = testGroup === 'treatment';
+  
+  const startTime = Date.now();
+  const results = await this.searchSherpaPromptContent(
+    query, 
+    5, 
+    { useQueryExpansion: useExpansion }
+  );
+  const responseTime = Date.now() - startTime;
+  
+  // Log metrics for analysis
+  this.logSearchMetrics({
+    sessionId,
+    query,
+    testGroup,
+    responseTime,
+    resultsCount: results.length,
+    relevanceScore: this.calculateRelevance(results, query)
+  });
+  
+  return results;
+}
+```
+
+---
+
 ## Implementation Steps
 
-### Phase 1: Preparation (Day 1)
+### Phase 1: Critical Security Fixes (Day 1 - PRIORITY)
 
 **1. Backup Current System**
 ```bash
 # Backup current data and configuration
 cp -r /ahca-server/data /ahca-server/data-backup-fencing-$(date +%Y%m%d)
 cp -r /ahca-server/shared/services /ahca-server/shared/services-backup-fencing
+git tag "pre-sherpaprompt-migration-$(date +%Y%m%d)"
 ```
 
-**2. Create New Configuration Structure**
+**2. Implement Security Fixes**
+```bash
+# Fix 1: Add default safety filters to EmbeddingService
+# Fix 2: Add emergency intent patterns to IntentClassifier  
+# Fix 3: Implement PII redaction in logging
+# Fix 4: Fix lead capture flow in ResponseGenerator
+```
+
+**3. Create New Configuration Structure**
 ```bash
 # Create SherpaPrompt config directories
 mkdir -p /ahca-server/config/sherpaprompt/{intents,conversations,integrations,operations}
 ```
 
-**3. Install Dependencies**
+**4. Install Dependencies & Security Updates**
 ```bash
 # Ensure all required packages are installed
 cd /ahca-server && npm install
 cd /ahca-client && npm install
+
+# Install any additional dependencies if needed
 ```
 
 ### Phase 2: Knowledge Base Migration (Day 1-2)
@@ -671,7 +932,28 @@ const behaviorFiles = [
 
 ### Phase 5: Testing & Validation (Day 4-5)
 
-**1. Unit Testing**
+**1. Security & Compliance Testing**
+```bash
+# Test 1: Verify sensitive content is filtered out
+curl -X POST http://localhost:3001/api/knowledge/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "internal operations"}'
+# Expected: No internal/sensitive content returned
+
+# Test 2: Verify pricing validation
+curl -X POST http://localhost:3001/api/knowledge/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "pricing cost"}'
+# Expected: Only validated pricing content returned
+
+# Test 3: Test emergency detection
+curl -X POST http://localhost:3001/api/chained-voice/process \
+  -H "Content-Type: application/json" \
+  -d '{"text": "We have an emergency outage", "sessionId": "test-emergency"}'
+# Expected: Emergency escalation triggered
+```
+
+**2. Unit Testing**
 ```bash
 # Test key scenarios
 curl -X POST http://localhost:3001/api/knowledge/search \
@@ -732,6 +1014,13 @@ const integrationQueries = [
 
 ### Success Criteria
 
+**Security & Compliance (CRITICAL)**
+- ✅ No sensitive/internal content returned in searches
+- ✅ Only validated pricing information provided
+- ✅ Emergency patterns trigger proper escalation
+- ✅ PII redacted from all logs
+- ✅ Lead capture works for all demo requests
+
 **Knowledge Retrieval**
 - ✅ RAG returns relevant SherpaPrompt content (not fencing)
 - ✅ Responses mention correct products and features
@@ -743,12 +1032,15 @@ const integrationQueries = [
 - ✅ Appropriate follow-up questions
 - ✅ Smooth transitions between topics
 - ✅ Proper escalation handling
+- ✅ Demo requests capture user information
 
 **Technical Performance**
-- ✅ Response time < 3 seconds for RAG queries
+- ✅ Response time 3-6 seconds for end-to-end queries (realistic target)
 - ✅ Vector search returns relevant results
 - ✅ No errors in conversation processing
 - ✅ Proper session management
+- ✅ Semantic chunking preserves context
+- ✅ All imports updated (no FencingRAG references)
 
 ---
 
@@ -790,23 +1082,32 @@ git checkout HEAD~1 -- features/voice-agent/services/
 
 ## Post-Migration Checklist
 
-### Immediate (Day 1)
+### Immediate (Day 1) - CRITICAL SECURITY FIXES
+- [ ] **Security filters implemented and tested**
+- [ ] **Emergency intent patterns working**
+- [ ] **PII redaction active in logs**
+- [ ] **Lead capture flow validated**
 - [ ] All services start without errors
 - [ ] Vector database contains SherpaPrompt knowledge
 - [ ] Basic voice conversation works
-- [ ] RAG returns SherpaPrompt content
+- [ ] RAG returns SherpaPrompt content (no sensitive data)
 
 ### Short-term (Week 1)
-- [ ] All test scenarios pass
-- [ ] Performance metrics within acceptable ranges
+- [ ] All test scenarios pass (including security tests)
+- [ ] Performance metrics within acceptable ranges (3-6 seconds)
 - [ ] No fencing references in responses
 - [ ] Appointment scheduling works with new context
+- [ ] Performance monitoring implemented
+- [ ] Semantic chunking verified working
+- [ ] All FencingRAG imports updated
 
 ### Long-term (Month 1)
 - [ ] User feedback is positive
 - [ ] Conversation quality metrics improved
 - [ ] Knowledge base is easily maintainable
 - [ ] System is ready for production use
+- [ ] Performance optimizations validated
+- [ ] Performance optimizations based on real usage data
 
 ---
 
@@ -834,6 +1135,58 @@ git checkout HEAD~1 -- features/voice-agent/services/
 
 This migration transforms the AHCA system from a fencing company voice agent to a comprehensive SherpaPrompt automation platform assistant. The separation of knowledge (vector database) and behavior (local configuration) creates a maintainable, scalable architecture that can easily adapt to future requirements.
 
-The migration preserves all existing functionality while providing contextually appropriate responses about SherpaPrompt's products and services. The enhanced RAG system delivers more accurate, relevant information to users interested in automation solutions.
+### Key Improvements Implemented
+
+**Security & Compliance**:
+- Default safety filters prevent sensitive/unvalidated content exposure
+- Emergency detection patterns ensure proper escalation
+- PII redaction maintains privacy compliance
+- Enhanced lead capture prevents lost opportunities
+
+**Technical Optimizations**:
+- Proven semantic chunking for reliable retrieval
+- Optimized vector search performance
+- Realistic performance targets (3-6 seconds)
+- Backward-compatible code migration
+
+**Business Value**:
+- Contextually appropriate responses about SherpaPrompt products
+- Proper demo flow with lead capture
+- Enhanced RAG system for accurate information delivery
+- Scalable architecture for future requirements
+
+### Critical Success Factors
+
+1. **Security First**: All security fixes must be implemented before content migration
+2. **Performance Monitoring**: Track end-to-end response times
+3. **Compliance**: Ensure PII redaction and data handling meet privacy standards
+
+The migration preserves all existing functionality while providing a robust, secure, and scalable foundation for SherpaPrompt's voice automation platform.
 
 For questions or support during migration, refer to the technical team or create an issue in the project repository.
+
+---
+
+## Implementation Checklist Summary
+
+### Phase 1 (Day 1) - CRITICAL
+- [ ] Implement security filters for vector search
+- [ ] Add emergency intent patterns
+- [ ] Implement PII redaction
+- [ ] Fix lead capture flow
+- [ ] Test all security measures
+
+### Phase 2 (Day 2-3) - CORE MIGRATION
+- [ ] Process SherpaPrompt knowledge base
+- [ ] Update RAG service (with backward compatibility)
+- [ ] Update intent classification
+- [ ] Update response generation
+- [ ] Verify semantic chunking works correctly
+
+### Phase 3 (Day 4-5) - OPTIMIZATION & TESTING
+- [ ] Monitor and optimize performance
+- [ ] Update all imports and references
+- [ ] Comprehensive testing (security, functionality, performance)
+- [ ] Performance optimization based on test results
+
+**Total Estimated Time**: 5 days with proper testing and validation

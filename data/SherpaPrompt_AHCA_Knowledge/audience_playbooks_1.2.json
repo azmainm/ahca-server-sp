@@ -22,8 +22,8 @@
       "heading_level": 1,
       "heading": "Audience Profiles & Call/Chat Playbooks",
       "path": "Audience Profiles & Call/Chat Playbooks",
-      "raw_markdown": "> **Purpose of this file**\n> Equip the LLM and call/chat automations with role-aware answers, data pulls, and next-best-actions for each audience we serve. Rooted in our value propositionâ€"*get to a correct first draft on the first attempt by orchestrating precise prompts with only the right context from user files*â€"and aligned to our four core offerings.\n\n---",
-      "normalized_text": "H1: Audience Profiles & Call/Chat Playbooks\n\n> Purpose of this file\n> Equip the LLM and call/chat automations with role-aware answers, data pulls, and next-best-actions for each audience we serve. Rooted in our value propositionâ€"get to a correct first draft on the first attempt by orchestrating precise prompts with only the right context from user filesâ€"and aligned to our four core offerings.\n\n---",
+      "raw_markdown": "> **Purpose of this file**\n> Equip the LLM and call/chat automations with role-aware answers, data pulls, and next-best-actions for each audience we serve. Rooted in our value proposition—*get to a correct first draft on the first attempt by orchestrating precise prompts with only the right context from user files*—and aligned to our four core offerings.\n\n---",
+      "normalized_text": "H1: Audience Profiles & Call/Chat Playbooks\n\n> Purpose of this file\n> Equip the LLM and call/chat automations with role-aware answers, data pulls, and next-best-actions for each audience we serve. Rooted in our value proposition—get to a correct first draft on the first attempt by orchestrating precise prompts with only the right context from user files—and aligned to our four core offerings.\n\n---",
       "labels": {
         "intents": [
           "sales",
@@ -70,8 +70,8 @@
       "heading_level": 3,
       "heading": "What they ask",
       "path": "Audience Profiles & Call/Chat Playbooks > Profile E — Enterprise Ops / IT / Compliance > What they ask",
-      "raw_markdown": "* "Can you integrate without changing our stack?"\n* "What audit signals do we get from call automation and task extraction?"\n* "How do you handle emergency escalations and human-in-the-loop?"",
-      "normalized_text": "H3: What they ask\n- "Can you integrate without changing our stack?"\n- "What audit signals do we get from call automation and task extraction?"\n- "How do you handle emergency escalations and human-in-the-loop?"",
+      "raw_markdown": "* \"Can you integrate without changing our stack?\"\n* \"What audit signals do we get from call automation and task extraction?\"\n* \"How do you handle emergency escalations and human-in-the-loop?\"",
+      "normalized_text": "H3: What they ask\n- \"Can you integrate without changing our stack?\"\n- \"What audit signals do we get from call automation and task extraction?\"\n- \"How do you handle emergency escalations and human-in-the-loop?\"",
       "labels": {
         "intents": [
           "sales",
@@ -97,7 +97,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_e_enterprise_ops_it_compliance_what_they_ask::0",
-          "embedding_input": "H3: What they ask\n- "Can you integrate without changing our stack?"\n- "What audit signals do we get from call automation and task extraction?"\n- "How do you handle emergency escalations and human-in-the-loop?"",
+          "embedding_input": "H3: What they ask\n- \"Can you integrate without changing our stack?\"\n- \"What audit signals do we get from call automation and task extraction?\"\n- \"How do you handle emergency escalations and human-in-the-loop?\"",
           "token_estimate": 34,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -406,8 +406,8 @@
       "heading_level": 3,
       "heading": "3) Emergency Escalation",
       "path": "Audience Profiles & Call/Chat Playbooks > Shared Interaction Patterns (All Personas) > 3) Emergency Escalation",
-      "raw_markdown": "* If caller indicates urgency (e.g., "leak," "down," "injury"), **immediately forward** to on-call human; log summary and timestamp.",
-      "normalized_text": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., "leak," "down," "injury"), immediately forward to on-call human; log summary and timestamp.",
+      "raw_markdown": "* If caller indicates urgency (e.g., \"leak,\" \"down,\" \"injury\"), **immediately forward** to on-call human; log summary and timestamp.",
+      "normalized_text": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., \"leak,\" \"down,\" \"injury\"), immediately forward to on-call human; log summary and timestamp.",
       "labels": {
         "intents": [
           "sales",
@@ -433,7 +433,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_shared_interaction_patterns_all_personas_3_emergency_escalation::0",
-          "embedding_input": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., "leak," "down," "injury"), immediately forward to on-call human; log summary and timestamp.",
+          "embedding_input": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., \"leak,\" \"down,\" \"injury\"), immediately forward to on-call human; log summary and timestamp.",
           "token_estimate": 22,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -454,8 +454,8 @@
       "heading_level": 3,
       "heading": "4) Using Pre-Existing Transcripts",
       "path": "Audience Profiles & Call/Chat Playbooks > Shared Interaction Patterns (All Personas) > 4) Using Pre-Existing Transcripts",
-      "raw_markdown": "* If a caller says "we already have transcripts," **ingest or link**, then proceed to **task extraction** and **chat with transcript**.",
-      "normalized_text": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says "we already have transcripts," ingest or link, then proceed to task extraction and chat with transcript.",
+      "raw_markdown": "* If a caller says \"we already have transcripts,\" **ingest or link**, then proceed to **task extraction** and **chat with transcript**.",
+      "normalized_text": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says \"we already have transcripts,\" ingest or link, then proceed to task extraction and chat with transcript.",
       "labels": {
         "intents": [
           "sales",
@@ -481,7 +481,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_shared_interaction_patterns_all_personas_4_using_pre_existing_transcripts::0",
-          "embedding_input": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says "we already have transcripts," ingest or link, then proceed to task extraction and chat with transcript.",
+          "embedding_input": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says \"we already have transcripts,\" ingest or link, then proceed to task extraction and chat with transcript.",
           "token_estimate": 26,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -640,74 +640,14 @@
           }
         }
       ]
-    }
-  ],
-  "entities": {
-    "systems": [
-      "Airtable",
-      "Asana",
-      "Calendly",
-      "ClickUp",
-      "GitHub",
-      "HubSpot",
-      "Jobber",
-      "Meet",
-      "Microsoft 365",
-      "OneDrive",
-      "Pipedrive",
-      "QuickBooks",
-      "SMS",
-      "Salesforce",
-      "ServiceTitan",
-      "Teams",
-      "Trello",
-      "Zoho",
-      "Zoom"
-    ],
-    "personas": [
-      "Developers",
-      "Enterprise",
-      "Marketing",
-      "Trades"
-    ]
-  }
-}"Enterprise",
-          "Marketing",
-          "Trades"
-        ],
-        "systems_read": [],
-        "systems_write": []
-      },
-      "policy_flags": {
-        "pricing_unvalidated": false,
-        "sensitive": false
-      },
-      "chunks": [
-        {
-          "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks::0",
-          "embedding_input": "H1: Audience Profiles & Call/Chat Playbooks\n\n> Purpose of this file\n> Equip the LLM and call/chat automations with role-aware answers, data pulls, and next-best-actions for each audience we serve. Rooted in our value propositionâ€"get to a correct first draft on the first attempt by orchestrating precise prompts with only the right context from user filesâ€"and aligned to our four core offerings.\n\n---",
-          "token_estimate": 63,
-          "overlap_with_prev": 0,
-          "qa_shape": "narrative",
-          "routing_hints": {
-            "intent_primary": null
-          },
-          "provenance": {
-            "doc_id": "audience_playbooks",
-            "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks",
-            "line_start": 0,
-            "line_end": 0
-          }
-        }
-      ]
     },
     {
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_global_intent_map_for_routing_retrieval",
       "heading_level": 2,
       "heading": "Global Intent Map (for Routing & Retrieval)",
       "path": "Audience Profiles & Call/Chat Playbooks > Global Intent Map (for Routing & Retrieval)",
-      "raw_markdown": "| Intent (Primary)       | Typical Utterances                                                         | Systems to Read/Write                  | Default Actions                                                           | Escalation                           |\n| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------ |\n| **Sales Inquiry**      | "What does SherpaPrompt do?" "Do you integrate with Salesforce/Jobber?"    | CRM (account/lead), website KB         | Qualify, answer product/services, book demo, send recap                   | Human sales if enterprise/compliance |\n| **Support**            | "How do I connect OneDrive?" "My estimate didn't sync."                    | CRM (customer, plan), ticketing, logs  | Troubleshoot, link to guide, create ticket, schedule support              | Live transfer if urgent/outage       |\n| **Scheduling**         | "Book a walkthrough." "Reschedule tomorrow 3pm."                           | Calendars (M365/Google), CRM           | Offer slots, confirm invite, write CRM note                               | N/A                                  |\n| **Estimate Request**   | "I need a fence quote." "Can you generate an estimate?"                    | Estimating platform, materials DB, CRM | Launch web-based voice-to-estimate, create draft estimate, email/SMS link | Dispatch sales if high-value         |\n| **Transcript-to-Task** | "Can you turn yesterday's call into tasks?" "We already have transcripts." | Transcript store, Teams/Zoom, PM tool  | Import or transcribe, extract tasks, push to PM/CRM                       | N/A                                  |\n| **Pricing/Tiers**      | "What's the cost for a small team?"                                        | CRM (segment), price sheet             | Provide tier overview, offer pilot, book sales                            | Sales if custom/enterprise           |\n| **Emergency**          | "Water leak nowâ€"need service!"                                             | On-call roster                         | Immediate warm transfer to on-call human                                  | Immediate                            |\n\nPricing guidance (public)\n- Pricing answers are public. The agent should read prices verbatim from Product Knowledge > Pricing and Trials:\n  • SherpaPrompt App: $10/month, 7-day free trial, no credit card; email, first name, last name required.\n  • Call Service Automation: $100/month, no trial.\n  • Transcript to Task Integration: $10/month, 7-day free trial, no credit card; email, first name, last name required.\n  • Voice to Estimate Automation: $10/month, no trial.\n- If discounts or custom packages are requested, offer a sales handoff rather than negotiating.\n\n> **Persona selection:** Our internal persona is **Scout**; clients can define their own branded voice/behavior. The agent should **read the client's CRM first** to personalize responses (name, plan, history), then act (create/update records, schedule, trigger estimate), with **emergency transfer** when applicable. See Product Knowledge > Persona Configuration for Scout defaults and client persona options.\n\n---",
-      "normalized_text": "H2: Global Intent Map (for Routing & Retrieval)\n\n| Intent (Primary)       | Typical Utterances                                                         | Systems to Read/Write                  | Default Actions                                                           | Escalation                           |\n| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------ |\n| Sales Inquiry      | "What does SherpaPrompt do?" "Do you integrate with Salesforce/Jobber?"    | CRM (account/lead), website KB         | Qualify, answer product/services, book demo, send recap                   | Human sales if enterprise/compliance |\n| Support            | "How do I connect OneDrive?" "My estimate didn't sync."                    | CRM (customer, plan), ticketing, logs  | Troubleshoot, link to guide, create ticket, schedule support              | Live transfer if urgent/outage       |\n| Scheduling         | "Book a walkthrough." "Reschedule tomorrow 3pm."                           | Calendars (M365/Google), CRM           | Offer slots, confirm invite, write CRM note                               | N/A                                  |\n| Estimate Request   | "I need a fence quote." "Can you generate an estimate?"                    | Estimating platform, materials DB, CRM | Launch web-based voice-to-estimate, create draft estimate, email/SMS link | Dispatch sales if high-value         |\n| Transcript-to-Task | "Can you turn yesterday's call into tasks?" "We already have transcripts." | Transcript store, Teams/Zoom, PM tool  | Import or transcribe, extract tasks, push to PM/CRM                       | N/A                                  |\n| Pricing/Tiers      | "What's the cost for a small team?"                                        | CRM (segment), price sheet             | Provide tier overview, offer pilot, book sales                            | Sales if custom/enterprise           |\n| Emergency          | "Water leak nowâ€"need service!"                                             | On-call roster                         | Immediate warm transfer to on-call human                                  | Immediate                            |\n\n> Persona selection: Our internal persona is Scout; clients can define their own branded voice/behavior. The agent should read the client's CRM first to personalize responses (name, plan, history), then act (create/update records, schedule, trigger estimate), with emergency transfer when applicable.\n\n---",
+      "raw_markdown": "| Intent (Primary)       | Typical Utterances                                                         | Systems to Read/Write                  | Default Actions                                                           | Escalation                           |\n| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------ |\n| **Sales Inquiry**      | \"What does SherpaPrompt do?\" \"Do you integrate with Salesforce/Jobber?\"    | CRM (account/lead), website KB         | Qualify, answer product/services, book demo, send recap                   | Human sales if enterprise/compliance |\n| **Support**            | \"How do I connect OneDrive?\" \"My estimate didn't sync.\"                    | CRM (customer, plan), ticketing, logs  | Troubleshoot, link to guide, create ticket, schedule support              | Live transfer if urgent/outage       |\n| **Scheduling**         | \"Book a walkthrough.\" \"Reschedule tomorrow 3pm.\"                           | Calendars (M365/Google), CRM           | Offer slots, confirm invite, write CRM note                               | N/A                                  |\n| **Estimate Request**   | \"I need a fence quote.\" \"Can you generate an estimate?\"                    | Estimating platform, materials DB, CRM | Launch web-based voice-to-estimate, create draft estimate, email/SMS link | Dispatch sales if high-value         |\n| **Transcript-to-Task** | \"Can you turn yesterday's call into tasks?\" \"We already have transcripts.\" | Transcript store, Teams/Zoom, PM tool  | Import or transcribe, extract tasks, push to PM/CRM                       | N/A                                  |\n| **Pricing/Tiers**      | \"What's the cost for a small team?\"                                        | CRM (segment), price sheet             | Provide tier overview, offer pilot, book sales                            | Sales if custom/enterprise           |\n| **Emergency**          | \"Water leak now—need service!\"                                             | On-call roster                         | Immediate warm transfer to on-call human                                  | Immediate                            |\n\nPricing guidance (public)\n- Pricing answers are public. The agent should read prices verbatim from Product Knowledge > Pricing and Trials:\n  • SherpaPrompt App: $10/month, 7-day free trial, no credit card; email, first name, last name required.\n  • Call Service Automation: $100/month, no trial.\n  • Transcript to Task Integration: $10/month, 7-day free trial, no credit card; email, first name, last name required.\n  • Voice to Estimate Automation: $10/month, no trial.\n- If discounts or custom packages are requested, offer a sales handoff rather than negotiating.\n\n> **Persona selection:** Our internal persona is **Scout**; clients can define their own branded voice/behavior. The agent should **read the client's CRM first** to personalize responses (name, plan, history), then act (create/update records, schedule, trigger estimate), with **emergency transfer** when applicable. See Product Knowledge > Persona Configuration for Scout defaults and client persona options.\n\n---",
+      "normalized_text": "H2: Global Intent Map (for Routing & Retrieval)\n\n| Intent (Primary)       | Typical Utterances                                                         | Systems to Read/Write                  | Default Actions                                                           | Escalation                           |\n| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------ |\n| Sales Inquiry      | \"What does SherpaPrompt do?\" \"Do you integrate with Salesforce/Jobber?\"    | CRM (account/lead), website KB         | Qualify, answer product/services, book demo, send recap                   | Human sales if enterprise/compliance |\n| Support            | \"How do I connect OneDrive?\" \"My estimate didn't sync.\"                    | CRM (customer, plan), ticketing, logs  | Troubleshoot, link to guide, create ticket, schedule support              | Live transfer if urgent/outage       |\n| Scheduling         | \"Book a walkthrough.\" \"Reschedule tomorrow 3pm.\"                           | Calendars (M365/Google), CRM           | Offer slots, confirm invite, write CRM note                               | N/A                                  |\n| Estimate Request   | \"I need a fence quote.\" \"Can you generate an estimate?\"                    | Estimating platform, materials DB, CRM | Launch web-based voice-to-estimate, create draft estimate, email/SMS link | Dispatch sales if high-value         |\n| Transcript-to-Task | \"Can you turn yesterday's call into tasks?\" \"We already have transcripts.\" | Transcript store, Teams/Zoom, PM tool  | Import or transcribe, extract tasks, push to PM/CRM                       | N/A                                  |\n| Pricing/Tiers      | \"What's the cost for a small team?\"                                        | CRM (segment), price sheet             | Provide tier overview, offer pilot, book sales                            | Sales if custom/enterprise           |\n| Emergency          | \"Water leak now—need service!\"                                             | On-call roster                         | Immediate warm transfer to on-call human                                  | Immediate                            |\n\n> Persona selection: Our internal persona is Scout; clients can define their own branded voice/behavior. The agent should read the client's CRM first to personalize responses (name, plan, history), then act (create/update records, schedule, trigger estimate), with emergency transfer when applicable.\n\n---",
       "labels": {
         "intents": [
           "sales",
@@ -733,7 +673,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_global_intent_map_for_routing_retrieval::0",
-          "embedding_input": "H2: Global Intent Map (for Routing & Retrieval)\n\n| Intent (Primary)       | Typical Utterances                                                         | Systems to Read/Write                  | Default Actions                                                           | Escalation                           |\n| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------ |\n| Sales Inquiry      | "What does SherpaPrompt do?" "Do you integrate with Salesforce/Jobber?"    | CRM (account/lead), website KB         | Qualify, answer product/services, book demo, send recap                   | Human sales if enterprise/compliance |\n| Support            | "How do I connect OneDrive?" "My estimate didn't sync."                    | CRM (customer, plan), ticketing, logs  | Troubleshoot, link to guide, create ticket, schedule support              | Live transfer if urgent/outage       |\n| Scheduling         | "Book a walkthrough." "Reschedule tomorrow 3pm."                           | Calendars (M365/Google), CRM           | Offer slots, confirm invite, write CRM note                               | N/A                                  |\n| Estimate Request   | "I need a fence quote." "Can you generate an estimate?"                    | Estimating platform, materials DB, CRM | Launch web-based voice-to-estimate, create draft estimate, email/SMS link | Dispatch sales if high-value         |\n| Transcript-to-Task | "Can you turn yesterday's call into tasks?" "We already have transcripts." | Transcript store, Teams/Zoom, PM tool  | Import or transcribe, extract tasks, push to PM/CRM                       | N/A                                  |\n| Pricing/Tiers      | "What's the cost for a small team?"                                        | CRM (segment), price sheet             | Provide tier overview, offer pilot, book sales                            | Sales if custom/enterprise           |\n| Emergency          | "Water leak nowâ€"need service!"                                             | On-call roster                         | Immediate warm transfer to on-call human                                  | Immediate                            |\n\n> Persona selection: Our internal persona is Scout; clients can define their own branded voice/behavior. The agent should read the client's CRM first to personalize responses (name, plan, history), then act (create/update records, schedule, trigger estimate), with emergency transfer when applicable.\n\n---",
+          "embedding_input": "H2: Global Intent Map (for Routing & Retrieval)\n\n| Intent (Primary)       | Typical Utterances                                                         | Systems to Read/Write                  | Default Actions                                                           | Escalation                           |\n| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------ |\n| Sales Inquiry      | \"What does SherpaPrompt do?\" \"Do you integrate with Salesforce/Jobber?\"    | CRM (account/lead), website KB         | Qualify, answer product/services, book demo, send recap                   | Human sales if enterprise/compliance |\n| Support            | \"How do I connect OneDrive?\" \"My estimate didn't sync.\"                    | CRM (customer, plan), ticketing, logs  | Troubleshoot, link to guide, create ticket, schedule support              | Live transfer if urgent/outage       |\n| Scheduling         | \"Book a walkthrough.\" \"Reschedule tomorrow 3pm.\"                           | Calendars (M365/Google), CRM           | Offer slots, confirm invite, write CRM note                               | N/A                                  |\n| Estimate Request   | \"I need a fence quote.\" \"Can you generate an estimate?\"                    | Estimating platform, materials DB, CRM | Launch web-based voice-to-estimate, create draft estimate, email/SMS link | Dispatch sales if high-value         |\n| Transcript-to-Task | \"Can you turn yesterday's call into tasks?\" \"We already have transcripts.\" | Transcript store, Teams/Zoom, PM tool  | Import or transcribe, extract tasks, push to PM/CRM                       | N/A                                  |\n| Pricing/Tiers      | \"What's the cost for a small team?\"                                        | CRM (segment), price sheet             | Provide tier overview, offer pilot, book sales                            | Sales if custom/enterprise           |\n| Emergency          | \"Water leak now—need service!\"                                             | On-call roster                         | Immediate warm transfer to on-call human                                  | Immediate                            |\n\n> Persona selection: Our internal persona is Scout; clients can define their own branded voice/behavior. The agent should read the client's CRM first to personalize responses (name, plan, history), then act (create/update records, schedule, trigger estimate), with emergency transfer when applicable.\n\n---",
           "token_estimate": 281,
           "overlap_with_prev": 0,
           "qa_shape": "table_row",
@@ -752,10 +692,10 @@
     {
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders",
       "heading_level": 2,
-      "heading": "Profile A â€" Software Developers & Builders",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders",
+      "heading": "Profile A — Software Developers & Builders",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders",
       "raw_markdown": "*(Maps to Avery and Jordan in Personas)*",
-      "normalized_text": "H2: Profile A â€" Software Developers & Builders\n\n(Maps to Avery and Jordan in Personas)",
+      "normalized_text": "H2: Profile A — Software Developers & Builders\n\n(Maps to Avery and Jordan in Personas)",
       "labels": {
         "intents": [
           "sales",
@@ -781,7 +721,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders::0",
-          "embedding_input": "H2: Profile A â€" Software Developers & Builders\n\n(Maps to Avery and Jordan in Personas)",
+          "embedding_input": "H2: Profile A — Software Developers & Builders\n\n(Maps to Avery and Jordan in Personas)",
           "token_estimate": 15,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -801,9 +741,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_who_they_are",
       "heading_level": 3,
       "heading": "Who they are",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders > Who they are",
-      "raw_markdown": "* **Avery (Sr. Full-Stack Dev)** â€" works inside Cursor; wants velocity, code quality, fewer AI iterations.\n* **Jordan (Indie Hacker/Agency Coder)** â€" ships quickly across projects, values reuse and low friction.",
-      "normalized_text": "H3: Who they are\n- Avery (Sr. Full-Stack Dev) â€" works inside Cursor; wants velocity, code quality, fewer AI iterations.\n- Jordan (Indie Hacker/Agency Coder) â€" ships quickly across projects, values reuse and low friction.",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders > Who they are",
+      "raw_markdown": "* **Avery (Sr. Full-Stack Dev)** — works inside Cursor; wants velocity, code quality, fewer AI iterations.\n* **Jordan (Indie Hacker/Agency Coder)** — ships quickly across projects, values reuse and low friction.",
+      "normalized_text": "H3: Who they are\n- Avery (Sr. Full-Stack Dev) — works inside Cursor; wants velocity, code quality, fewer AI iterations.\n- Jordan (Indie Hacker/Agency Coder) — ships quickly across projects, values reuse and low friction.",
       "labels": {
         "intents": [
           "sales",
@@ -829,7 +769,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_who_they_are::0",
-          "embedding_input": "H3: Who they are\n- Avery (Sr. Full-Stack Dev) â€" works inside Cursor; wants velocity, code quality, fewer AI iterations.\n- Jordan (Indie Hacker/Agency Coder) â€" ships quickly across projects, values reuse and low friction.",
+          "embedding_input": "H3: Who they are\n- Avery (Sr. Full-Stack Dev) — works inside Cursor; wants velocity, code quality, fewer AI iterations.\n- Jordan (Indie Hacker/Agency Coder) — ships quickly across projects, values reuse and low friction.",
           "token_estimate": 35,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -849,7 +789,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_goals_pain",
       "heading_level": 3,
       "heading": "Goals / Pain",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders > Goals / Pain",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders > Goals / Pain",
       "raw_markdown": "* Minimize context wrangling; avoid hallucinated paths/imports.\n* Keep flow in IDE; reuse recipes across repos; offline-friendly.",
       "normalized_text": "H3: Goals / Pain\n- Minimize context wrangling; avoid hallucinated paths/imports.\n- Keep flow in IDE; reuse recipes across repos; offline-friendly.",
       "labels": {
@@ -897,9 +837,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_what_they_ask",
       "heading_level": 3,
       "heading": "What they ask",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders > What they ask",
-      "raw_markdown": "* "How do you pull only relevant files into prompts?"\n* "Do you work in Cursor/VS Code?"\n* "Can I reuse a 'recipe' across repos?"",
-      "normalized_text": "H3: What they ask\n- "How do you pull only relevant files into prompts?"\n- "Do you work in Cursor/VS Code?"\n- "Can I reuse a 'recipe' across repos?"",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders > What they ask",
+      "raw_markdown": "* \"How do you pull only relevant files into prompts?\"\n* \"Do you work in Cursor/VS Code?\"\n* \"Can I reuse a 'recipe' across repos?\"",
+      "normalized_text": "H3: What they ask\n- \"How do you pull only relevant files into prompts?\"\n- \"Do you work in Cursor/VS Code?\"\n- \"Can I reuse a 'recipe' across repos?\"",
       "labels": {
         "intents": [
           "sales",
@@ -925,7 +865,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_what_they_ask::0",
-          "embedding_input": "H3: What they ask\n- "How do you pull only relevant files into prompts?"\n- "Do you work in Cursor/VS Code?"\n- "Can I reuse a 'recipe' across repos?"",
+          "embedding_input": "H3: What they ask\n- \"How do you pull only relevant files into prompts?\"\n- \"Do you work in Cursor/VS Code?\"\n- \"Can I reuse a 'recipe' across repos?\"",
           "token_estimate": 29,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -945,9 +885,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_answer_pattern_llm",
       "heading_level": 3,
       "heading": "Answer pattern (LLM)",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders > Answer pattern (LLM)",
-      "raw_markdown": "* Explain **structured prompting** (roles, objectives, constraints, reasoning) and **snippet-level retrieval** to avoid context bloat/drought.\n* Confirm IDE support (Cursor panel, local dirs), reusable roles, and file selection overrides.\n* Offer a short "first-use" flow and link to a quickstart.",
-      "normalized_text": "H3: Answer pattern (LLM)\n- Explain structured prompting (roles, objectives, constraints, reasoning) and snippet-level retrieval to avoid context bloat/drought.\n- Confirm IDE support (Cursor panel, local dirs), reusable roles, and file selection overrides.\n- Offer a short "first-use" flow and link to a quickstart.",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders > Answer pattern (LLM)",
+      "raw_markdown": "* Explain **structured prompting** (roles, objectives, constraints, reasoning) and **snippet-level retrieval** to avoid context bloat/drought.\n* Confirm IDE support (Cursor panel, local dirs), reusable roles, and file selection overrides.\n* Offer a short \"first-use\" flow and link to a quickstart.",
+      "normalized_text": "H3: Answer pattern (LLM)\n- Explain structured prompting (roles, objectives, constraints, reasoning) and snippet-level retrieval to avoid context bloat/drought.\n- Confirm IDE support (Cursor panel, local dirs), reusable roles, and file selection overrides.\n- Offer a short \"first-use\" flow and link to a quickstart.",
       "labels": {
         "intents": [
           "sales",
@@ -973,7 +913,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_answer_pattern_llm::0",
-          "embedding_input": "H3: Answer pattern (LLM)\n- Explain structured prompting (roles, objectives, constraints, reasoning) and snippet-level retrieval to avoid context bloat/drought.\n- Confirm IDE support (Cursor panel, local dirs), reusable roles, and file selection overrides.\n- Offer a short "first-use" flow and link to a quickstart.",
+          "embedding_input": "H3: Answer pattern (LLM)\n- Explain structured prompting (roles, objectives, constraints, reasoning) and snippet-level retrieval to avoid context bloat/drought.\n- Confirm IDE support (Cursor panel, local dirs), reusable roles, and file selection overrides.\n- Offer a short \"first-use\" flow and link to a quickstart.",
           "token_estimate": 44,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -993,7 +933,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_systems_to_read_write",
       "heading_level": 3,
       "heading": "Systems to read/write",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders > Systems to read/write",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders > Systems to read/write",
       "raw_markdown": "* **Read:** CRM (trial vs paid), repo metadata if connected.\n* **Write:** Create support ticket if IDE bridge setup fails; schedule enablement.",
       "normalized_text": "H3: Systems to read/write\n- Read: CRM (trial vs paid), repo metadata if connected.\n- Write: Create support ticket if IDE bridge setup fails; schedule enablement.",
       "labels": {
@@ -1041,9 +981,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_recommended_next_best_actions",
       "heading_level": 3,
       "heading": "Recommended next-best-actions",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders > Recommended next-best-actions",
-      "raw_markdown": "* Start a 10-minute enablement session; share a minimal "Add feature flag" example (aligns with Avery's scenario).\n* Save preferred role and constraints for reuse (per project).",
-      "normalized_text": "H3: Recommended next-best-actions\n- Start a 10-minute enablement session; share a minimal "Add feature flag" example (aligns with Avery's scenario).\n- Save preferred role and constraints for reuse (per project).",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders > Recommended next-best-actions",
+      "raw_markdown": "* Start a 10-minute enablement session; share a minimal \"Add feature flag\" example (aligns with Avery's scenario).\n* Save preferred role and constraints for reuse (per project).",
+      "normalized_text": "H3: Recommended next-best-actions\n- Start a 10-minute enablement session; share a minimal \"Add feature flag\" example (aligns with Avery's scenario).\n- Save preferred role and constraints for reuse (per project).",
       "labels": {
         "intents": [
           "sales",
@@ -1069,7 +1009,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_recommended_next_best_actions::0",
-          "embedding_input": "H3: Recommended next-best-actions\n- Start a 10-minute enablement session; share a minimal "Add feature flag" example (aligns with Avery's scenario).\n- Save preferred role and constraints for reuse (per project).",
+          "embedding_input": "H3: Recommended next-best-actions\n- Start a 10-minute enablement session; share a minimal \"Add feature flag\" example (aligns with Avery's scenario).\n- Save preferred role and constraints for reuse (per project).",
           "token_estimate": 30,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1089,9 +1029,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_sample_utterances_replies",
       "heading_level": 3,
       "heading": "Sample utterances â†' replies",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile A â€" Software Developers & Builders > Sample utterances â†' replies",
-      "raw_markdown": "* *"I need to refactor billing without breaking tests."* â†' "Open your project in Cursor, select recommended files (service layer, tests), set role 'Pragmatic Refactorer,' objective 'Add feature flag X,' constraints 'no path changes; tests must pass,' then **insert** the result at cursor. Want me to step you through it live?"\n\n---",
-      "normalized_text": "H3: Sample utterances â†' replies\n- "I need to refactor billing without breaking tests." â†' "Open your project in Cursor, select recommended files (service layer, tests), set role 'Pragmatic Refactorer,' objective 'Add feature flag X,' constraints 'no path changes; tests must pass,' then insert the result at cursor. Want me to step you through it live?"\n\n---",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile A — Software Developers & Builders > Sample utterances â†' replies",
+      "raw_markdown": "* *\"I need to refactor billing without breaking tests.\"* â†' \"Open your project in Cursor, select recommended files (service layer, tests), set role 'Pragmatic Refactorer,' objective 'Add feature flag X,' constraints 'no path changes; tests must pass,' then **insert** the result at cursor. Want me to step you through it live?\"\n\n---",
+      "normalized_text": "H3: Sample utterances â†' replies\n- \"I need to refactor billing without breaking tests.\" â†' \"Open your project in Cursor, select recommended files (service layer, tests), set role 'Pragmatic Refactorer,' objective 'Add feature flag X,' constraints 'no path changes; tests must pass,' then insert the result at cursor. Want me to step you through it live?\"\n\n---",
       "labels": {
         "intents": [
           "sales",
@@ -1117,7 +1057,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_a_software_developers_builders_sample_utterances_replies::0",
-          "embedding_input": "H3: Sample utterances â†' replies\n- "I need to refactor billing without breaking tests." â†' "Open your project in Cursor, select recommended files (service layer, tests), set role 'Pragmatic Refactorer,' objective 'Add feature flag X,' constraints 'no path changes; tests must pass,' then insert the result at cursor. Want me to step you through it live?"\n\n---",
+          "embedding_input": "H3: Sample utterances â†' replies\n- \"I need to refactor billing without breaking tests.\" â†' \"Open your project in Cursor, select recommended files (service layer, tests), set role 'Pragmatic Refactorer,' objective 'Add feature flag X,' constraints 'no path changes; tests must pass,' then insert the result at cursor. Want me to step you through it live?\"\n\n---",
           "token_estimate": 57,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1136,10 +1076,10 @@
     {
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals",
       "heading_level": 2,
-      "heading": "Profile B â€" Trades & Field Service Professionals",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals",
+      "heading": "Profile B — Trades & Field Service Professionals",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals",
       "raw_markdown": "*(Voice-to-Estimate + Call Automation)*",
-      "normalized_text": "H2: Profile B â€" Trades & Field Service Professionals\n\n(Voice-to-Estimate + Call Automation)",
+      "normalized_text": "H2: Profile B — Trades & Field Service Professionals\n\n(Voice-to-Estimate + Call Automation)",
       "labels": {
         "intents": [
           "sales",
@@ -1165,7 +1105,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals::0",
-          "embedding_input": "H2: Profile B â€" Trades & Field Service Professionals\n\n(Voice-to-Estimate + Call Automation)",
+          "embedding_input": "H2: Profile B — Trades & Field Service Professionals\n\n(Voice-to-Estimate + Call Automation)",
           "token_estimate": 13,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1185,7 +1125,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_who_they_are",
       "heading_level": 3,
       "heading": "Who they are",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals > Who they are",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals > Who they are",
       "raw_markdown": "* Owners/estimators in fencing, construction, HVAC, painting, roofing. Often on-site; need **hands-free** estimating and after-hours call capture.",
       "normalized_text": "H3: Who they are\n- Owners/estimators in fencing, construction, HVAC, painting, roofing. Often on-site; need hands-free estimating and after-hours call capture.",
       "labels": {
@@ -1233,7 +1173,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_goals_pain",
       "heading_level": 3,
       "heading": "Goals / Pain",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals > Goals / Pain",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals > Goals / Pain",
       "raw_markdown": "* Faster, consistent quotes; no double entry.\n* After-hours receptionist that **answers questions**, moves leads along, and updates CRM.",
       "normalized_text": "H3: Goals / Pain\n- Faster, consistent quotes; no double entry.\n- After-hours receptionist that answers questions, moves leads along, and updates CRM.",
       "labels": {
@@ -1281,9 +1221,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_what_they_ask",
       "heading_level": 3,
       "heading": "What they ask",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals > What they ask",
-      "raw_markdown": "* "Can your agent answer product/service questions and book jobs?"\n* "Can I talk through an estimate while measuring?"\n* "Will it use my own pricing database and create estimates in my platform?"",
-      "normalized_text": "H3: What they ask\n- "Can your agent answer product/service questions and book jobs?"\n- "Can I talk through an estimate while measuring?"\n- "Will it use my own pricing database and create estimates in my platform?"",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals > What they ask",
+      "raw_markdown": "* \"Can your agent answer product/service questions and book jobs?\"\n* \"Can I talk through an estimate while measuring?\"\n* \"Will it use my own pricing database and create estimates in my platform?\"",
+      "normalized_text": "H3: What they ask\n- \"Can your agent answer product/service questions and book jobs?\"\n- \"Can I talk through an estimate while measuring?\"\n- \"Will it use my own pricing database and create estimates in my platform?\"",
       "labels": {
         "intents": [
           "sales",
@@ -1309,7 +1249,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_what_they_ask::0",
-          "embedding_input": "H3: What they ask\n- "Can your agent answer product/service questions and book jobs?"\n- "Can I talk through an estimate while measuring?"\n- "Will it use my own pricing database and create estimates in my platform?"",
+          "embedding_input": "H3: What they ask\n- \"Can your agent answer product/service questions and book jobs?\"\n- \"Can I talk through an estimate while measuring?\"\n- \"Will it use my own pricing database and create estimates in my platform?\"",
           "token_estimate": 37,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1329,7 +1269,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_answer_pattern_llm",
       "heading_level": 3,
       "heading": "Answer pattern (LLM)",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals > Answer pattern (LLM)",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals > Answer pattern (LLM)",
       "raw_markdown": "* **Call service:** The agent can answer product/service questions, guide prospects through the **sales funnel**, offer scheduling, provide basic tech support, **read CRM** to recognize returning callers, and **forward emergencies to on-call staff**.\n* **Web app estimating:** From a **browser on the phone**, use a **Bluetooth headset** to speak materials, labor categories, and quantities; the app classifies items, **pulls prices** from the client's DB/estimating platform, and creates the estimate **inside that platform**; user can edit before sending.",
       "normalized_text": "H3: Answer pattern (LLM)\n- Call service: The agent can answer product/service questions, guide prospects through the sales funnel, offer scheduling, provide basic tech support, read CRM to recognize returning callers, and forward emergencies to on-call staff.\n- Web app estimating: From a browser on the phone, use a Bluetooth headset to speak materials, labor categories, and quantities; the app classifies items, pulls prices from the client's DB/estimating platform, and creates the estimate inside that platform; user can edit before sending.",
       "labels": {
@@ -1377,7 +1317,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_systems_to_read_write",
       "heading_level": 3,
       "heading": "Systems to read/write",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals > Systems to read/write",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals > Systems to read/write",
       "raw_markdown": "* **Read:** CRM (caller record), materials/price DB, existing estimates.\n* **Write:** CRM updates, calendar events, draft estimates (Jobber/ServiceTitan/QuickBooks), SMS/email links.",
       "normalized_text": "H3: Systems to read/write\n- Read: CRM (caller record), materials/price DB, existing estimates.\n- Write: CRM updates, calendar events, draft estimates (Jobber/ServiceTitan/QuickBooks), SMS/email links.",
       "labels": {
@@ -1425,7 +1365,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_recommended_next_best_actions",
       "heading_level": 3,
       "heading": "Recommended next-best-actions",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals > Recommended next-best-actions",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals > Recommended next-best-actions",
       "raw_markdown": "* Offer to text an **estimate link** for immediate field use.\n* If high-value or complex: book site visit or warm-transfer to sales.",
       "normalized_text": "H3: Recommended next-best-actions\n- Offer to text an estimate link for immediate field use.\n- If high-value or complex: book site visit or warm-transfer to sales.",
       "labels": {
@@ -1473,9 +1413,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_sample_utterances_replies",
       "heading_level": 3,
       "heading": "Sample utterances â†' replies",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile B â€" Trades & Field Service Professionals > Sample utterances â†' replies",
-      "raw_markdown": "* *"I need a 120' cedar fence estimate."* â†' "I can spin up the hands-free estimator now. While you walk, say things like 'four 6Ã—6 posts, 8' spacing, 6' height, two gates.' I'll pull your **materials pricing** and draft the estimate in **Jobber** for review."\n\n---",
-      "normalized_text": "H3: Sample utterances â†' replies\n- "I need a 120' cedar fence estimate." â†' "I can spin up the hands-free estimator now. While you walk, say things like 'four 6Ã—6 posts, 8' spacing, 6' height, two gates.' I'll pull your materials pricing and draft the estimate in Jobber for review."\n\n---",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile B — Trades & Field Service Professionals > Sample utterances â†' replies",
+      "raw_markdown": "* *\"I need a 120' cedar fence estimate.\"* â†' \"I can spin up the hands-free estimator now. While you walk, say things like 'four 6Ã—6 posts, 8' spacing, 6' height, two gates.' I'll pull your **materials pricing** and draft the estimate in **Jobber** for review.\"\n\n---",
+      "normalized_text": "H3: Sample utterances â†' replies\n- \"I need a 120' cedar fence estimate.\" â†' \"I can spin up the hands-free estimator now. While you walk, say things like 'four 6Ã—6 posts, 8' spacing, 6' height, two gates.' I'll pull your materials pricing and draft the estimate in Jobber for review.\"\n\n---",
       "labels": {
         "intents": [
           "sales",
@@ -1501,7 +1441,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_b_trades_field_service_professionals_sample_utterances_replies::0",
-          "embedding_input": "H3: Sample utterances â†' replies\n- "I need a 120' cedar fence estimate." â†' "I can spin up the hands-free estimator now. While you walk, say things like 'four 6Ã—6 posts, 8' spacing, 6' height, two gates.' I'll pull your materials pricing and draft the estimate in Jobber for review."\n\n---",
+          "embedding_input": "H3: Sample utterances â†' replies\n- \"I need a 120' cedar fence estimate.\" â†' \"I can spin up the hands-free estimator now. While you walk, say things like 'four 6Ã—6 posts, 8' spacing, 6' height, two gates.' I'll pull your materials pricing and draft the estimate in Jobber for review.\"\n\n---",
           "token_estimate": 51,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1520,10 +1460,10 @@
     {
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders",
       "heading_level": 2,
-      "heading": "Profile C â€" Marketing Leaders",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders",
+      "heading": "Profile C — Marketing Leaders",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders",
       "raw_markdown": "*(Maps to Casey in Personas)*",
-      "normalized_text": "H2: Profile C â€" Marketing Leaders\n\n(Maps to Casey in Personas)",
+      "normalized_text": "H2: Profile C — Marketing Leaders\n\n(Maps to Casey in Personas)",
       "labels": {
         "intents": [
           "sales",
@@ -1549,7 +1489,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders::0",
-          "embedding_input": "H2: Profile C â€" Marketing Leaders\n\n(Maps to Casey in Personas)",
+          "embedding_input": "H2: Profile C — Marketing Leaders\n\n(Maps to Casey in Personas)",
           "token_estimate": 11,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1569,7 +1509,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_who_they_are",
       "heading_level": 3,
       "heading": "Who they are",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders > Who they are",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > Who they are",
       "raw_markdown": "* VPs/Directors who need brand-consistent copy with accurate technical details; coordinate with PMs and engineering.",
       "normalized_text": "H3: Who they are\n- VPs/Directors who need brand-consistent copy with accurate technical details; coordinate with PMs and engineering.",
       "labels": {
@@ -1617,7 +1557,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_goals_pain",
       "heading_level": 3,
       "heading": "Goals / Pain",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders > Goals / Pain",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > Goals / Pain",
       "raw_markdown": "* Repurpose technical content across channels; ensure compliance; keep content calendar on track.",
       "normalized_text": "H3: Goals / Pain\n- Repurpose technical content across channels; ensure compliance; keep content calendar on track.",
       "labels": {
@@ -1665,9 +1605,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_what_they_ask",
       "heading_level": 3,
       "heading": "What they ask",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders > What they ask",
-      "raw_markdown": "* "Can you pull current technical details into landing pages?"\n* "Do you integrate with our storage and site tools?"",
-      "normalized_text": "H3: What they ask\n- "Can you pull current technical details into landing pages?"\n- "Do you integrate with our storage and site tools?"",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > What they ask",
+      "raw_markdown": "* \"Can you pull current technical details into landing pages?\"\n* \"Do you integrate with our storage and site tools?"",
+      "normalized_text": "H3: What they ask\n- \"Can you pull current technical details into landing pages?\"\n- "Do you integrate with our storage and site tools?"",
       "labels": {
         "intents": [
           "sales",
@@ -1693,7 +1633,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_what_they_ask::0",
-          "embedding_input": "H3: What they ask\n- "Can you pull current technical details into landing pages?"\n- "Do you integrate with our storage and site tools?"",
+          "embedding_input": "H3: What they ask\n- \"Can you pull current technical details into landing pages?\"\n- "Do you integrate with our storage and site tools?"",
           "token_estimate": 24,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1713,7 +1653,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_answer_pattern_llm",
       "heading_level": 3,
       "heading": "Answer pattern (LLM)",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders > Answer pattern (LLM)",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > Answer pattern (LLM)",
       "raw_markdown": "* Explain **role-based prompting** + **snippet retrieval** from connected docs to ensure accuracy and tone; call service can answer product questions and route MQLs; transcript-to-task turns meeting notes into content tasks.",
       "normalized_text": "H3: Answer pattern (LLM)\n- Explain role-based prompting + snippet retrieval from connected docs to ensure accuracy and tone; call service can answer product questions and route MQLs; transcript-to-task turns meeting notes into content tasks.",
       "labels": {
@@ -1761,7 +1701,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_systems_to_read_write",
       "heading_level": 3,
       "heading": "Systems to read/write",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders > Systems to read/write",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > Systems to read/write",
       "raw_markdown": "* **Read:** CRM (account tier), doc stores (Drive, OneDrive, GitHub wiki).\n* **Write:** CRM notes, tasks in PM tool; schedule copy reviews.",
       "normalized_text": "H3: Systems to read/write\n- Read: CRM (account tier), doc stores (Drive, OneDrive, GitHub wiki).\n- Write: CRM notes, tasks in PM tool; schedule copy reviews.",
       "labels": {
@@ -1809,7 +1749,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_recommended_next_best_actions",
       "heading_level": 3,
       "heading": "Recommended next-best-actions",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders > Recommended next-best-actions",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > Recommended next-best-actions",
       "raw_markdown": "* Propose a **campaign sprint**: ingest release notes + API docs â†' draft landing + email drip â†' schedule review.",
       "normalized_text": "H3: Recommended next-best-actions\n- Propose a campaign sprint: ingest release notes + API docs â†' draft landing + email drip â†' schedule review.",
       "labels": {
@@ -1857,9 +1797,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_sample_utterances_replies",
       "heading_level": 3,
       "heading": "Sample utterances â†' replies",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile C â€" Marketing Leaders > Sample utterances â†' replies",
-      "raw_markdown": "* *"We're launching Zero Trust; can you draft a page?"* â†' "Yesâ€"connect your release notes and API docs. I'll retrieve the relevant snippets and draft the landing with your brand voice, then schedule a review with your PM."\n\n---",
-      "normalized_text": "H3: Sample utterances â†' replies\n- "We're launching Zero Trust; can you draft a page?" â†' "Yesâ€"connect your release notes and API docs. I'll retrieve the relevant snippets and draft the landing with your brand voice, then schedule a review with your PM."\n\n---",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > Sample utterances â†' replies",
+      "raw_markdown": "* *"We're launching Zero Trust; can you draft a page?"* â†' "Yes—connect your release notes and API docs. I'll retrieve the relevant snippets and draft the landing with your brand voice, then schedule a review with your PM."\n\n---",
+      "normalized_text": "H3: Sample utterances â†' replies\n- "We're launching Zero Trust; can you draft a page?" â†' "Yes—connect your release notes and API docs. I'll retrieve the relevant snippets and draft the landing with your brand voice, then schedule a review with your PM."\n\n---",
       "labels": {
         "intents": [
           "sales",
@@ -1885,7 +1825,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_sample_utterances_replies::0",
-          "embedding_input": "H3: Sample utterances â†' replies\n- "We're launching Zero Trust; can you draft a page?" â†' "Yesâ€"connect your release notes and API docs. I'll retrieve the relevant snippets and draft the landing with your brand voice, then schedule a review with your PM."\n\n---",
+          "embedding_input": "H3: Sample utterances â†' replies\n- "We're launching Zero Trust; can you draft a page?" â†' "Yes—connect your release notes and API docs. I'll retrieve the relevant snippets and draft the landing with your brand voice, then schedule a review with your PM."\n\n---",
           "token_estimate": 44,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1904,10 +1844,10 @@
     {
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers",
       "heading_level": 2,
-      "heading": "Profile D â€" Grant Writers & Program Officers",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers",
+      "heading": "Profile D — Grant Writers & Program Officers",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers",
       "raw_markdown": "*(Maps to Dana in Personas)*",
-      "normalized_text": "H2: Profile D â€" Grant Writers & Program Officers\n\n(Maps to Dana in Personas)",
+      "normalized_text": "H2: Profile D — Grant Writers & Program Officers\n\n(Maps to Dana in Personas)",
       "labels": {
         "intents": [
           "sales",
@@ -1933,7 +1873,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers::0",
-          "embedding_input": "H2: Profile D â€" Grant Writers & Program Officers\n\n(Maps to Dana in Personas)",
+          "embedding_input": "H2: Profile D — Grant Writers & Program Officers\n\n(Maps to Dana in Personas)",
           "token_estimate": 14,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -1953,7 +1893,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_who_they_are",
       "heading_level": 3,
       "heading": "Who they are",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers > Who they are",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers > Who they are",
       "raw_markdown": "* Nonprofit grant writers; manage RFP compliance, budgets, outcome metrics; tools: Microsoft 365, Airtable.",
       "normalized_text": "H3: Who they are\n- Nonprofit grant writers; manage RFP compliance, budgets, outcome metrics; tools: Microsoft 365, Airtable.",
       "labels": {
@@ -2001,7 +1941,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_goals_pain",
       "heading_level": 3,
       "heading": "Goals / Pain",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers > Goals / Pain",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers > Goals / Pain",
       "raw_markdown": "* Align narratives to funder requirements; reuse outcomes/budget data; cut revision cycles.",
       "normalized_text": "H3: Goals / Pain\n- Align narratives to funder requirements; reuse outcomes/budget data; cut revision cycles.",
       "labels": {
@@ -2049,7 +1989,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_what_they_ask",
       "heading_level": 3,
       "heading": "What they ask",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers > What they ask",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers > What they ask",
       "raw_markdown": "* "Can you pull prior outcomes and budgets into the draft?"\n* "Can I ask questions of a long RFP transcript?"",
       "normalized_text": "H3: What they ask\n- "Can you pull prior outcomes and budgets into the draft?"\n- "Can I ask questions of a long RFP transcript?"",
       "labels": {
@@ -2097,7 +2037,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_answer_pattern_llm",
       "heading_level": 3,
       "heading": "Answer pattern (LLM)",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers > Answer pattern (LLM)",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers > Answer pattern (LLM)",
       "raw_markdown": "* Import or link **existing transcripts**; **chat with transcripts** to clarify sections.\n* Extract funder requirements â†' generate outline â†' draft need statement/logic model with citations to stored files; push tasks to PM/CRM for finance/legal review.",
       "normalized_text": "H3: Answer pattern (LLM)\n- Import or link existing transcripts; chat with transcripts to clarify sections.\n- Extract funder requirements â†' generate outline â†' draft need statement/logic model with citations to stored files; push tasks to PM/CRM for finance/legal review.",
       "labels": {
@@ -2145,7 +2085,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_systems_to_read_write",
       "heading_level": 3,
       "heading": "Systems to read/write",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers > Systems to read/write",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers > Systems to read/write",
       "raw_markdown": "* **Read:** 365 docs, Airtable metrics, prior proposals.\n* **Write:** Tasks to PM tool, CRM opportunity notes; calendar holds for review.",
       "normalized_text": "H3: Systems to read/write\n- Read: 365 docs, Airtable metrics, prior proposals.\n- Write: Tasks to PM tool, CRM opportunity notes; calendar holds for review.",
       "labels": {
@@ -2193,7 +2133,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_recommended_next_best_actions",
       "heading_level": 3,
       "heading": "Recommended next-best-actions",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers > Recommended next-best-actions",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers > Recommended next-best-actions",
       "raw_markdown": "* Offer a **two-cycle** draft workflow (writer â†' program director â†' finance) to reduce revisions.",
       "normalized_text": "H3: Recommended next-best-actions\n- Offer a two-cycle draft workflow (writer â†' program director â†' finance) to reduce revisions.",
       "labels": {
@@ -2241,9 +2181,9 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_sample_utterances_replies",
       "heading_level": 3,
       "heading": "Sample utterances â†' replies",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile D â€" Grant Writers & Program Officers > Sample utterances â†' replies",
-      "raw_markdown": "* *"The RFP is 40 pagesâ€"what matters?"* â†' "I'll extract funder questions and compliance items, then we can **chat with the transcript** to clarify ambiguous sections and generate a checklist for your team."\n\n---",
-      "normalized_text": "H3: Sample utterances â†' replies\n- "The RFP is 40 pagesâ€"what matters?" â†' "I'll extract funder questions and compliance items, then we can chat with the transcript to clarify ambiguous sections and generate a checklist for your team."\n\n---",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile D — Grant Writers & Program Officers > Sample utterances â†' replies",
+      "raw_markdown": "* *"The RFP is 40 pages—what matters?"* â†' "I'll extract funder questions and compliance items, then we can **chat with the transcript** to clarify ambiguous sections and generate a checklist for your team."\n\n---",
+      "normalized_text": "H3: Sample utterances â†' replies\n- "The RFP is 40 pages—what matters?" â†' "I'll extract funder questions and compliance items, then we can chat with the transcript to clarify ambiguous sections and generate a checklist for your team."\n\n---",
       "labels": {
         "intents": [
           "sales",
@@ -2269,7 +2209,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_d_grant_writers_program_officers_sample_utterances_replies::0",
-          "embedding_input": "H3: Sample utterances â†' replies\n- "The RFP is 40 pagesâ€"what matters?" â†' "I'll extract funder questions and compliance items, then we can chat with the transcript to clarify ambiguous sections and generate a checklist for your team."\n\n---",
+          "embedding_input": "H3: Sample utterances â†' replies\n- "The RFP is 40 pages—what matters?" â†' "I'll extract funder questions and compliance items, then we can chat with the transcript to clarify ambiguous sections and generate a checklist for your team."\n\n---",
           "token_estimate": 39,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -2288,10 +2228,10 @@
     {
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_e_enterprise_ops_it_compliance",
       "heading_level": 2,
-      "heading": "Profile E â€" Enterprise Ops / IT / Compliance",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile E â€" Enterprise Ops / IT / Compliance",
+      "heading": "Profile E — Enterprise Ops / IT / Compliance",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile E — Enterprise Ops / IT / Compliance",
       "raw_markdown": "",
-      "normalized_text": "H2: Profile E â€" Enterprise Ops / IT / Compliance",
+      "normalized_text": "H2: Profile E — Enterprise Ops / IT / Compliance",
       "labels": {
         "intents": [
           "sales",
@@ -2317,7 +2257,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_e_enterprise_ops_it_compliance::0",
-          "embedding_input": "H2: Profile E â€" Enterprise Ops / IT / Compliance",
+          "embedding_input": "H2: Profile E — Enterprise Ops / IT / Compliance",
           "token_estimate": 10,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -2337,7 +2277,7 @@
       "section_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_e_enterprise_ops_it_compliance_who_they_are",
       "heading_level": 3,
       "heading": "Who they are",
-      "path": "Audience Profiles & Call/Chat Playbooks > Profile E â€" Enterprise Ops / IT / Compliance > Who they are",
+      "path": "Audience Profiles & Call/Chat Playbooks > Profile E — Enterprise Ops / IT / Compliance > Who they are",
       "raw_markdown": "* Buyers who care about integrations, governance, audit trails, and change management.",
       "normalized_text": "H3: Who they are\n- Buyers who care about integrations, governance, audit trails, and change management.",
       "labels": {
@@ -2434,8 +2374,8 @@
       "heading_level": 3,
       "heading": "What they ask",
       "path": "Audience Profiles & Call/Chat Playbooks > Profile E — Enterprise Ops / IT / Compliance > What they ask",
-      "raw_markdown": "* "Can you integrate without changing our stack?"\n* "What audit signals do we get from call automation and task extraction?"\n* "How do you handle emergency escalations and human-in-the-loop?"",
-      "normalized_text": "H3: What they ask\n- "Can you integrate without changing our stack?"\n- "What audit signals do we get from call automation and task extraction?"\n- "How do you handle emergency escalations and human-in-the-loop?"",
+      "raw_markdown": "* \"Can you integrate without changing our stack?\"\n* \"What audit signals do we get from call automation and task extraction?\"\n* \"How do you handle emergency escalations and human-in-the-loop?\"",
+      "normalized_text": "H3: What they ask\n- \"Can you integrate without changing our stack?\"\n- \"What audit signals do we get from call automation and task extraction?\"\n- \"How do you handle emergency escalations and human-in-the-loop?\"",
       "labels": {
         "intents": [
           "sales",
@@ -2461,7 +2401,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_e_enterprise_ops_it_compliance_what_they_ask::0",
-          "embedding_input": "H3: What they ask\n- "Can you integrate without changing our stack?"\n- "What audit signals do we get from call automation and task extraction?"\n- "How do you handle emergency escalations and human-in-the-loop?"",
+          "embedding_input": "H3: What they ask\n- \"Can you integrate without changing our stack?\"\n- \"What audit signals do we get from call automation and task extraction?\"\n- \"How do you handle emergency escalations and human-in-the-loop?\"",
           "token_estimate": 34,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -2770,8 +2710,8 @@
       "heading_level": 3,
       "heading": "3) Emergency Escalation",
       "path": "Audience Profiles & Call/Chat Playbooks > Shared Interaction Patterns (All Personas) > 3) Emergency Escalation",
-      "raw_markdown": "* If caller indicates urgency (e.g., "leak," "down," "injury"), **immediately forward** to on-call human; log summary and timestamp.",
-      "normalized_text": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., "leak," "down," "injury"), immediately forward to on-call human; log summary and timestamp.",
+      "raw_markdown": "* If caller indicates urgency (e.g., \"leak,\" \"down,\" \"injury\"), **immediately forward** to on-call human; log summary and timestamp.",
+      "normalized_text": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., \"leak,\" \"down,\" \"injury\"), immediately forward to on-call human; log summary and timestamp.",
       "labels": {
         "intents": [
           "sales",
@@ -2797,7 +2737,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_shared_interaction_patterns_all_personas_3_emergency_escalation::0",
-          "embedding_input": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., "leak," "down," "injury"), immediately forward to on-call human; log summary and timestamp.",
+          "embedding_input": "H3: 3) Emergency Escalation\n- If caller indicates urgency (e.g., \"leak,\" \"down,\" \"injury\"), immediately forward to on-call human; log summary and timestamp.",
           "token_estimate": 22,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -2818,8 +2758,8 @@
       "heading_level": 3,
       "heading": "4) Using Pre-Existing Transcripts",
       "path": "Audience Profiles & Call/Chat Playbooks > Shared Interaction Patterns (All Personas) > 4) Using Pre-Existing Transcripts",
-      "raw_markdown": "* If a caller says "we already have transcripts," **ingest or link**, then proceed to **task extraction** and **chat with transcript**.",
-      "normalized_text": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says "we already have transcripts," ingest or link, then proceed to task extraction and chat with transcript.",
+      "raw_markdown": "* If a caller says \"we already have transcripts,\" **ingest or link**, then proceed to **task extraction** and **chat with transcript**.",
+      "normalized_text": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says \"we already have transcripts,\" ingest or link, then proceed to task extraction and chat with transcript.",
       "labels": {
         "intents": [
           "sales",
@@ -2845,7 +2785,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_shared_interaction_patterns_all_personas_4_using_pre_existing_transcripts::0",
-          "embedding_input": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says "we already have transcripts," ingest or link, then proceed to task extraction and chat with transcript.",
+          "embedding_input": "H3: 4) Using Pre-Existing Transcripts\n- If a caller says \"we already have transcripts,\" ingest or link, then proceed to task extraction and chat with transcript.",
           "token_estimate": 26,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",
@@ -3035,4 +2975,5 @@
       "Trades"
     ]
   }
+  ]
 }

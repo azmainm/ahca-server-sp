@@ -608,6 +608,133 @@ class EmbeddingService {
   }
 
   /**
+   * Process SherpaPrompt JSON documents with sections array structure
+   * @param {Object} jsonData - SherpaPrompt JSON document
+   * @param {string} filename - Source filename for metadata
+   * @returns {Promise<Object>} Processing results
+   */
+  async processSherpaPromptDocument(jsonData, filename) {
+    try {
+      console.log(`🧠 Processing SherpaPrompt document: ${filename}`);
+      
+      if (!jsonData.sections || !Array.isArray(jsonData.sections)) {
+        console.warn(`⚠️ No sections array found in ${filename}, skipping...`);
+        return { chunksStored: 0, contentHash: 'no-sections' };
+      }
+
+      const chunks = [];
+      
+      // Extract sections from SherpaPrompt JSON structure
+      for (const section of jsonData.sections) {
+        if (!section.normalized_text || section.normalized_text.trim().length === 0) {
+          continue; // Skip empty sections
+        }
+
+        // Create chunk metadata based on SherpaPrompt structure
+        const metadata = {
+          doc_id: jsonData.doc_id || filename.replace('.json', ''),
+          section_id: section.section_id,
+          heading: section.heading || 'Untitled Section',
+          heading_level: section.heading_level || 1,
+          path: section.path || '',
+          
+          // Security and access control
+          access_tags: jsonData.access_tags || ['public'],
+          product_area: jsonData.product_area || ['general'],
+          sensitive: jsonData.access_tags?.includes('internal') || false,
+          
+          // Content classification
+          intents: section.labels?.intents || [],
+          audience_profiles: section.labels?.audience_profiles || [],
+          
+          // Source tracking
+          source_file: filename,
+          source_type: jsonData.source_type || 'kb',
+          content_type: 'knowledge',
+          
+          // Validation flags
+          pricing_unvalidated: section.policy_flags?.pricing_unvalidated || false,
+          
+          // Processing metadata
+          last_modified: jsonData.last_modified || new Date().toISOString(),
+          version: jsonData.version || '1.0'
+        };
+
+        chunks.push({
+          id: section.section_id || `${jsonData.doc_id}_${chunks.length}`,
+          content: section.normalized_text,
+          metadata: metadata,
+          category: this.categorizeContent(section.normalized_text, section.labels),
+          type: this.determineContentType(section.labels),
+          title: section.heading || 'Untitled Section'
+        });
+      }
+
+      console.log(`📊 Extracted ${chunks.length} sections from ${filename}`);
+
+      // Process chunks through existing pipeline
+      let totalChunksStored = 0;
+      
+      for (const chunk of chunks) {
+        const result = await this.processContentToVectorStore(
+          chunk.id,
+          chunk.content,
+          chunk.metadata
+        );
+        totalChunksStored += result.chunksStored;
+      }
+
+      console.log(`✅ Stored ${totalChunksStored} chunks from ${filename}`);
+      
+      return {
+        chunksStored: totalChunksStored,
+        sectionsProcessed: chunks.length,
+        contentHash: this.generateContentHash(JSON.stringify(jsonData))
+      };
+
+    } catch (error) {
+      console.error(`❌ Error processing SherpaPrompt document ${filename}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Categorize content based on text and labels
+   */
+  categorizeContent(text, labels) {
+    if (labels?.intents?.includes('pricing')) return 'pricing';
+    if (labels?.intents?.includes('support')) return 'support';
+    if (labels?.intents?.includes('sales')) return 'sales';
+    if (text.toLowerCase().includes('mission') || text.toLowerCase().includes('values')) return 'company';
+    if (text.toLowerCase().includes('product') || text.toLowerCase().includes('feature')) return 'product';
+    return 'general';
+  }
+
+  /**
+   * Determine content type based on labels
+   */
+  determineContentType(labels) {
+    if (labels?.qa_shape === 'faq') return 'faq';
+    if (labels?.intents?.includes('troubleshooting')) return 'troubleshooting';
+    if (labels?.intents?.includes('integration')) return 'integration';
+    return 'knowledge';
+  }
+
+  /**
+   * Generate content hash for version tracking
+   */
+  generateContentHash(content) {
+    // Simple hash function for content versioning
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
+  }
+
+  /**
    * Enhanced search for similar content using vector store with improved query processing
    * @param {string} query - Search query
    * @param {number} maxResults - Maximum number of results to return
