@@ -9,7 +9,7 @@ class CompanyInfoService {
       name: "SherpaPrompt",
       tagline: "Conversations into Outcomes",
       established: "2018",
-      phone: "(555) 123-4567",
+      phone: "5035501817",
       email: "doug@sherpaprompt.com",
       website: "www.sherpaprompt.com",
       address: "1234 Automation Way, San Francisco, CA 94105",
@@ -78,7 +78,7 @@ class CompanyInfoService {
     } catch (error) {
       console.error('Error getting company info:', error);
       // Ultimate fallback
-      return `You can reach SherpaPrompt at (555) 123-4567 for all your automation needs.`;
+      return `You can reach SherpaPrompt at 5035501817 for all your automation needs.`;
     }
   }
 
