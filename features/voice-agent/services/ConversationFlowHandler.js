@@ -458,6 +458,12 @@ class ConversationFlowHandler {
    */
   async sendConversationSummary(sessionId, session) {
     try {
+      // Check if email already sent for this session
+      if (session.emailSent) {
+        console.log('📧 [Email] Skipping email - already sent for session:', sessionId);
+        return { success: false, reason: 'Email already sent' };
+      }
+
       // Check if user has provided email
       if (!session.userInfo || !session.userInfo.email || !session.userInfo.collected) {
         console.log('📧 [Email] Skipping email - no user email collected for session:', sessionId);
@@ -492,6 +498,8 @@ class ConversationFlowHandler {
       );
 
       if (emailResult.success) {
+        // Mark email as sent to prevent duplicates
+        session.emailSent = true;
         console.log('✅ [Email] Conversation summary sent successfully:', emailResult.messageId);
         return { success: true, messageId: emailResult.messageId };
       } else {

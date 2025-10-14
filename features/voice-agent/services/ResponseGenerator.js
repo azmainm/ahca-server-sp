@@ -189,7 +189,12 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${userInfo.name} (${userInfo.email})
 
-Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change. For example:
+- "Change service to pricing consultation"
+- "Change date to October 20th" 
+- "Change time to 2 PM"
+- "Change my name to John"
+- "Change my email to john@example.com"`;
     return this.formatForTTS(response);
   }
 
@@ -365,7 +370,12 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${userInfo.name} (${userInfo.email})
 
-Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change (service, date, time, name, or email).`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change. For example:
+- "Change service to pricing consultation"
+- "Change date to October 20th" 
+- "Change time to 2 PM"
+- "Change my name to John"
+- "Change my email to john@example.com"`;
   }
 
   /**

@@ -64,7 +64,7 @@ class EmailService {
     if (!conversationHistory || conversationHistory.length === 0) {
       return {
         summary: 'No conversation recorded.',
-        keyPoints: ['Customer contacted SherpaPrompt Fencing but no conversation details were recorded.'],
+        keyPoints: ['Customer contacted SherpaPrompt but no conversation details were recorded.'],
         topics: ['General Inquiry']
       };
     }
@@ -85,7 +85,7 @@ APPOINTMENT SCHEDULED:
 ${appointmentDetails.calendarLink ? `- Calendar Link: ${appointmentDetails.calendarLink}` : ''}
 ` : '';
 
-      const prompt = `You are analyzing a conversation between a customer and SherpaPrompt Fencing Company's AI assistant. Please provide a professional summary for an email that will be sent to the customer.
+      const prompt = `You are analyzing a conversation between a customer and SherpaPrompt's AI assistant. Please provide a professional summary for an email that will be sent to the customer.
 
 CONVERSATION:
 ${conversationText}
@@ -102,7 +102,7 @@ Please provide a JSON response with the following structure:
 
 Guidelines:
 - Focus on what the customer asked about and what information was provided
-- Include specific details about fencing services, materials, pricing, or scheduling discussed
+- Include specific details about automation services, integrations, pricing, or scheduling discussed
 - Keep bullet points concise but informative
 - Identify main topics covered (e.g., "Pricing", "Materials", "Installation", "Scheduling")
 - Be professional and customer-focused
@@ -120,10 +120,10 @@ Guidelines:
       } catch (parseError) {
         console.warn('⚠️ [EmailService] Failed to parse GPT summary response, using fallback');
         summaryData = {
-          summary: 'Customer contacted SherpaPrompt Fencing for information about fencing services.',
+          summary: 'Customer contacted SherpaPrompt for information about automation services.',
           keyPoints: [response.substring(0, 200) + '...'],
-          topics: ['Fencing Services'],
-          customerNeeds: 'Information about fencing services',
+          topics: ['Automation Services'],
+          customerNeeds: 'Information about automation services',
           nextSteps: 'Follow up with customer as needed'
         };
       }
@@ -135,10 +135,10 @@ Guidelines:
       
       // Fallback to basic summary
       return {
-        summary: 'Customer contacted SherpaPrompt Fencing for information about fencing services.',
-        keyPoints: ['Customer inquired about fencing services', 'Information was provided by our AI assistant'],
-        topics: ['Fencing Services'],
-        customerNeeds: 'Information about fencing services',
+          summary: 'Customer contacted SherpaPrompt for information about automation services.',
+          keyPoints: ['Customer inquired about automation services', 'Information was provided by our AI assistant'],
+          topics: ['Automation Services'],
+          customerNeeds: 'Information about automation services',
         nextSteps: 'Follow up with customer as needed'
       };
     }
@@ -278,9 +278,9 @@ Guidelines:
       const userName = userInfo.name || 'Valued Customer';
       
       const emailData = {
-        from: 'SherpaPrompt Fencing <onboarding@resend.dev>',
+        from: 'SherpaPrompt <onboarding@resend.dev>',
         to: [userInfo.email],
-        subject: 'Your SherpaPrompt Fencing Conversation Summary',
+        subject: 'Your SherpaPrompt Conversation Summary',
         html: htmlContent,
         text: textContent,
         reply_to: 'onboarding@resend.dev'
@@ -329,9 +329,9 @@ Guidelines:
       const message = {
         html: htmlContent,
         text: textContent,
-        subject: 'Your SherpaPrompt Fencing Conversation Summary',
+        subject: 'Your SherpaPrompt Conversation Summary',
         from_email: 'noreply@sherpaprompt.com',
-        from_name: 'SherpaPrompt Fencing',
+        from_name: 'SherpaPrompt',
         to: [
           {
             email: userInfo.email,
@@ -427,7 +427,7 @@ Guidelines:
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Your SherpaPrompt Fencing Conversation Summary</title>
+    <title>Your SherpaPrompt Conversation Summary</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background-color: #2c5530; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
@@ -442,14 +442,14 @@ Guidelines:
 </head>
 <body>
     <div class="header">
-        <div class="logo">🏡 SherpaPrompt Fencing</div>
+        <div class="logo">🤖 SherpaPrompt</div>
         <p>Your Conversation Summary</p>
     </div>
     
     <div class="content">
         <h2>Hello ${userName}!</h2>
         
-        <p>Thank you for contacting SherpaPrompt Fencing Company. Here's a summary of our conversation:</p>
+        <p>Thank you for contacting SherpaPrompt. Here's a summary of our conversation:</p>
         
         <div class="summary-section">
             <h3>📋 Conversation Overview</h3>
@@ -481,16 +481,16 @@ Guidelines:
         <p>If you have any additional questions or need further assistance, please don't hesitate to contact us:</p>
         
         <ul>
-            <li><strong>Phone:</strong> (303) 555-FENCE</li>
+            <li><strong>Website:</strong> sherpaprompt.com</li>
             <li><strong>Email:</strong> info@sherpaprompt.com</li>
             <li><strong>Hours:</strong> Monday - Friday, 12:00 PM - 4:00 PM</li>
         </ul>
         
-        <p>We appreciate your interest in our fencing services and look forward to helping you with your project!</p>
+        <p>We appreciate your interest in our automation services and look forward to helping you transform your workflows!</p>
     </div>
     
     <div class="footer">
-        <p>This email was sent from SherpaPrompt Fencing Company's AI Assistant.<br>
+        <p>This email was sent from SherpaPrompt's AI Assistant.<br>
         If you have any concerns about this email, please contact us directly.</p>
     </div>
 </body>
@@ -500,7 +500,7 @@ Guidelines:
       const textContent = `
 Hello ${userName}!
 
-Thank you for contacting SherpaPrompt Fencing Company. Here's a summary of our conversation:
+Thank you for contacting SherpaPrompt. Here's a summary of our conversation:
 
 CONVERSATION OVERVIEW:
 ${summaryData.summary}
@@ -534,14 +534,14 @@ ${summaryData.nextSteps}
 ` : ''}
 
 If you have any additional questions, please contact us:
-• Phone: (303) 555-FENCE
+• Website: sherpaprompt.com
 • Email: info@sherpaprompt.com
 • Hours: Monday - Friday, 12:00 PM - 4:00 PM
 
-We appreciate your interest in our fencing services!
+We appreciate your interest in our automation services!
 
 Best regards,
-SherpaPrompt Fencing Company
+SherpaPrompt
       `.trim();
 
       // Try Resend first (primary)

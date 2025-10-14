@@ -209,7 +209,7 @@ class AppointmentFlowManager {
     if (!slotsResult.success) {
       return {
         success: true,
-        response: this.responseGenerator.generateErrorResponse('appointment', 'Please try another date or call us at (303) 555-FENCE.'),
+        response: this.responseGenerator.generateErrorResponse('appointment', 'Please try another date or contact us for assistance.'),
         step: this.steps.COLLECT_DATE
       };
     }
@@ -235,7 +235,7 @@ class AppointmentFlowManager {
       } else {
         return {
           success: true,
-          response: `I'm sorry, but ${dateResult.formatted} has no available slots, and I couldn't find any available appointments in the next two weeks. Please call us at (303) 555-FENCE to discuss alternative scheduling options.`,
+          response: `I'm sorry, but ${dateResult.formatted} has no available slots, and I couldn't find any available appointments in the next two weeks. Please contact us to discuss alternative scheduling options.`,
           step: this.steps.COLLECT_DATE
         };
       }
@@ -269,7 +269,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.details = { title: serviceTitle };
       return {
         success: true,
-        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`,
         step: this.steps.COLLECT_DATE
       };
     }
@@ -292,7 +292,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.details = { title: serviceTitle };
       return {
         success: true,
-        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`,
         step: this.steps.COLLECT_DATE
       };
     }
@@ -486,7 +486,7 @@ class AppointmentFlowManager {
         
         return {
           success: true,
-          response: "No problem! What type of service are you interested in? For example: fence consultation, repair estimate, or installation quote.",
+          response: "No problem! What type of session would you like? For example: product demo, consultation about automation, or discussion about integrations.",
           step: this.steps.COLLECT_TITLE
         };
         
@@ -497,7 +497,7 @@ class AppointmentFlowManager {
         
         return {
           success: true,
-          response: this.responseGenerator.formatForTTS(`No problem! What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`),
+          response: this.responseGenerator.formatForTTS(`No problem! What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`),
           step: this.steps.COLLECT_DATE
         };
         
@@ -739,7 +739,7 @@ class AppointmentFlowManager {
     
     return {
       success: true,
-      response: "I apologize, but there was an error processing your appointment request. Please call us directly at (303) 555-FENCE to schedule, and our team will be happy to help you.",
+      response: "I apologize, but there was an error processing your appointment request. Please contact us directly to schedule, and our team will be happy to help you.",
       step: this.steps.NONE
     };
   }
@@ -760,21 +760,21 @@ CRITICAL RULES:
 3. Look for keywords: "installation", "repair", "consultation", "estimate", "quote", "gate", "maintenance", "emergency"
 4. If user says multiple services, pick the LAST one mentioned (that's usually their correction)
 5. Map to these exact service names:
-   - "Fence consultation" (for consultations, general questions, advice)
-   - "Fence installation" (for new fence installation)
-   - "Fence repair" (for fixing existing fences)
-   - "Fence estimate" (for quotes, pricing, estimates)
-   - "Gate installation" (for new gate installation)
-   - "Gate repair" (for fixing gates)
-   - "Fence maintenance" (for upkeep, cleaning, staining)
-   - "Emergency fence repair" (for urgent repairs)
+   - "Product demo" (for product demonstrations, showcasing features)
+   - "Automation consultation" (for consultations, general questions, advice)
+   - "Integration discussion" (for discussing integrations with existing tools)
+   - "Pricing consultation" (for quotes, pricing, estimates)
+   - "Technical consultation" (for technical questions, API discussions)
+   - "Call automation demo" (for call service demonstrations)
+   - "Transcript service demo" (for transcript-to-task demonstrations)
+   - "Voice estimate demo" (for voice-to-estimate demonstrations)
 
 Examples:
-- "um I need installation code" → "Fence installation"
-- "no wait I think I need never mind so basically I need to know your service areas" → "Fence consultation"
-- "I want repair estimate for my fence" → "Fence estimate"
+- "I want to see how it works" → "Product demo"
+- "I need to know about your pricing" → "Pricing consultation"
+- "How does this integrate with my CRM?" → "Integration discussion"
 
-Return ONLY: {"service": "Fence consultation"}`;
+Return ONLY: {"service": "Product demo"}`;
 
     try {
       const response = await this.openAIService.callOpenAI([
@@ -806,18 +806,22 @@ Return ONLY: {"service": "Fence consultation"}`;
   fallbackServiceExtraction(text) {
     const lowerText = text.toLowerCase();
     
-    if (lowerText.includes('install') && !lowerText.includes('repair')) {
-      return lowerText.includes('gate') ? 'Gate installation' : 'Fence installation';
-    } else if (lowerText.includes('repair')) {
-      return lowerText.includes('gate') ? 'Gate repair' : 'Fence repair';
-    } else if (lowerText.includes('estimate') || lowerText.includes('quote') || lowerText.includes('price')) {
-      return 'Fence estimate';
-    } else if (lowerText.includes('maintenance') || lowerText.includes('stain') || lowerText.includes('clean')) {
-      return 'Fence maintenance';
-    } else if (lowerText.includes('emergency')) {
-      return 'Emergency fence repair';
+    if (lowerText.includes('demo') || lowerText.includes('show') || lowerText.includes('see how')) {
+      return 'Product demo';
+    } else if (lowerText.includes('integration') || lowerText.includes('integrate') || lowerText.includes('connect')) {
+      return 'Integration discussion';
+    } else if (lowerText.includes('pricing') || lowerText.includes('price') || lowerText.includes('cost') || lowerText.includes('quote')) {
+      return 'Pricing consultation';
+    } else if (lowerText.includes('technical') || lowerText.includes('api') || lowerText.includes('developer')) {
+      return 'Technical consultation';
+    } else if (lowerText.includes('call') && lowerText.includes('automation')) {
+      return 'Call automation demo';
+    } else if (lowerText.includes('transcript') || lowerText.includes('meeting')) {
+      return 'Transcript service demo';
+    } else if (lowerText.includes('voice') && lowerText.includes('estimate')) {
+      return 'Voice estimate demo';
     } else {
-      return 'Fence consultation';
+      return 'Product demo';
     }
   }
 

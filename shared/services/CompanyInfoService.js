@@ -6,19 +6,19 @@ class CompanyInfoService {
   constructor() {
     // Hardcoded company information as fallback
     this.fallbackCompanyInfo = {
-      name: "SherpaPrompt Fencing Company",
-      tagline: "Building boundaries, creating security",
+      name: "SherpaPrompt",
+      tagline: "Conversations into Outcomes",
       established: "2018",
-      phone: "(303) 555-FENCE",
-      email: "info@sherpapromptfencing.com",
-      website: "www.sherpapromptfencing.com",
-      address: "1234 Fence Line Drive, Denver, CO 80202",
-      service_areas: ["Denver Metro", "Boulder County", "Jefferson County", "Adams County", "Arapahoe County"],
+      phone: "(555) 123-4567",
+      email: "doug@sherpaprompt.com",
+      website: "www.sherpaprompt.com",
+      address: "1234 Automation Way, San Francisco, CA 94105",
+      service_areas: ["Global", "Remote", "Cloud-based"],
       hours: {
         monday_friday: "7:00 AM - 6:00 PM",
         saturday: "8:00 AM - 4:00 PM",
         sunday: "Closed",
-        emergency: "24/7 emergency repairs available"
+        support: "24/7 technical support available"
       }
     };
   }
@@ -73,12 +73,12 @@ class CompanyInfoService {
       }
 
       // Default: provide contact information
-      return `For all inquiries, you can reach ${this.fallbackCompanyInfo.name} at ${this.fallbackCompanyInfo.phone} or email us at ${this.fallbackCompanyInfo.email}. We're here to help with all your fencing needs!`;
+      return `For all inquiries, you can reach ${this.fallbackCompanyInfo.name} at ${this.fallbackCompanyInfo.phone} or email us at ${this.fallbackCompanyInfo.email}. We're here to help with all your automation needs!`;
 
     } catch (error) {
       console.error('Error getting company info:', error);
       // Ultimate fallback
-      return `You can reach SherpaPrompt Fencing Company at (303) 555-FENCE for all your fencing needs.`;
+      return `You can reach SherpaPrompt at (555) 123-4567 for all your automation needs.`;
     }
   }
 
