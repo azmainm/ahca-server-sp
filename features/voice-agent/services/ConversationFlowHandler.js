@@ -345,8 +345,8 @@ class ConversationFlowHandler {
       return { response: initResult.response, hadFunctionCalls: false };
     }
 
-    // Check if it's a basic contact query (even in follow-up)
-    if (this.companyInfoService.isCompanyInfoQuery(text) && this.isBasicContactQuery(text)) {
+    // Check if it's a basic contact query (even in follow-up) - but NOT pricing queries
+    if (this.companyInfoService.isCompanyInfoQuery(text) && this.isBasicContactQuery(text) && !this.isPricingQuery(text)) {
       console.log('🏢 [Follow-up → Company Info] Detected basic contact query in follow-up');
       const baseResponse = this.companyInfoService.getCompanyInfo(text);
       const response = this.responseGenerator.generateFollowUpResponse(
@@ -363,7 +363,7 @@ class ConversationFlowHandler {
       return { response: initResult.response, hadFunctionCalls: false };
     } else if (intent.wantsMoreQuestions) {
       this.stateManager.setAwaitingFollowUp(sessionId, false);
-      const response = "Of course! What else would you like to know about our fencing services?";
+      const response = "Of course! What else would you like to know about SherpaPrompt's automation services?";
       return { response, hadFunctionCalls: false };
     } else {
       // It's a new question - process it normally
