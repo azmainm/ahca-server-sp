@@ -1,8 +1,8 @@
-# After Hours Call Agent (AHCA) - Voice AI System with VAD
+# SherpaPrompt Voice Agent System - AI-Powered Voice Automation
 
 ## Overview
 
-The After Hours Call Agent is an AI-powered voice assistant system designed for SherpaPrompt Fencing Company. It provides automated customer service through natural voice conversations with **automatic Voice Activity Detection (VAD)**, eliminating the need for push-to-talk buttons and enabling seamless hands-free interactions.
+The SherpaPrompt Voice Agent System is a comprehensive AI-powered voice automation platform that turns conversations into outcomes. It provides natural voice interactions for customer engagement, lead qualification, demo scheduling, and support through **automatic Voice Activity Detection (VAD)**, eliminating the need for push-to-talk buttons and enabling seamless hands-free conversations about SherpaPrompt's automation services.
 
 ## 🎤 Voice Activity Detection (VAD) Features
 
@@ -29,17 +29,36 @@ WebM Audio → PCM16 Convert → Transcription → Processing → MP3 Response
 ### Key Components
 
 - **Frontend (ahca-client)**: React/Next.js with RealtimeVADVoiceAgent component
-- **Backend (ahca-server)**: Node.js/Express with RealtimeVADService integration  
+- **Backend (ahca-server)**: Node.js/Express with comprehensive voice agent services
 - **VAD Processing**: OpenAI Realtime API with server-side voice activity detection
-- **AI Services**: GPT-5-nano (Responses API), Whisper (STT), TTS-1 (Speech)
-- **Calendar Integration**: Microsoft Graph API for appointment scheduling
+- **AI Services**: GPT-5-nano (Responses), Whisper (STT), TTS-1 (Speech)
+- **RAG System**: SherpaPromptRAG with MongoDB Atlas vector search
+- **Calendar Integration**: Google Calendar and Microsoft Graph API for demo scheduling
+- **Email Services**: Resend and Mailchimp integration for notifications and lead capture
+
+## 📚 System Documentation
+
+For comprehensive system documentation including architecture, data flows, API endpoints, and deployment guides, see:
+
+**[📖 SherpaPrompt Voice Agent System Documentation](./docs/SHERPAPROMPT_VOICE_AGENT_SYSTEM.md)**
+
+This document covers:
+- Complete system architecture and component interactions
+- Detailed API documentation and data flows
+- RAG system implementation and knowledge base structure
+- Calendar integration and email service configuration
+- Testing procedures and performance characteristics
+- Deployment and monitoring guidelines
 
 ## 🚀 Quick Start with VAD
 
 ### Prerequisites
 - Node.js 18+ installed
 - OpenAI API key with GPT-5-nano access
-- Microsoft Graph API credentials (for calendar integration)
+- MongoDB Atlas cluster for vector search
+- Google Calendar and/or Microsoft Graph API credentials
+- Resend API key for email notifications
+- Mailchimp API key for mailing list integration
 
 ### Installation & Setup
 ```bash
