@@ -68,7 +68,10 @@ realtimeVADService.on('transcriptionCompleted', async ({ sessionId, transcript, 
       // Determine filler type based on transcript content
       let fillerType = 'general_processing';
       
-      if (/appointment|schedule|book|meeting|consultation/i.test(transcript)) {
+      // Check if this is name/email collection (user providing personal info)
+      if (/name.*is|email.*is|call.*me|my.*name|my.*email|@|\.com|gmail|yahoo|hotmail|spelled|s-p-e-l-l/i.test(transcript)) {
+        fillerType = 'name_email_collection';
+      } else if (/appointment|schedule|book|meeting|consultation/i.test(transcript)) {
         fillerType = 'appointment_processing';
       } else if (/available|time|date|calendar/i.test(transcript)) {
         fillerType = 'calendar_check';

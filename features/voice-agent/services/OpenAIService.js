@@ -163,7 +163,7 @@ class OpenAIService {
    * @param {string} model - TTS model to use (default: tts-1)
    * @returns {Promise<Object>} Synthesis result
    */
-  async synthesizeText(text, voice = 'alloy', model = 'tts-1') {
+  async synthesizeText(text, voice = 'ballad', model = 'tts-1') {
     try {
       // Call OpenAI TTS API
       const response = await fetch(`${this.baseURL}/audio/speech`, {

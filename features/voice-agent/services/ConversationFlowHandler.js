@@ -55,6 +55,9 @@ class ConversationFlowHandler {
         "Let me see what times are available",
         "Looking at the calendar"
       ],
+      name_email_collection: [
+        "Thanks. I'm processing that information"
+      ],
       general_processing: [
         "One moment please",
         "Let me process that",
@@ -95,6 +98,18 @@ class ConversationFlowHandler {
       'subscription', 'monthly', 'yearly', 'annual', 'payment', 'pay'
     ];
     return pricingKeywords.some(keyword => textLower.includes(keyword));
+  }
+
+  /**
+   * Check if text contains name or email change request
+   * @param {string} text - User input
+   * @returns {Object} Object with isNameChange and isEmailChange flags
+   */
+  checkForInfoChangeRequest(text) {
+    const isNameChange = this.userInfoCollector.isNameChangeRequest(text);
+    const isEmailChange = this.userInfoCollector.isEmailChangeRequest(text);
+    
+    return { isNameChange, isEmailChange };
   }
 
   /**
@@ -212,7 +227,14 @@ class ConversationFlowHandler {
   async handleMainConversation(text, sessionId, session, intent) {
     console.log('🏢 [Flow] Taking main conversation path (Phase 2)');
 
-    // Handle name/email changes during regular conversation
+    // Check for name/email change requests at any point in conversation
+    const changeRequest = this.checkForInfoChangeRequest(text);
+    
+    if (changeRequest.isNameChange || changeRequest.isEmailChange) {
+      return await this.handleInfoChangeRequest(text, sessionId, session, changeRequest);
+    }
+
+    // Handle name/email changes during regular conversation (legacy support)
     if (intent.isNameChange && !this.appointmentFlowManager.isFlowActive(session)) {
       return await this.handleNameChange(text, sessionId, session);
     }
@@ -285,6 +307,60 @@ class ConversationFlowHandler {
       const response = "I'd be happy to update your email. Could you please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'?";
       return { response, hadFunctionCalls: false };
     }
+  }
+
+  /**
+   * Handle combined name/email change requests
+   * @param {string} text - User input
+   * @param {string} sessionId - Session identifier
+   * @param {Object} session - Session object
+   * @param {Object} changeRequest - Object with isNameChange and isEmailChange flags
+   * @returns {Promise<Object>} Processing result
+   */
+  async handleInfoChangeRequest(text, sessionId, session, changeRequest) {
+    console.log('🔄 [Flow] Handling info change request:', changeRequest);
+    
+    let nameResult = null;
+    let emailResult = null;
+    let responses = [];
+    
+    // Handle name change
+    if (changeRequest.isNameChange) {
+      nameResult = await this.userInfoCollector.handleNameChange(text);
+      if (nameResult.success) {
+        const oldName = session.userInfo.name;
+        this.stateManager.updateUserInfo(sessionId, { name: nameResult.name });
+        responses.push(`I've updated your name from ${oldName} to ${nameResult.name}.`);
+      } else {
+        responses.push("I'm having trouble updating your name. Could you please clearly state your new name?");
+      }
+    }
+    
+    // Handle email change
+    if (changeRequest.isEmailChange) {
+      emailResult = await this.userInfoCollector.handleEmailChange(text);
+      if (emailResult.success) {
+        const oldEmail = session.userInfo.email;
+        this.stateManager.updateUserInfo(sessionId, { email: emailResult.email });
+        responses.push(`I've updated your email from ${oldEmail} to ${emailResult.email}.`);
+      } else {
+        responses.push("I'm having trouble updating your email. Could you please clearly state your new email address?");
+      }
+    }
+    
+    // Update conversation history
+    this.stateManager.addMessage(sessionId, 'user', text);
+    
+    let finalResponse;
+    if (responses.length > 0) {
+      const updatesText = responses.join(' ');
+      finalResponse = `${updatesText} Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
+      this.stateManager.addMessage(sessionId, 'assistant', finalResponse);
+    } else {
+      finalResponse = "I'm having trouble understanding what you'd like to change. Could you please clearly state if you want to update your name or email address?";
+    }
+    
+    return { response: finalResponse, hadFunctionCalls: false };
   }
 
   /**

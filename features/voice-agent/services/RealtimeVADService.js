@@ -32,7 +32,7 @@ class RealtimeVADService extends EventEmitter {
       server_vad: {
         threshold: 0.5,                    // Voice activation threshold (0-1)
         prefix_padding_ms: 300,            // Audio before speech detection
-        silence_duration_ms: 2500,         // Silence duration to end turn (2.5s for natural pauses)
+        silence_duration_ms: 1500,         // Silence duration to end turn (1.5s for faster response)
         create_response: false,            // Don't auto-create responses (we handle this)
         interrupt_response: true           // Allow interruptions
       },
@@ -238,7 +238,7 @@ class RealtimeVADService extends EventEmitter {
       session: {
         modalities: ['text', 'audio'],
         instructions: 'You are a voice activity detection system. Only transcribe speech, do not generate responses.',
-        voice: 'alloy',
+        voice: 'ballad',
         input_audio_format: this.VAD_CONFIG.audio.input_audio_format,
         output_audio_format: this.VAD_CONFIG.audio.output_audio_format,
         input_audio_transcription: this.VAD_CONFIG.audio.input_audio_transcription,

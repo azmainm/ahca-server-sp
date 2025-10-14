@@ -309,7 +309,16 @@ Return ONLY: {"email": "extracted@email.com"}`;
       /correct.*name/i,
       /wrong.*name/i,
       /name.*should.*be/i,
-      /call.*me/i
+      /call.*me/i,
+      /name.*wrong/i,
+      /got.*name.*wrong/i,
+      /you.*have.*my.*name.*wrong/i,
+      /please.*change.*it.*to/i,
+      /need.*to.*change.*it/i,
+      /i.*need.*to.*change.*them/i,
+      /change.*them/i,
+      /name.*spelled/i,
+      /spelled.*name/i
     ];
     
     return nameChangePatterns.some(pattern => pattern.test(text));
@@ -334,7 +343,15 @@ Return ONLY: {"email": "extracted@email.com"}`;
       /the email.*is/i,
       /email.*correct/i,
       /real email/i,
-      /right email/i
+      /right email/i,
+      /email.*wrong/i,
+      /got.*email.*wrong/i,
+      /you.*have.*my.*email.*wrong/i,
+      /email.*as.*well/i,
+      /i.*need.*to.*change.*them/i,
+      /change.*them/i,
+      /email.*spelled/i,
+      /spelled.*email/i
     ];
     
     return emailChangePatterns.some(pattern => pattern.test(text));
