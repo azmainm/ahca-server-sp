@@ -642,7 +642,7 @@ router.post('/test-email', async (req, res) => {
     const testAppointmentDetails = {
       details: {
         title: 'Fence Consultation',
-        date: '2024-12-15',
+        date: '2025-12-15',
         time: '14:00',
         timeDisplay: '2:00 PM'
       },

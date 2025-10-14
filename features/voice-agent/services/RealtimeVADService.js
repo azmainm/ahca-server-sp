@@ -59,7 +59,7 @@ class RealtimeVADService extends EventEmitter {
     
     try {
       // Create WebSocket connection to OpenAI Realtime API
-      const ws = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
+      const ws = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-10-01', {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'OpenAI-Beta': 'realtime=v1'
@@ -238,7 +238,7 @@ class RealtimeVADService extends EventEmitter {
       session: {
         modalities: ['text', 'audio'],
         instructions: 'You are a voice activity detection system. Only transcribe speech, do not generate responses.',
-        voice: 'ballad',
+        voice: 'echo',
         input_audio_format: this.VAD_CONFIG.audio.input_audio_format,
         output_audio_format: this.VAD_CONFIG.audio.output_audio_format,
         input_audio_transcription: this.VAD_CONFIG.audio.input_audio_transcription,
