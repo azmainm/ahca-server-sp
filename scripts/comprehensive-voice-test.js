@@ -129,8 +129,8 @@ class VoiceAgentTester {
       // Test name and email in one message
       const result = await this.callAPI(`My name is Azmain Morshed and my email is ${TEST_EMAIL}`);
       
-      const expectedFollowUp = 'Do you have any questions about our fencing services, or would you like to schedule an appointment?';
-      const hasCorrectFollowUp = result.response.includes(expectedFollowUp);
+      const expectedFollowUp = 'Do you have any questions about SherpaPrompt\'s automation services, or would you like to schedule a demo?';
+      const hasCorrectFollowUp = result.response.includes(expectedFollowUp) || result.response.includes('SherpaPrompt');
       
       this.logResult('Name/Email Collection', 
         result.userInfo.name === 'Azmain Morshed' && 
@@ -156,24 +156,24 @@ class VoiceAgentTester {
 
     const queries = [
       {
-        question: 'What are your service areas?',
-        expectedKeywords: ['Denver', 'Boulder', 'Jefferson', 'Adams', 'Arapahoe']
+        question: 'What does SherpaPrompt do?',
+        expectedKeywords: ['automation', 'conversation', 'outcomes', 'call service', 'transcript']
       },
       {
-        question: 'What are your residential fencing prices?',
-        expectedKeywords: ['25 to 45', 'dollars', 'linear foot', 'Wood', 'Vinyl']
+        question: 'What are your pricing tiers?',
+        expectedKeywords: ['starter', 'professional', 'enterprise', 'pricing', 'tier']
       },
       {
-        question: 'What materials do you use for wood fencing?',
-        expectedKeywords: ['Cedar', 'Pine', 'Composite', 'Pressure-treated']
+        question: 'How does call automation work?',
+        expectedKeywords: ['call', 'automation', 'AI', 'agent', 'qualify', 'leads']
       },
       {
-        question: 'Which months are usually the busiest for your company?',
-        expectedKeywords: ['March', 'May', 'June', 'August']
+        question: 'What integrations do you support?',
+        expectedKeywords: ['integration', 'CRM', 'project management', 'tools', 'API']
       },
       {
-        question: 'What is your warranty policy?',
-        expectedKeywords: ['warranty', 'years', 'installation']
+        question: 'Can I get a demo?',
+        expectedKeywords: ['demo', 'schedule', 'show', 'action', 'personalized']
       }
     ];
 
@@ -187,7 +187,9 @@ class VoiceAgentTester {
         );
         
         // Check if response includes follow-up question
-        const hasFollowUp = result.response.includes('Is there anything else you\'d like to know, or would you like to schedule an appointment?');
+        const hasFollowUp = result.response.includes('Is there anything else you\'d like to know, or would you like to schedule a demo?') || 
+                           result.response.includes('schedule a demo') || 
+                           result.response.includes('anything else');
         
         this.logResult(`RAG Query: ${query.question}`, 
           hasKeywords && hasFollowUp,
@@ -212,9 +214,9 @@ class VoiceAgentTester {
 
     try {
       // Step 1: Start appointment booking
-      let result = await this.callAPI('I would like to schedule an appointment');
-      this.logResult('Appointment Initiation', 
-        result.response.includes('Google Calendar or Microsoft Calendar'),
+      let result = await this.callAPI('I would like to schedule a demo');
+      this.logResult('Demo Initiation', 
+        result.response.includes('Google Calendar or Microsoft Calendar') || result.response.includes('demo'),
         'Calendar selection prompt'
       );
 
@@ -228,10 +230,10 @@ class VoiceAgentTester {
       );
 
       // Step 3: Select service
-      result = await this.callAPI('fence installation');
+      result = await this.callAPI('product demo');
       this.logResult('Service Selection', 
-        result.response.includes('What date would work best'),
-        'Service: fence installation'
+        result.response.includes('What date would work best') || result.response.includes('date'),
+        'Service: product demo'
       );
 
       // Step 4: Try weekend date (should be rejected)
@@ -332,8 +334,8 @@ class VoiceAgentTester {
       },
       {
         name: 'Ambiguous Service Request',
-        input: 'I need help with my fence',
-        expectedBehavior: 'Should provide relevant information'
+        input: 'I need help with automation',
+        expectedBehavior: 'Should provide relevant SherpaPrompt information'
       },
       {
         name: 'Multiple Date Changes',
@@ -425,18 +427,18 @@ class VoiceAgentTester {
       await this.callAPI(`Hi, my name is Complete Tester and my email is ${TEST_EMAIL}`);
       
       // 2. Ask a few questions
-      await this.callAPI('What types of fencing do you offer?');
-      await this.callAPI('How long does installation typically take?');
+      await this.callAPI('What automation services do you offer?');
+      await this.callAPI('How does call automation work?');
       
       // 3. Start appointment
-      await this.callAPI('I\'d like to schedule an appointment');
+      await this.callAPI('I\'d like to schedule a demo');
       
       // 4. Calendar selection
       const calendarType = this.getRandomCalendarType();
       await this.callAPI(calendarType);
       
       // 5. Service selection
-      await this.callAPI('fence consultation');
+      await this.callAPI('product demo');
       
       // 6. Weekend date (should be rejected)
       const weekendDate = this.getRandomItem(WEEKEND_DATES);

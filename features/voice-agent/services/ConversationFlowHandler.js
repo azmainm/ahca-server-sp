@@ -12,7 +12,8 @@ class ConversationFlowHandler {
     this.intentClassifier = services.intentClassifier;
     this.responseGenerator = services.responseGenerator;
     this.companyInfoService = services.companyInfoService;
-    this.fencingRAG = services.fencingRAG;
+    this.sherpaPromptRAG = services.sherpaPromptRAG || services.fencingRAG; // Primary RAG service
+    this.fencingRAG = services.fencingRAG; // Backward compatibility
     this.embeddingService = services.embeddingService;
     this.emailService = services.emailService;
     
@@ -395,7 +396,7 @@ class ConversationFlowHandler {
       const searchResults = await this.embeddingService.searchSimilarContent(searchTerms.join(' '), 5);
       
       if (searchResults && searchResults.length > 0) {
-        contextInfo = this.fencingRAG.formatContext(searchResults);
+        contextInfo = this.sherpaPromptRAG.formatContext(searchResults);
         console.log('📚 [RAG] Found relevant info from', searchResults.length, 'sources');
       }
     } else {
@@ -408,16 +409,16 @@ class ConversationFlowHandler {
       const searchResults = await this.embeddingService.searchSimilarContent(text, 3);
       
       if (searchResults && searchResults.length > 0) {
-        contextInfo = this.fencingRAG.formatContext(searchResults);
+        contextInfo = this.sherpaPromptRAG.formatContext(searchResults);
         console.log('📚 [RAG] Found relevant info from general search:', searchResults.length, 'sources');
       }
     }
 
     let response;
 
-    // Generate response with context using FencingRAG
+    // Generate response with context using SherpaPromptRAG
     if (contextInfo) {
-      const ragResponse = await this.fencingRAG.generateResponse(text, contextInfo, session.conversationHistory);
+      const ragResponse = await this.sherpaPromptRAG.generateResponse(text, contextInfo, session.conversationHistory);
       const baseResponse = this.responseGenerator.formatForTTS(ragResponse.answer);
       // Always add follow-up question to RAG responses
       response = this.responseGenerator.generateFollowUpResponse(baseResponse);

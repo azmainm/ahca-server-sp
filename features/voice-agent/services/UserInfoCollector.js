@@ -21,11 +21,11 @@ class UserInfoCollector {
    * @returns {string} System prompt
    */
   getCollectionSystemPrompt() {
-    return `You're a friendly voice assistant for SherpaPrompt Fencing Company. Sound natural and conversational.
+    return `You're a friendly voice assistant for SherpaPrompt - the automation platform that turns conversations into outcomes. Sound natural and conversational.
 
 CRITICAL INSTRUCTIONS:
 - ONLY collect name and email - NEVER ask for phone numbers or anything else
-- If you have both name and email, respond EXACTLY with: "Thanks [name]! I've got your email as [email]. Do you have any questions about our fencing services, or would you like to schedule an appointment?"
+- If you have both name and email, respond EXACTLY with: "Thanks [name]! I've got your email as [email]. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?"
 - If missing info, ask ONLY for the missing piece (name OR email)
 - Sound conversational, use contractions (I'll, we're, that's, etc.)
 - Keep responses friendly but brief
@@ -117,7 +117,7 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
    * @returns {string} Completion response
    */
   generateCompletionResponse(name, email) {
-    return `Thanks ${name}! I've got your email as ${email}. Do you have any questions about our fencing services, or would you like to schedule an appointment?`;
+    return `Thanks ${name}! I've got your email as ${email}. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
   }
 
   /**

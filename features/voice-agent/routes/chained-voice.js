@@ -16,7 +16,8 @@ const multer = require('multer');
 
 // Import existing shared services (unchanged)
 const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
-const { FencingRAG } = require('../../../shared/services/FencingRAG');
+const { SherpaPromptRAG } = require('../../../shared/services/SherpaPromptRAG');
+const { FencingRAG } = require('../../../shared/services/FencingRAG'); // Backward compatibility
 const { GoogleCalendarService } = require('../../../shared/services/GoogleCalendarService');
 const { MicrosoftCalendarService } = require('../../../shared/services/MicrosoftCalendarService');
 const { CompanyInfoService } = require('../../../shared/services/CompanyInfoService');
@@ -38,7 +39,8 @@ const router = express.Router();
 // Initialize services
 const openAIService = new OpenAIService();
 const embeddingService = new EmbeddingService();
-const fencingRAG = new FencingRAG();
+const sherpaPromptRAG = new SherpaPromptRAG();
+const fencingRAG = new FencingRAG(); // Keep for backward compatibility
 const googleCalendarService = new GoogleCalendarService();
 const microsoftCalendarService = new MicrosoftCalendarService();
 const companyInfoService = new CompanyInfoService();
@@ -145,7 +147,8 @@ const conversationFlowHandler = new ConversationFlowHandler({
   intentClassifier,
   responseGenerator,
   companyInfoService,
-  fencingRAG,
+  sherpaPromptRAG, // Use SherpaPromptRAG as primary
+  fencingRAG, // Keep for backward compatibility
   embeddingService,
   emailService
 });
@@ -160,7 +163,25 @@ function getCalendarService(calendarType) {
 }
 
 function extractSearchTerms(text) {
-  const fencingKeywords = [
+  const sherpaPromptKeywords = [
+    'sherpaprompt',
+    'automation',
+    'call service',
+    'transcript',
+    'voice estimate',
+    'app',
+    'integration',
+    'pricing',
+    'demo',
+    'api',
+    'workflow',
+    'ai agent',
+    'conversation',
+    'task',
+    'estimate',
+    'prompt',
+    'orchestration',
+    // Legacy fencing terms for backward compatibility
     'fence', 'fencing', 'installation', 'repair', 'maintenance', 
     'cost', 'price', 'material', 'wood', 'vinyl', 'chain link',
     'aluminum', 'steel', 'height', 'permit', 'warranty', 'estimate',
@@ -178,9 +199,9 @@ function extractSearchTerms(text) {
   const textLower = text.toLowerCase();
   const words = textLower.split(/\s+/);
   
-  // Extract fencing-related keywords
+  // Extract SherpaPrompt-related keywords
   const foundKeywords = words.filter(word => 
-    fencingKeywords.some(keyword => 
+    sherpaPromptKeywords.some(keyword => 
       word.includes(keyword) || keyword.includes(word)
     )
   );

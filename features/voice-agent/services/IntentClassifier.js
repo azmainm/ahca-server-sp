@@ -4,7 +4,7 @@
 
 class IntentClassifier {
   constructor() {
-    // Define intent patterns
+    // Keep existing patterns
     this.patterns = {
       goodbye: [
         /thank you.*no more/i,
@@ -28,7 +28,11 @@ class IntentClassifier {
         /need.*appointment/i,
         /appointment.*please/i,
         /schedule.*consultation/i,
-        /book.*consultation/i
+        /book.*consultation/i,
+        /demo/i,
+        /schedule.*demo/i,
+        /book.*demo/i,
+        /show.*me/i
       ],
       nameChange: [
         /^change.*name/i,
@@ -65,9 +69,53 @@ class IntentClassifier {
         /schedule/i,
         /meeting/i,
         /consultation/i,
-        /book/i
+        /book/i,
+        /demo/i
       ]
     };
+    
+    // Load additional patterns from JSON (safe fallback)
+    this.loadSherpaPromptPatterns();
+  }
+  
+  /**
+   * Load SherpaPrompt-specific patterns from Intent Snippets JSON
+   * Safe implementation - won't break if file doesn't exist
+   */
+  loadSherpaPromptPatterns() {
+    try {
+      const intentSnippets = require('../../../data/SherpaPrompt_AHCA_Knowledge/Intent Snippets_1.3.json');
+      const intents = intentSnippets.sections[0].structured.intents;
+      
+      // Extract patterns by intent type
+      const sherpaPatterns = {
+        sales: [],
+        support: [],
+        scheduling: [],
+        pricing: [],
+        emergency: []
+      };
+      
+      // Convert utterances to regex patterns
+      intents.forEach(item => {
+        if (sherpaPatterns[item.intent]) {
+          // Convert utterance to simple regex pattern
+          const pattern = new RegExp(item.utterance.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          sherpaPatterns[item.intent].push(pattern);
+        }
+      });
+      
+      // Add to existing patterns (don't replace)
+      this.patterns = {
+        ...this.patterns,
+        ...sherpaPatterns
+      };
+      
+      console.log('✅ Loaded SherpaPrompt intent patterns from JSON');
+    } catch (error) {
+      console.warn('⚠️ Could not load Intent Snippets, using default patterns:', error.message);
+      // System continues to work with existing patterns
+    }
   }
 
   /**
@@ -82,15 +130,25 @@ class IntentClassifier {
       isNameChange: this.matchesPatterns(text, this.patterns.nameChange),
       isEmailChange: this.matchesPatterns(text, this.patterns.emailChange),
       wantsMoreQuestions: this.matchesPatterns(text, this.patterns.followUpPositive),
-      wantsAppointment: this.matchesPatterns(text, this.patterns.followUpAppointment)
+      wantsAppointment: this.matchesPatterns(text, this.patterns.followUpAppointment),
+      // SherpaPrompt-specific intents
+      isSalesInquiry: this.patterns.sales ? this.matchesPatterns(text, this.patterns.sales) : false,
+      isSupportRequest: this.patterns.support ? this.matchesPatterns(text, this.patterns.support) : false,
+      isSchedulingRequest: this.patterns.scheduling ? this.matchesPatterns(text, this.patterns.scheduling) : false,
+      isPricingInquiry: this.patterns.pricing ? this.matchesPatterns(text, this.patterns.pricing) : false,
+      isEmergency: this.patterns.emergency ? this.matchesPatterns(text, this.patterns.emergency) : false
     };
 
-    // Determine primary intent
+    // Determine primary intent with SherpaPrompt priorities
     let primaryIntent = 'unknown';
     if (results.isGoodbye) primaryIntent = 'goodbye';
-    else if (results.isAppointmentRequest) primaryIntent = 'appointment';
+    else if (results.isEmergency) primaryIntent = 'emergency';
+    else if (results.isAppointmentRequest || results.isSchedulingRequest) primaryIntent = 'appointment';
     else if (results.isNameChange) primaryIntent = 'nameChange';
     else if (results.isEmailChange) primaryIntent = 'emailChange';
+    else if (results.isPricingInquiry) primaryIntent = 'pricing';
+    else if (results.isSalesInquiry) primaryIntent = 'sales';
+    else if (results.isSupportRequest) primaryIntent = 'support';
     else if (results.wantsMoreQuestions) primaryIntent = 'moreQuestions';
     else if (results.wantsAppointment) primaryIntent = 'appointmentFromFollowUp';
 

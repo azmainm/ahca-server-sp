@@ -1606,8 +1606,8 @@
       "heading_level": 3,
       "heading": "What they ask",
       "path": "Audience Profiles & Call/Chat Playbooks > Profile C — Marketing Leaders > What they ask",
-      "raw_markdown": "* \"Can you pull current technical details into landing pages?\"\n* \"Do you integrate with our storage and site tools?"",
-      "normalized_text": "H3: What they ask\n- \"Can you pull current technical details into landing pages?\"\n- "Do you integrate with our storage and site tools?"",
+      "raw_markdown": "* \"Can you pull current technical details into landing pages?\"\n* \"Do you integrate with our storage and site tools?\"",
+      "normalized_text": "H3: What they ask\n- \"Can you pull current technical details into landing pages?\"\n- \"Do you integrate with our storage and site tools?\"",
       "labels": {
         "intents": [
           "sales",
@@ -1633,7 +1633,7 @@
       "chunks": [
         {
           "chunk_id": "audience_playbooks#audience_profiles_call_chat_playbooks_profile_c_marketing_leaders_what_they_ask::0",
-          "embedding_input": "H3: What they ask\n- \"Can you pull current technical details into landing pages?\"\n- "Do you integrate with our storage and site tools?"",
+          "embedding_input": "H3: What they ask\n- \"Can you pull current technical details into landing pages?\"\n- \"Do you integrate with our storage and site tools?\"",
           "token_estimate": 24,
           "overlap_with_prev": 0,
           "qa_shape": "narrative",

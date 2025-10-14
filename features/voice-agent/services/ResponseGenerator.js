@@ -5,6 +5,67 @@
 class ResponseGenerator {
   constructor(openAIService) {
     this.openAIService = openAIService;
+    
+    // Load audience playbooks (safe fallback)
+    this.loadAudiencePlaybooks();
+  }
+  
+  /**
+   * Load audience playbooks for response customization
+   * Safe implementation - won't break if file doesn't exist
+   */
+  loadAudiencePlaybooks() {
+    try {
+      // For now, use hardcoded audience keywords due to JSON parsing issues
+      // TODO: Fix JSON format in audience_playbooks_1.2.json and load from file
+      this.audienceKeywords = {
+        developers: ['developer', 'dev', 'programmer', 'code', 'api', 'technical', 'integration', 'sdk', 'webhook'],
+        trades: ['contractor', 'construction', 'field', 'job site', 'trades', 'foreman', 'crew', 'estimate', 'invoice'],
+        enterprise: ['enterprise', 'corporate', 'company', 'organization', 'business', 'team', 'sso', 'security'],
+        marketing: ['marketing', 'content', 'campaign', 'brand', 'social media', 'lead', 'conversion', 'analytics']
+      };
+      
+      console.log('✅ Loaded audience keywords for response customization');
+    } catch (error) {
+      console.warn('⚠️ Could not load audience playbooks, using default responses:', error.message);
+      this.audienceKeywords = {}; // Empty fallback
+    }
+  }
+  
+  /**
+   * Detect audience type from conversation context
+   * Simple keyword-based detection
+   */
+  detectAudience(conversationHistory = []) {
+    const allText = conversationHistory.map(msg => msg.content).join(' ').toLowerCase();
+    
+    for (const [audience, keywords] of Object.entries(this.audienceKeywords)) {
+      if (keywords.some(keyword => allText.includes(keyword))) {
+        return audience;
+      }
+    }
+    
+    return 'general'; // Default audience
+  }
+  
+  /**
+   * Enhance response based on detected audience
+   * Safe enhancement - original response is preserved
+   */
+  enhanceResponseForAudience(response, audience) {
+    if (!audience || audience === 'general') {
+      return response; // No change for general audience
+    }
+    
+    const audienceEnhancements = {
+      developers: " I can also show you our API documentation and integration guides if you're interested in the technical details.",
+      trades: " This works great for field work and job sites where hands-free operation is essential.",
+      enterprise: " We also offer enterprise features like SSO, advanced security, and dedicated support for larger organizations.",
+      marketing: " This can help streamline your content creation and campaign management workflows."
+    };
+    
+    const enhancement = audienceEnhancements[audience];
+    return enhancement ? response + enhancement : response;
   }
 
   /**
@@ -37,7 +98,7 @@ class ResponseGenerator {
    * @returns {string} Goodbye response
    */
   generateGoodbyeResponse(userName = 'there') {
-    const response = `Thank you, ${userName}! I hope you were satisfied with SherpaPrompt AI's service. Have a great day!`;
+    const response = `Thank you, ${userName}! I hope SherpaPrompt can help automate your workflows and turn your conversations into outcomes. Have a great day!`;
     return this.formatForTTS(response);
   }
 
@@ -48,7 +109,7 @@ class ResponseGenerator {
    * @returns {string} Name change confirmation response
    */
   generateNameChangeResponse(oldName, newName) {
-    return `Got it! I've updated your name from ${oldName} to ${newName}. Do you have any questions about our fencing services, or would you like to schedule an appointment?`;
+    return `Got it! I've updated your name from ${oldName} to ${newName}. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
   }
 
   /**
@@ -58,7 +119,7 @@ class ResponseGenerator {
    * @returns {string} Email change confirmation response
    */
   generateEmailChangeResponse(oldEmail, newEmail) {
-    return `Perfect! I've updated your email from ${oldEmail} to ${newEmail}. Do you have any questions about our fencing services, or would you like to schedule an appointment?`;
+    return `Perfect! I've updated your email from ${oldEmail} to ${newEmail}. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
   }
 
   /**
@@ -66,7 +127,7 @@ class ResponseGenerator {
    * @returns {string} Appointment start response
    */
   generateAppointmentStartResponse() {
-    return "Great! I'd be happy to help you schedule an appointment. First, would you like me to add this to your Google Calendar or Microsoft Calendar? Just say 'Google' or 'Microsoft'.";
+    return "Great! I'd be happy to help you schedule a demo or consultation. First, would you like me to add this to your Google Calendar or Microsoft Calendar? Just say 'Google' or 'Microsoft'.";
   }
 
   /**
@@ -76,7 +137,7 @@ class ResponseGenerator {
    */
   generateCalendarSelectionResponse(calendarType) {
     const calendarName = calendarType === 'microsoft' ? 'Microsoft Calendar' : 'Google Calendar';
-    return `Perfect! I'll add it to your ${calendarName}. What type of service are you looking for? Like a fence consultation, repair estimate, or installation quote?`;
+    return `Perfect! I'll add it to your ${calendarName}. What type of session would you like? Like a product demo, consultation about call automation, or discussion about integrations?`;
   }
 
   /**
@@ -171,7 +232,39 @@ Is there anything else I can help you with today?`;
    * @returns {string} Response with follow-up question
    */
   generateFollowUpResponse(baseResponse) {
-    return `${baseResponse} Is there anything else you'd like to know, or would you like to schedule an appointment?`;
+    return `${baseResponse} Is there anything else you'd like to know, or would you like to schedule a demo?`;
+  }
+
+  /**
+   * Generate SherpaPrompt product information response
+   * @param {string} productArea - Product area (call_service, transcript_service, voice_to_estimate, app)
+   * @returns {string} Product information response
+   */
+  generateProductInfoResponse(productArea) {
+    const responses = {
+      'call_service': "SherpaPrompt's Call Service Automation handles customer calls with AI agents that can qualify leads, schedule appointments, and integrate with your CRM - all while maintaining natural conversation flow.",
+      'transcript_service': "Our Transcript to Task feature extracts action items from meeting recordings and automatically creates tasks in your project management tools like ClickUp, Asana, or Microsoft Planner.",
+      'voice_to_estimate': "Voice to Estimate lets you create detailed estimates hands-free using voice commands, perfect for field work where typing isn't practical.",
+      'app': "The SherpaPrompt App orchestrates prompts and manages your automation workflows across all our services, giving you complete control over your AI assistants."
+    };
+    
+    return responses[productArea] || "SherpaPrompt turns conversations into outcomes through our four core automation services: Call Service, Transcript to Task, Voice to Estimate, and our orchestration App.";
+  }
+
+  /**
+   * Generate demo offer response with lead capture
+   * @returns {string} Demo offer response
+   */
+  generateDemoOfferResponse() {
+    return "I'd be happy to show you SherpaPrompt in action! To schedule your personalized demo, I'll need to collect a few details. What's the best email address to send you the demo link and calendar invite?";
+  }
+
+  /**
+   * Generate pricing response
+   * @returns {string} Pricing response
+   */
+  generatePricingResponse() {
+    return "SherpaPrompt offers transparent pricing tiers designed to scale with your business. We have options for small teams starting at our Starter tier, growing businesses with our Professional tier, and Enterprise solutions with custom integrations. Would you like me to walk you through the specific features and pricing for each tier?";
   }
 
   /**
@@ -182,7 +275,7 @@ Is there anything else I can help you with today?`;
    * @returns {Promise<string>} Generated response
    */
   async generateConversationalResponse(text, conversationHistory = [], userInfo = {}) {
-    const systemPrompt = `You're a friendly voice assistant for SherpaPrompt Fencing Company. Chat naturally with customers like you're having a real conversation.
+    const systemPrompt = `You're a friendly voice assistant for SherpaPrompt - the automation platform that turns conversations into outcomes. Chat naturally with customers like you're having a real conversation.
 
 User: ${userInfo.name || 'Customer'} (${userInfo.email || 'No email'})
 
@@ -192,7 +285,8 @@ Guidelines:
 - Answer what they're asking without being overly wordy
 - Don't sound like you're reading from a script
 - Avoid formal phrases like "I would be happy to assist" - just help them naturally
-- If user says goodbye, thank them casually and mention you hope we could help`;
+- If user says goodbye, thank them casually and mention you hope SherpaPrompt can help automate their workflows
+- Focus on our four core products: Call Service Automation, Transcript to Task, Voice to Estimate, and SherpaPrompt App`;
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -200,14 +294,20 @@ Guidelines:
     ];
 
     try {
-      return await this.openAIService.callOpenAI(messages, 'gpt-5-nano', 3, {
+      const response = await this.openAIService.callOpenAI(messages, 'gpt-5-nano', 3, {
         reasoning: { effort: "minimal" },
         max_output_tokens: 800,
         temperature: 0.7
       });
+      
+      // Detect audience and enhance response
+      const audience = this.detectAudience(conversationHistory);
+      const enhancedResponse = this.enhanceResponseForAudience(response, audience);
+      
+      return enhancedResponse;
     } catch (error) {
       console.error('❌ [ResponseGenerator] OpenAI call failed:', error);
-      return "I'm having trouble with my AI service right now. Could you please try again, or call us at (303) 555-FENCE for immediate assistance?";
+      return "I'm having trouble with my AI service right now. Could you please try again, or visit our website at sherpaprompt.com for more information?";
     }
   }
 
