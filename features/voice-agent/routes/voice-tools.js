@@ -1,12 +1,12 @@
 const express = require('express');
 const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
-const { FencingRAG } = require('../../../shared/services/FencingRAG');
+const { SherpaPromptRAG } = require('../../../shared/services/SherpaPromptRAG');
 
 const router = express.Router();
 
 // Initialize services
 const embeddingService = new EmbeddingService();
-const fencingRAG = new FencingRAG();
+const sherpaPromptRAG = new SherpaPromptRAG();
 
 /**
  * Tool for voice agent to search knowledge base
@@ -57,7 +57,7 @@ router.post('/search-knowledge', async (req, res) => {
       console.log('⚠️ No similar content found in knowledge base');
       return res.json({
         success: true,
-        result: 'I don\'t have specific information about that in my knowledge base. Let me connect you with one of our fencing experts who can help you directly.',
+        result: 'I can\'t find that specific information right now. Do you have any other questions I can help with, or would you like me to schedule a demo?',
         hasInfo: false
       });
     }
@@ -65,13 +65,13 @@ router.post('/search-knowledge', async (req, res) => {
     // Generate RAG response optimized for voice
     console.log('🤖 Formatting context and generating AI response...');
     const formatStart = Date.now();
-    const context = fencingRAG.formatContext(similarContent);
+    const context = sherpaPromptRAG.formatContext(similarContent);
     const formatMs = Date.now() - formatStart;
     console.log(`[voice-tools][${requestId}] 🧩 Context formatted in ${formatMs}ms (length=${context.length})`);
     console.log('📄 Formatted context length:', context.length);
     
     const genStart = Date.now();
-    const aiResponse = await fencingRAG.generateResponse(
+    const aiResponse = await sherpaPromptRAG.generateResponse(
       query + ' (Please provide a concise response suitable for voice conversation)', 
       context
     );
@@ -109,7 +109,7 @@ router.post('/search-knowledge', async (req, res) => {
     
     const errorResponse = {
       success: true,
-      result: 'I encountered an issue accessing my knowledge base. Please contact our office and one of our fencing experts will be happy to help you.',
+      result: 'I encountered an issue accessing my knowledge base. Please try again, or would you like me to schedule a demo?',
       hasInfo: false,
       error: error.message
     };

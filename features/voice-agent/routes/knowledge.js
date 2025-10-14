@@ -1,6 +1,6 @@
 const express = require('express');
 const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
-const { FencingRAG } = require('../../../shared/services/FencingRAG');
+const { SherpaPromptRAG } = require('../../../shared/services/SherpaPromptRAG');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -8,7 +8,7 @@ const router = express.Router();
 
 // Initialize services
 const embeddingService = new EmbeddingService();
-const fencingRAG = new FencingRAG();
+const sherpaPromptRAG = new SherpaPromptRAG();
 
 /**
  * Process knowledge base and generate embeddings
@@ -101,8 +101,8 @@ router.post('/search', async (req, res) => {
     const similarContent = await embeddingService.searchSimilarContent(query, maxResults);
     
     // Generate RAG response
-    const context = fencingRAG.formatContext(similarContent);
-    const aiResponse = await fencingRAG.generateResponse(query, context);
+    const context = sherpaPromptRAG.formatContext(similarContent);
+    const aiResponse = await sherpaPromptRAG.generateResponse(query, context);
     
     // Handle structured response
     let responseText = '';
@@ -119,7 +119,7 @@ router.post('/search', async (req, res) => {
     
     // Generate contextual follow-up questions if none provided
     if (followUpQuestions.length === 0) {
-      followUpQuestions = fencingRAG.generateFollowUpQuestions(query, similarContent);
+      followUpQuestions = sherpaPromptRAG.generateFollowUpQuestions(query, similarContent);
     }
     
     res.json({

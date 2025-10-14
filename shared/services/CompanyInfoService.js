@@ -34,7 +34,7 @@ class CompanyInfoService {
     try {
       // Phone/contact information
       if (this.isPhoneQuery(queryLower)) {
-        return `You can reach us at ${this.fallbackCompanyInfo.phone}. We're available ${this.fallbackCompanyInfo.hours.monday_friday} Monday through Friday, and ${this.fallbackCompanyInfo.hours.saturday} on Saturday. We also provide ${this.fallbackCompanyInfo.hours.emergency}.`;
+        return `You can reach us at ${this.fallbackCompanyInfo.phone}. We're available ${this.fallbackCompanyInfo.hours.monday_friday} Monday through Friday, and ${this.fallbackCompanyInfo.hours.saturday} on Saturday. We also provide ${this.fallbackCompanyInfo.hours.support}.`;
       }
 
       // Email information
@@ -54,7 +54,7 @@ class CompanyInfoService {
 
       // Business hours
       if (this.isHoursQuery(queryLower)) {
-        return `Our business hours are: Monday-Friday ${this.fallbackCompanyInfo.hours.monday_friday}, Saturday ${this.fallbackCompanyInfo.hours.saturday}, and we're ${this.fallbackCompanyInfo.hours.sunday} on Sunday. We also offer ${this.fallbackCompanyInfo.hours.emergency}.`;
+        return `Our business hours are: Monday-Friday ${this.fallbackCompanyInfo.hours.monday_friday}, Saturday ${this.fallbackCompanyInfo.hours.saturday}, and we're ${this.fallbackCompanyInfo.hours.sunday} on Sunday. We also offer ${this.fallbackCompanyInfo.hours.support}.`;
       }
 
       // Website information

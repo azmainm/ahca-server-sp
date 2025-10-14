@@ -269,7 +269,9 @@ Is there anything else I can help you with today?`;
    * @returns {string} Pricing response
    */
   generatePricingResponse() {
-    return "SherpaPrompt offers transparent pricing tiers designed to scale with your business. We have options for small teams starting at our Starter tier, growing businesses with our Professional tier, and Enterprise solutions with custom integrations. Would you like me to walk you through the specific features and pricing for each tier?";
+    // This method should not be used - pricing should come from RAG system
+    // Keeping for backward compatibility but encouraging RAG usage
+    return "I don't have specific pricing information available right now. Would you like me to schedule a demo where we can discuss pricing in detail, or would you prefer to speak with our sales team?";
   }
 
   /**

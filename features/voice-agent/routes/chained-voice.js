@@ -181,14 +181,14 @@ function extractSearchTerms(text) {
     'estimate',
     'prompt',
     'orchestration',
-    // Legacy fencing terms for backward compatibility
-    'fence', 'fencing', 'installation', 'repair', 'maintenance', 
-    'cost', 'price', 'material', 'wood', 'vinyl', 'chain link',
-    'aluminum', 'steel', 'height', 'permit', 'warranty', 'estimate',
-    'gate', 'gates', 'privacy', 'picket', 'ornamental', 'iron',
-    'concrete', 'post', 'rail', 'stain', 'painting', 'hours',
+    // Enhanced pricing keywords
+    'price', 'cost', 'costs', 'pricing', 'how much', 'expensive',
+    'affordable', 'budget', 'fee', 'fees', 'rate', 'rates',
+    'tier', 'tiers', 'plan', 'plans', 'subscription', 'monthly',
+    'yearly', 'annual', 'payment', 'pay', 'trial', 'free',
+    // Business and service keywords
     'schedule', 'emergency', 'service', 'area', 'financing',
-    'payment', 'quote', 'consultation', 'appointment',
+    'quote', 'consultation', 'appointment',
     // Contact and company info keywords
     'phone', 'number', 'call', 'contact', 'reach', 'email', 'address',
     'location', 'office', 'company', 'business', 'hours', 'open',
@@ -209,6 +209,22 @@ function extractSearchTerms(text) {
   // For questions, include the full question context for better search
   const questionWords = ['how', 'what', 'when', 'where', 'why', 'can', 'do', 'are', 'is', 'will'];
   const isQuestion = questionWords.some(qw => textLower.includes(qw));
+  
+  // Special handling for pricing queries
+  const pricingIndicators = ['price', 'cost', 'pricing', 'how much', 'expensive', 'affordable'];
+  const isPricingQuery = pricingIndicators.some(indicator => textLower.includes(indicator));
+  
+  if (isPricingQuery) {
+    // For pricing queries, always include "pricing" as a search term
+    foundKeywords.push('pricing', 'cost', 'price');
+    // Also include service-specific terms if mentioned
+    const serviceTerms = ['call service', 'automation', 'transcript', 'voice estimate', 'app'];
+    serviceTerms.forEach(term => {
+      if (textLower.includes(term)) {
+        foundKeywords.push(term);
+      }
+    });
+  }
   
   if (isQuestion && foundKeywords.length > 0) {
     // For questions, include more context words

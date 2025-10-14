@@ -82,6 +82,22 @@ class ConversationFlowHandler {
   }
 
   /**
+   * Check if query is asking about pricing
+   * @param {string} text - User input
+   * @returns {boolean} True if pricing query
+   */
+  isPricingQuery(text) {
+    const textLower = text.toLowerCase();
+    const pricingKeywords = [
+      'price', 'pricing', 'cost', 'costs', 'how much', 'what does it cost',
+      'what\'s the price', 'what is the price', 'how expensive', 'affordable',
+      'budget', 'fee', 'fees', 'rate', 'rates', 'tier', 'tiers', 'plan', 'plans',
+      'subscription', 'monthly', 'yearly', 'annual', 'payment', 'pay'
+    ];
+    return pricingKeywords.some(keyword => textLower.includes(keyword));
+  }
+
+  /**
    * Main conversation processing entry point
    * @param {string} text - User input text
    * @param {string} sessionId - Session identifier
@@ -423,8 +439,15 @@ class ConversationFlowHandler {
       // Always add follow-up question to RAG responses
       response = this.responseGenerator.generateFollowUpResponse(baseResponse);
     } else {
-      // Fallback to company info only for basic contact queries (not service-related)
-      if (this.companyInfoService.isCompanyInfoQuery(text) && this.isBasicContactQuery(text)) {
+      // Check if this is a pricing query
+      const isPricingQuery = this.isPricingQuery(text);
+      
+      if (isPricingQuery) {
+        console.log('💰 [Pricing] Detected pricing query but no RAG results found');
+        response = "I can't find that specific pricing information right now. Would you like me to schedule a demo where we can discuss pricing in detail, or do you have any other questions I can help with?";
+        hadFunctionCalls = false;
+      } else if (this.companyInfoService.isCompanyInfoQuery(text) && this.isBasicContactQuery(text)) {
+        // Fallback to company info only for basic contact queries (not service-related)
         console.log('🏢 [Company Info] Using company info for basic contact query');
         const baseResponse = this.companyInfoService.getCompanyInfo(text);
         response = this.responseGenerator.generateFollowUpResponse(
@@ -433,7 +456,7 @@ class ConversationFlowHandler {
         hadFunctionCalls = false;
       } else {
         // If no RAG results and not a basic contact query, ask user to repeat or rephrase
-        response = "I don't have specific information about that. Could you please repeat or rephrase your question?";
+        response = "I can't find that specific information right now. Do you have any other questions I can help with, or would you like me to schedule a demo?";
         hadFunctionCalls = false;
       }
     }
