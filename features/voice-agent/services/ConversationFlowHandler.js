@@ -354,7 +354,25 @@ class ConversationFlowHandler {
     let finalResponse;
     if (responses.length > 0) {
       const updatesText = responses.join(' ');
-      finalResponse = `${updatesText} Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
+      
+      // Check if user is in an active appointment flow
+      if (this.appointmentFlowManager.isFlowActive(session)) {
+        // Return to appointment review with updated info
+        const appointmentDetails = session.appointmentFlow.details;
+        const userInfo = session.userInfo;
+        
+        finalResponse = `${updatesText} Here are your updated appointment details:
+
+- Service: ${appointmentDetails.title}
+- Date & Time: ${appointmentDetails.date} at ${appointmentDetails.timeDisplay || appointmentDetails.time}
+- Duration: 30 minutes
+- Customer: ${userInfo.name} (${userInfo.email})
+
+Does this look good, or would you like to change anything else?`;
+      } else {
+        finalResponse = `${updatesText} Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
+      }
+      
       this.stateManager.addMessage(sessionId, 'assistant', finalResponse);
     } else {
       finalResponse = "I'm having trouble understanding what you'd like to change. Could you please clearly state if you want to update your name or email address?";
