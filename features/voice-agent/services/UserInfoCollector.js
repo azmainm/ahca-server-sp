@@ -111,13 +111,32 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
   }
 
   /**
+   * Spell out email local part for voice confirmation
+   * @param {string} email - Email address
+   * @returns {string} Spelled out local part
+   */
+  spellEmailLocalPart(email) {
+    if (!email || !email.includes('@')) {
+      return email;
+    }
+    
+    const [localPart, domain] = email.split('@');
+    
+    // Spell out the local part character by character
+    const spelledLocal = localPart.split('').join('-');
+    
+    return `${spelledLocal} at ${domain}`;
+  }
+
+  /**
    * Generate completion response
    * @param {string} name - User's name
    * @param {string} email - User's email
    * @returns {string} Completion response
    */
   generateCompletionResponse(name, email) {
-    return `Thanks ${name}! I've got your email as ${email}. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
+    const spelledEmail = this.spellEmailLocalPart(email);
+    return `Thanks ${name}! I've got your email as ${spelledEmail}. Is that correct?`;
   }
 
   /**
