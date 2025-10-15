@@ -18,7 +18,8 @@ class AppointmentFlowManager {
       REVIEW: 'review',
       CONFIRM: 'confirm',
       COLLECT_NAME: 'collect_name',
-      COLLECT_EMAIL: 'collect_email'
+      COLLECT_EMAIL: 'collect_email',
+      CONFIRM_EMAIL: 'confirm_email'
     };
 
     // Review confirmation patterns
@@ -60,6 +61,23 @@ class AppointmentFlowManager {
     };
     session.awaitingFollowUp = false;
 
+    // Check if we need to collect name/email first
+    if (!session.userInfo.name) {
+      session.appointmentFlow.step = this.steps.COLLECT_NAME;
+      return {
+        success: true,
+        response: "Great! I'd be happy to help you schedule a demo. First, what's your name?",
+        step: this.steps.COLLECT_NAME
+      };
+    } else if (!session.userInfo.email) {
+      session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+      return {
+        success: true,
+        response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'.`,
+        step: this.steps.COLLECT_EMAIL
+      };
+    }
+
     return {
       success: true,
       response: this.responseGenerator.generateAppointmentStartResponse(),
@@ -99,6 +117,9 @@ class AppointmentFlowManager {
           
         case this.steps.COLLECT_EMAIL:
           return await this.handleEmailCollection(session, text);
+          
+        case this.steps.CONFIRM_EMAIL:
+          return await this.handleEmailConfirmation(session, text);
           
         case this.steps.CONFIRM:
           return await this.handleConfirmation(session, text, getCalendarService);
@@ -558,24 +579,54 @@ class AppointmentFlowManager {
         session.userInfo.name = text.trim();
       }
       
-      session.appointmentFlow.step = this.steps.REVIEW;
-      const { details } = session.appointmentFlow;
+      // Check if we need email next
+      if (!session.userInfo.email) {
+        session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+        return {
+          success: true,
+          response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy - for example, 'j-o-h-n at gmail dot com'.`,
+          step: this.steps.COLLECT_EMAIL
+        };
+      }
       
-      return {
-        success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
-      };
+      // If appointment details exist, go to review; otherwise continue with calendar selection
+      const { details } = session.appointmentFlow;
+      if (details.title && details.date && details.time) {
+        session.appointmentFlow.step = this.steps.REVIEW;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
+          step: this.steps.REVIEW
+        };
+      } else {
+        // Continue with normal flow
+        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentStartResponse(),
+          step: this.steps.SELECT_CALENDAR
+        };
+      }
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Name extraction failed:', error);
       session.userInfo.name = text.trim();
-      session.appointmentFlow.step = this.steps.REVIEW;
-      const { details } = session.appointmentFlow;
       
+      // Check if we need email next
+      if (!session.userInfo.email) {
+        session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+        return {
+          success: true,
+          response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy.`,
+          step: this.steps.COLLECT_EMAIL
+        };
+      }
+      
+      // Continue with normal flow
+      session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
       return {
         success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
+        response: this.responseGenerator.generateAppointmentStartResponse(),
+        step: this.steps.SELECT_CALENDAR
       };
     }
   }
@@ -591,28 +642,81 @@ class AppointmentFlowManager {
       const extractedEmail = await this.extractEmail(text);
       if (extractedEmail) {
         session.userInfo.email = extractedEmail;
+        
+        // Spell back the email for confirmation
+        const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
+        
+        // Go to email confirmation step
+        session.appointmentFlow.step = this.steps.CONFIRM_EMAIL;
+        return {
+          success: true,
+          response: `Thanks! I've got your email as ${spelledEmail}. Is that correct, or would you like to change it?`,
+          step: this.steps.CONFIRM_EMAIL
+        };
       } else {
-        session.userInfo.email = text.trim();
+        // No valid email found, ask again
+        console.log('❌ [Email Collection] No valid email found in:', text);
+        return {
+          success: true,
+          response: this.responseGenerator.generateClarificationRequest('email'),
+          step: this.steps.COLLECT_EMAIL
+        };
       }
-      
-      session.appointmentFlow.step = this.steps.REVIEW;
-      const { details } = session.appointmentFlow;
-      
-      return {
-        success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
-      };
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Email extraction failed:', error);
-      session.userInfo.email = text.trim();
-      session.appointmentFlow.step = this.steps.REVIEW;
-      const { details } = session.appointmentFlow;
-      
+      // Ask for email again on error
       return {
         success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
+        response: this.responseGenerator.generateClarificationRequest('email'),
+        step: this.steps.COLLECT_EMAIL
+      };
+    }
+  }
+
+  /**
+   * Handle email confirmation step
+   * @param {Object} session - Session object
+   * @param {string} text - User input
+   * @returns {Promise<Object>} Processing result
+   */
+  async handleEmailConfirmation(session, text) {
+    const confirmPatterns = [/yes/i, /correct/i, /that'?s? right/i, /good/i, /ok/i, /okay/i, /sounds good/i, /perfect/i, /looks good/i];
+    const changePatterns = [/no/i, /wrong/i, /incorrect/i, /change/i, /update/i, /fix/i, /different/i, /not right/i];
+
+    if (confirmPatterns.some(pattern => pattern.test(text))) {
+      // Email confirmed, proceed to next step
+      const { details } = session.appointmentFlow;
+      
+      // If appointment details exist, go to review; otherwise continue with calendar selection
+      if (details.title && details.date && details.time) {
+        session.appointmentFlow.step = this.steps.REVIEW;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
+          step: this.steps.REVIEW
+        };
+      } else {
+        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentStartResponse(),
+          step: this.steps.SELECT_CALENDAR
+        };
+      }
+    } else if (changePatterns.some(pattern => pattern.test(text))) {
+      // User wants to change email
+      session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+      return {
+        success: true,
+        response: this.responseGenerator.generateClarificationRequest('email'),
+        step: this.steps.COLLECT_EMAIL
+      };
+    } else {
+      // Unclear response, ask for clarification
+      return {
+        success: true,
+        response: `I didn't catch that. Is your email correct, or would you like to change it? Please say "yes" to confirm or "no" to change it.`,
+        step: this.steps.CONFIRM_EMAIL
       };
     }
   }
@@ -657,7 +761,27 @@ class AppointmentFlowManager {
     const { details, calendarType } = session.appointmentFlow;
     
     try {
-      console.log('📅 Creating calendar appointment with details:', details);
+      console.log('📅 [CreateAppointment] Full appointment details:', JSON.stringify(details, null, 2));
+      console.log('📅 [CreateAppointment] Extracted values:', {
+        title: details.title,
+        date: details.date,
+        time: details.time,
+        timeDisplay: details.timeDisplay,
+        duration: 30
+      });
+      
+      // Validate time format before creating appointment
+      const timeRegex = /^\d{2}:\d{2}$/;
+      if (!timeRegex.test(details.time)) {
+        console.error('❌ [CreateAppointment] Invalid time format:', details.time, 'Expected HH:mm format');
+        // Try to fix common issues
+        if (details.time && details.time.length === 4 && !details.time.includes(':')) {
+          // Format like "1430" -> "14:30"
+          const fixedTime = `${details.time.substring(0, 2)}:${details.time.substring(2)}`;
+          console.log('🔧 [CreateAppointment] Fixed time format:', fixedTime);
+          details.time = fixedTime;
+        }
+      }
       
       const calendarService = getCalendarService(calendarType);
       const appointmentResult = await calendarService.createAppointment(
@@ -883,13 +1007,17 @@ CRITICAL RULES:
 4. Handle repetitions and clarifications - use the FINAL/CORRECTED email mentioned
 5. Ignore filler words like "it is spelled", "let me spell that", "the email should be"
 6. Convert to lowercase for consistency
+7. MUST contain "@" and a domain with at least one dot (e.g., "@gmail.com")
+8. If the text doesn't contain a valid email pattern, return {"email": null}
 
 Examples:
 - "change my email to j-o-h-n at g-m-a-i-l dot c-o-m" → "john@gmail.com"
 - "email should be A-Z-M-A-I-N-M-O-R-S-H-E-D-0-3 at gmail dot com" → "azmainmorshed03@gmail.com"
 - "it's spelled test at yahoo dot com" → "test@yahoo.com"
+- "Uh, I would like to schedule a demo." → null (not an email)
+- "2:30 PM please" → null (not an email)
 
-Return ONLY: {"email": "extracted@email.com"}`;
+Return ONLY: {"email": "extracted@email.com"} or {"email": null}`;
 
     try {
       const response = await this.openAIService.callOpenAI([
@@ -902,11 +1030,43 @@ Return ONLY: {"email": "extracted@email.com"}`;
       });
       
       const emailData = JSON.parse(response);
-      return emailData.email || null;
+      const extractedEmail = emailData.email;
+      
+      // Basic email validation to ensure it looks like a real email
+      if (!extractedEmail) {
+        console.log('📧 [Email Validation] No email found in text');
+        return null;
+      }
+      
+      // Must contain @ and a domain with at least one dot
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(extractedEmail)) {
+        console.log('📧 [Email Validation] Invalid email format:', extractedEmail);
+        return null;
+      }
+      
+      console.log('✅ [Email Validation] Valid email extracted:', extractedEmail);
+      return extractedEmail;
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Email extraction failed:', error);
       return null;
     }
+  }
+
+  /**
+   * Spell out email local part for voice confirmation
+   * @param {string} email - Email address
+   * @returns {string} Spelled out local part
+   */
+  spellEmailLocalPart(email) {
+    if (!email || !email.includes('@')) {
+      return email;
+    }
+    
+    const [localPart, domain] = email.split('@');
+    const spelledLocal = localPart.split('').join('-');
+    
+    return `${spelledLocal} at ${domain}`;
   }
 
   /**

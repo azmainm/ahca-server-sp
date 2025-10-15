@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-10-15T06:23:33.791Z",
+  "summary": {
+    "totalTests": 1,
+    "passedTests": 0,
+    "failedTests": 1,
+    "successRate": "0.0%"
+  },
+  "results": [
+    {
+      "test": "Test Suite Execution",
+      "success": false,
+      "details": "request to http://localhost:3001/api/chained-voice/health failed, reason: ",
+      "timestamp": "2025-10-15T06:23:33.790Z"
+    }
+  ]
+}

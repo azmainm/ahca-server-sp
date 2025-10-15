@@ -113,13 +113,30 @@ class ResponseGenerator {
   }
 
   /**
+   * Spell out email local part for voice confirmation
+   * @param {string} email - Email address
+   * @returns {string} Spelled out local part
+   */
+  spellEmailLocalPart(email) {
+    if (!email || !email.includes('@')) {
+      return email;
+    }
+    
+    const [localPart, domain] = email.split('@');
+    const spelledLocal = localPart.split('').join('-');
+    
+    return `${spelledLocal} at ${domain}`;
+  }
+
+  /**
    * Generate response for email change confirmation
    * @param {string} oldEmail - Previous email
    * @param {string} newEmail - New email
    * @returns {string} Email change confirmation response
    */
   generateEmailChangeResponse(oldEmail, newEmail) {
-    return `Perfect! I've updated your email from ${oldEmail} to ${newEmail}. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
+    const spelledNew = this.spellEmailLocalPart(newEmail);
+    return `Perfect! I've updated your email to ${spelledNew}. Is that correct?`;
   }
 
   /**
@@ -146,8 +163,63 @@ class ResponseGenerator {
    * @returns {string} Service collection response
    */
   generateServiceCollectionResponse(serviceTitle) {
-    const response = `Perfect! I'll schedule a ${serviceTitle} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`;
+    const response = `Perfect! I'll schedule a ${serviceTitle} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`;
     return this.formatForTTS(response);
+  }
+
+  /**
+   * Format time slots as ranges for more natural speech
+   * @param {Array} slots - Available time slots
+   * @returns {string} Formatted time ranges
+   */
+  formatSlotsAsRanges(slots) {
+    if (slots.length === 0) return '';
+    if (slots.length === 1) return slots[0].display;
+    
+    // Group consecutive slots
+    const ranges = [];
+    let rangeStart = slots[0];
+    let rangeLast = slots[0];
+    
+    for (let i = 1; i < slots.length; i++) {
+      const current = slots[i];
+      const lastTime = rangeLast.start.split(':');
+      const currentTime = current.start.split(':');
+      
+      const lastMinutes = parseInt(lastTime[0]) * 60 + parseInt(lastTime[1]);
+      const currentMinutes = parseInt(currentTime[0]) * 60 + parseInt(currentTime[1]);
+      
+      // If slots are 30 minutes apart (consecutive), continue range
+      if (currentMinutes - lastMinutes === 30) {
+        rangeLast = current;
+      } else {
+        // Range ended, save it
+        if (rangeStart === rangeLast) {
+          ranges.push(rangeStart.display);
+        } else {
+          ranges.push(`${rangeStart.display} to ${rangeLast.display}`);
+        }
+        rangeStart = current;
+        rangeLast = current;
+      }
+    }
+    
+    // Add the last range
+    if (rangeStart === rangeLast) {
+      ranges.push(rangeStart.display);
+    } else {
+      ranges.push(`${rangeStart.display} to ${rangeLast.display}`);
+    }
+    
+    // Format the ranges naturally
+    if (ranges.length === 1) {
+      return ranges[0];
+    } else if (ranges.length === 2) {
+      return `${ranges[0]} and ${ranges[1]}`;
+    } else {
+      const last = ranges.pop();
+      return `${ranges.join(', ')}, and ${last}`;
+    }
   }
 
   /**
@@ -157,8 +229,13 @@ class ResponseGenerator {
    * @returns {string} Date availability response
    */
   generateDateAvailabilityResponse(formattedDate, availableSlots) {
-    const slotsText = availableSlots.map(slot => slot.display).join(', ');
-    return `Great! ${formattedDate} has ${availableSlots.length} available 30-minute slots: ${slotsText}. Which time works best for you?`;
+    const slotsText = this.formatSlotsAsRanges(availableSlots);
+    
+    if (availableSlots.length === 1) {
+      return `Great! ${formattedDate} has one slot available at ${slotsText}. Does that work for you?`;
+    } else {
+      return `Great! On ${formattedDate}, I have slots available ${slotsText}. Which time works best for you?`;
+    }
   }
 
   /**
@@ -182,19 +259,21 @@ class ResponseGenerator {
    * @returns {string} Appointment review response
    */
   generateAppointmentReviewResponse(details, userInfo) {
-    const response = `Perfect! Let me review your appointment details:
-
-Service: ${details.title}
-Date: ${details.date}
-Time: ${details.timeDisplay || details.time} (30 minutes)
-Customer: ${userInfo.name} (${userInfo.email})
-
-Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change. For example:
-- "Change service to pricing consultation"
-- "Change date to October 20th" 
-- "Change time to 2 PM"
-- "Change my name to John"
-- "Change my email to john@example.com"`;
+    // Format date in a more natural way if it's in YYYY-MM-DD format
+    let dateDisplay = details.date;
+    if (details.date && /^\d{4}-\d{2}-\d{2}$/.test(details.date)) {
+      const [year, month, day] = details.date.split('-');
+      const dateObj = new Date(year, parseInt(month) - 1, parseInt(day));
+      dateDisplay = dateObj.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric'
+      });
+    }
+    
+    const spelledEmail = this.spellEmailLocalPart(userInfo.email);
+    
+    const response = `Perfect! I have your ${details.title} scheduled for ${dateDisplay} at ${details.timeDisplay || details.time} with ${userInfo.name} at ${spelledEmail}. Does this look good, or would you like to change anything?`;
     return this.formatForTTS(response);
   }
 
@@ -206,20 +285,21 @@ Please review these details. Say "sounds good" to confirm, or tell me what you'd
    * @returns {string} Appointment confirmation response
    */
   generateAppointmentConfirmationResponse(details, userInfo, calendarType) {
+    // Format date in a more natural way if it's in YYYY-MM-DD format
+    let dateDisplay = details.date;
+    if (details.date && /^\d{4}-\d{2}-\d{2}$/.test(details.date)) {
+      const [year, month, day] = details.date.split('-');
+      const dateObj = new Date(year, parseInt(month) - 1, parseInt(day));
+      dateDisplay = dateObj.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric'
+      });
+    }
+    
     const calendarName = calendarType === 'microsoft' ? 'Microsoft Calendar' : 'Google Calendar';
     
-    return `Excellent! Your appointment has been scheduled successfully in ${calendarName}. 
-
-Appointment Details:
-- Service: ${details.title}  
-- Date & Time: ${details.date} at ${details.timeDisplay || details.time}
-- Duration: 30 minutes
-- Customer: ${userInfo.name} (${userInfo.email})
-- Calendar: ${calendarName}
-
-Our team will contact you at ${userInfo.email} to confirm the appointment details and provide any additional information you may need.
-
-Is there anything else I can help you with today?`;
+    return `Perfect! I've scheduled your ${details.title} for ${dateDisplay} at ${details.timeDisplay || details.time}. You'll receive a calendar invite at ${userInfo.email}. Is there anything else I can help you with?`;
   }
 
   /**
@@ -344,7 +424,7 @@ Guidelines:
    */
   generateClarificationRequest(topic) {
     const clarificationRequests = {
-      'date': "I'm having trouble understanding that date format. Could you please provide the date like \"December 15, 2024\" or \"2024-12-15\"?",
+      'date': "I'm having trouble understanding that date format. Could you please provide the date like \"December 15, 2025\" or \"2025-12-15\"?",
       'time': "I couldn't match that to one of the available times. Please choose from the available time slots.",
       'service': "I didn't catch what type of service you need. Could you tell me what kind of fencing service you're looking for?",
       'calendar': "I didn't catch that. Would you like to use Google Calendar or Microsoft Calendar for your appointment? Please say 'Google' or 'Microsoft'.",
@@ -372,12 +452,7 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${userInfo.name} (${userInfo.email})
 
-Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change. For example:
-- "Change service to pricing consultation"
-- "Change date to October 20th" 
-- "Change time to 2 PM"
-- "Change my name to John"
-- "Change my email to john@example.com"`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change.`;
   }
 
   /**

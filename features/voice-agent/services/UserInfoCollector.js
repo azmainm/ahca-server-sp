@@ -41,18 +41,25 @@ Your ONLY job is name and email collection.`;
   async extractUserInfo(text) {
     const extractionPrompt = `You are extracting name and email from user speech. Handle these cases carefully:
 
-1. If user is spelling out their email (e.g., "a-z-m-a-i-n at gmail dot com"), convert it properly
-2. Convert "at" to "@" and "dot" to "." in emails
-3. Handle corrections and clarifications (e.g., "no wait, it's actually...")
-4. Ignore filler words like "um", "uh", "so", "basically"
-5. If user says "spell" or "let me spell", they're providing spelling
+CRITICAL PRIORITY RULES:
+1. If user provides SPELLING (e.g., "it's spelled A-Z-M-A-I-N" or "A-Z-M-A-I-N"), USE THE SPELLED VERSION - this is the correct name/email, ignore any other casual mention
+2. Examples of spelling patterns:
+   - "my name is John, it's spelled J-O-H-N" → use "JOHN"
+   - "Yeah, my name is Osman, it's spelled A-Z-M-A-I-N" → use "AZMAIN"
+   - "it's A-Z-M-A-I-N-M-O-R-S-H-E-D-0-3 at gmail dot com" → use "AZMAINMORSHED03@gmail.com"
+3. Spelled-out names/emails ALWAYS take priority over casual mentions
+4. If user is spelling out their email (e.g., "a-z-m-a-i-n at gmail dot com"), convert it properly
+5. Convert "at" to "@" and "dot" to "." in emails
+6. Handle corrections and clarifications (e.g., "no wait, it's actually...")
+7. Ignore filler words like "um", "uh", "so", "basically", "yeah"
 
 User input: "${text}"
 
 Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com", "hasComplete": true, "needsSpelling": false}
 - Set needsSpelling to true if the name/email seems unclear or contains unusual characters
 - If missing info, set those fields to null and hasComplete to false
-- Convert spelled-out emails properly (a-t becomes @, d-o-t becomes .)`;
+- Convert spelled-out emails properly (a-t becomes @, d-o-t becomes .)
+- ALWAYS prioritize spelled-out versions over casual mentions`;
 
     try {
       const response = await this.openAIService.callOpenAI([
@@ -111,13 +118,72 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
   }
 
   /**
+   * Spell out email local part for voice confirmation
+   * @param {string} email - Email address
+   * @returns {string} Spelled out local part
+   */
+  spellEmailLocalPart(email) {
+    if (!email || !email.includes('@')) {
+      return email;
+    }
+    
+    const [localPart, domain] = email.split('@');
+    
+    // Spell out the local part character by character
+    const spelledLocal = localPart.split('').join('-');
+    
+    return `${spelledLocal} at ${domain}`;
+  }
+
+  /**
+   * Normalize email address to remove extra spaces and fix formatting
+   * Fixes issues like "Sherpa prompt .com" → "sherpaprompt.com"
+   * @param {string} email - Raw email address
+   * @returns {string} Normalized email
+   */
+  normalizeEmail(email) {
+    if (!email) return email;
+    
+    // Remove all spaces
+    let normalized = email.replace(/\s+/g, '');
+    
+    // Convert to lowercase
+    normalized = normalized.toLowerCase();
+    
+    // Fix missing @ symbol (e.g., "dougatgmail.com" → "doug@gmail.com")
+    // Look for pattern: word+at+domain
+    if (!normalized.includes('@')) {
+      const atPattern = /^([a-z0-9._-]+)at([a-z0-9.-]+\.[a-z]{2,})$/i;
+      const match = normalized.match(atPattern);
+      if (match) {
+        normalized = `${match[1]}@${match[2]}`;
+        console.log('📧 [Email Fix] Added missing @ symbol:', { original: email, fixed: normalized });
+      }
+    }
+    
+    // Ensure there's only one @ symbol and it's properly placed
+    const parts = normalized.split('@');
+    if (parts.length === 2) {
+      const [localPart, domain] = parts;
+      // Remove any invalid characters
+      const cleanLocal = localPart.replace(/[^a-z0-9._-]/g, '');
+      const cleanDomain = domain.replace(/[^a-z0-9.-]/g, '');
+      normalized = `${cleanLocal}@${cleanDomain}`;
+    }
+    
+    console.log('📧 [Email Normalization]', { original: email, normalized });
+    return normalized;
+  }
+
+  /**
    * Generate completion response
    * @param {string} name - User's name
    * @param {string} email - User's email
    * @returns {string} Completion response
    */
   generateCompletionResponse(name, email) {
-    return `Thanks ${name}! I've got your email as ${email}. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?`;
+    const spelledEmail = this.spellEmailLocalPart(email);
+    return `Thanks ${name}! I've got your email as ${spelledEmail}. Is that correct?`;
   }
 
   /**
@@ -129,19 +195,29 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
   async processCollection(text, currentUserInfo) {
     try {
       const extracted = await this.extractUserInfo(text);
+      console.log('📝 [UserInfoCollector] Extraction result:', extracted);
+      console.log('📝 [UserInfoCollector] Current user info before update:', currentUserInfo);
       
-      // Update user info with extracted data
+      // Update user info with extracted data (normalize email if present)
       const updatedUserInfo = { ...currentUserInfo };
       if (extracted.name) updatedUserInfo.name = extracted.name;
-      if (extracted.email) updatedUserInfo.email = extracted.email;
+      if (extracted.email) updatedUserInfo.email = this.normalizeEmail(extracted.email);
+      
+      console.log('📝 [UserInfoCollector] Updated user info:', updatedUserInfo);
       
       let response;
       
-      if (extracted.hasComplete && extracted.name && extracted.email) {
+      // Check if we now have both name AND email (either from extraction or existing)
+      if (updatedUserInfo.name && updatedUserInfo.email) {
         updatedUserInfo.collected = true;
-        response = this.generateCompletionResponse(extracted.name, extracted.email);
+        response = this.generateCompletionResponse(updatedUserInfo.name, updatedUserInfo.email);
+        console.log('✅ [UserInfoCollector] Collection complete - have both name and email');
       } else {
         response = this.generateMissingInfoResponse(updatedUserInfo);
+        console.log('⏳ [UserInfoCollector] Still missing:', {
+          needsName: !updatedUserInfo.name,
+          needsEmail: !updatedUserInfo.email
+        });
       }
       
       return {
@@ -169,12 +245,20 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
    */
   async handleNameChange(text) {
     const nameExtractionPrompt = `The user wants to change their name. Extract the new name from: "${text}"
-        
-Handle corrections, spelling, and filler words. Look for patterns like:
-- "my name is actually..."
-- "call me..."
-- "my name should be..."
-- "change my name to..."
+
+CRITICAL PRIORITY RULES:
+1. If user provides SPELLING (e.g., "it's spelled A-Z-M-A-I-N"), USE THE SPELLED VERSION
+2. Examples of spelling patterns:
+   - "my name is John, it's spelled J-O-H-N" → use "JOHN"
+   - "my name is Osman, it's spelled A-Z-M-A-I-N" → use "AZMAIN"
+3. Spelled-out names ALWAYS take priority over casual mentions
+4. Handle corrections, spelling, and filler words
+5. Look for patterns like:
+   - "my name is actually..."
+   - "call me..."
+   - "my name should be..."
+   - "change my name to..."
+   - "it's spelled..."
 
 Return ONLY: {"name": "John Doe"}`;
 
@@ -235,9 +319,13 @@ Return ONLY: {"email": "extracted@email.com"}`;
       });
       
       const emailData = JSON.parse(response);
+      
+      // Normalize the email: remove extra spaces and ensure proper format
+      const normalizedEmail = this.normalizeEmail(emailData.email);
+      
       return {
         success: true,
-        email: emailData.email
+        email: normalizedEmail
       };
     } catch (error) {
       console.error('❌ [UserInfoCollector] Email change extraction failed, trying regex fallback:', error);

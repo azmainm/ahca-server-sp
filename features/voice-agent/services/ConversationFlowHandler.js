@@ -34,38 +34,39 @@ class ConversationFlowHandler {
 
   /**
    * Get appropriate filler phrase for different processing types
+   * More concise and context-specific to avoid repetitive "looking that up" overuse
    * @param {string} processType - Type of processing (rag_search, appointment_processing, etc.)
-   * @returns {string} Appropriate filler phrase
+   * @param {string} context - Additional context for more specific fillers
+   * @returns {string|null} Appropriate filler phrase or null if no filler needed
    */
-  getFillerPhrase(processType) {
+  getFillerPhrase(processType, context = '') {
+    // Only use fillers for operations that actually take time
+    // Skip fillers for quick operations
     const fillerPhrases = {
       rag_search: [
-        "Looking that up for you",
-        "Let me find that information",
-        "One moment while I check that"
+        "Let me check that",
+        "One moment",
+        "Looking that up"
       ],
       appointment_processing: [
-        "Please wait while I process that for you",
-        "Let me handle that appointment request",
-        "Processing your appointment details",
-        "One moment while I set that up"
+        "Got it — scheduling now",
+        "Setting that up",
+        "Just a moment"
       ],
       calendar_check: [
-        "Checking availability for you",
-        "Let me see what times are available",
-        "Looking at the calendar"
+        "Checking the calendar",
+        "Let me see what's available",
+        "One moment"
       ],
-      name_email_collection: [
-        "Thanks. I'm processing that information"
-      ],
-      general_processing: [
-        "One moment please",
-        "Let me process that",
-        "Working on that for you"
-      ]
+      name_email_collection: null, // No filler needed for simple acknowledgments
+      general_processing: null // No filler for general quick responses
     };
 
-    const phrases = fillerPhrases[processType] || fillerPhrases.general_processing;
+    const phrases = fillerPhrases[processType];
+    
+    // Return null if no filler needed for this type
+    if (!phrases) return null;
+    
     return phrases[Math.floor(Math.random() * phrases.length)];
   }
 
@@ -227,7 +228,22 @@ class ConversationFlowHandler {
   async handleMainConversation(text, sessionId, session, intent) {
     console.log('🏢 [Flow] Taking main conversation path (Phase 2)');
 
-    // Check for name/email change requests at any point in conversation
+    // Try to extract name from first user response (if not already set and NOT in appointment flow)
+    if (!session.userInfo.name && session.conversationHistory.length <= 2 && !this.appointmentFlowManager.isFlowActive(session)) {
+      const nameExtractResult = await this.tryExtractNameFromResponse(text);
+      if (nameExtractResult.name) {
+        console.log('👤 [Name Extract] Extracted name from first response:', nameExtractResult.name);
+        this.stateManager.updateUserInfo(sessionId, { name: nameExtractResult.name });
+      }
+    }
+
+    // Handle active appointment flow FIRST (before checking for name/email changes)
+    // This prevents "My name is..." during appointment from being treated as a name change
+    if (this.appointmentFlowManager.isFlowActive(session) || intent.isAppointmentRequest) {
+      return await this.handleAppointmentFlow(text, sessionId, session, intent.isAppointmentRequest);
+    }
+
+    // Check for name/email change requests (only if NOT in appointment flow)
     const changeRequest = this.checkForInfoChangeRequest(text);
     
     if (changeRequest.isNameChange || changeRequest.isEmailChange) {
@@ -235,17 +251,12 @@ class ConversationFlowHandler {
     }
 
     // Handle name/email changes during regular conversation (legacy support)
-    if (intent.isNameChange && !this.appointmentFlowManager.isFlowActive(session)) {
+    if (intent.isNameChange) {
       return await this.handleNameChange(text, sessionId, session);
     }
     
-    if (intent.isEmailChange && !this.appointmentFlowManager.isFlowActive(session)) {
+    if (intent.isEmailChange) {
       return await this.handleEmailChange(text, sessionId, session);
-    }
-
-    // Handle active appointment flow
-    if (this.appointmentFlowManager.isFlowActive(session) || intent.isAppointmentRequest) {
-      return await this.handleAppointmentFlow(text, sessionId, session, intent.isAppointmentRequest);
     }
 
     // Handle follow-up after previous query
@@ -255,6 +266,28 @@ class ConversationFlowHandler {
 
     // Regular Q&A with RAG
     return await this.handleRegularQA(text, sessionId, session);
+  }
+
+  /**
+   * Try to extract name from user's initial response
+   * @param {string} text - User input
+   * @returns {Promise<Object>} Extraction result with name if found
+   */
+  async tryExtractNameFromResponse(text) {
+    // Look for patterns like "This is John", "I'm Sarah", "My name is Alex"
+    const namePatterns = [
+      /(?:this is|i'm|i am|my name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+      /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),?\s+(?:and|here|I)/i
+    ];
+    
+    for (const pattern of namePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return { name: match[1].trim() };
+      }
+    }
+    
+    return { name: null };
   }
 
   /**
@@ -330,7 +363,13 @@ class ConversationFlowHandler {
       if (nameResult.success) {
         const oldName = session.userInfo.name;
         this.stateManager.updateUserInfo(sessionId, { name: nameResult.name });
-        responses.push(`I've updated your name from ${oldName} to ${nameResult.name}.`);
+        // Only say "from X to Y" if there was an old name that's different
+        if (oldName && oldName !== nameResult.name) {
+          responses.push(`I've updated your name to ${nameResult.name}.`);
+        } else {
+          // No old name or same name - just confirm the setting
+          responses.push(`I've set your name to ${nameResult.name}.`);
+        }
       } else {
         responses.push("I'm having trouble updating your name. Could you please clearly state your new name?");
       }

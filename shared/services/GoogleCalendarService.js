@@ -321,6 +321,8 @@ class GoogleCalendarService {
     try {
       // Use moment-timezone for proper timezone handling
       const dateTimeStr = `${date} ${time}`;
+      console.log('📅 [GoogleCalendar parseDateTime] Input:', { date, time, duration, dateTimeStr });
+      
       const startMoment = moment.tz(dateTimeStr, 'YYYY-MM-DD HH:mm', 'America/Denver');
       
       if (!startMoment.isValid()) {
@@ -328,6 +330,13 @@ class GoogleCalendarService {
       }
 
       const endMoment = startMoment.clone().add(duration, 'minutes');
+      
+      console.log('📅 [GoogleCalendar parseDateTime] Parsed:', {
+        startDateTime: startMoment.toISOString(),
+        startLocal: startMoment.format('YYYY-MM-DD HH:mm'),
+        endDateTime: endMoment.toISOString(),
+        endLocal: endMoment.format('YYYY-MM-DD HH:mm')
+      });
 
       return {
         startDateTime: startMoment.toISOString(),
