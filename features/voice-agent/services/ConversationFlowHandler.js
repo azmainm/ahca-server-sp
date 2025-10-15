@@ -34,38 +34,39 @@ class ConversationFlowHandler {
 
   /**
    * Get appropriate filler phrase for different processing types
+   * More concise and context-specific to avoid repetitive "looking that up" overuse
    * @param {string} processType - Type of processing (rag_search, appointment_processing, etc.)
-   * @returns {string} Appropriate filler phrase
+   * @param {string} context - Additional context for more specific fillers
+   * @returns {string|null} Appropriate filler phrase or null if no filler needed
    */
-  getFillerPhrase(processType) {
+  getFillerPhrase(processType, context = '') {
+    // Only use fillers for operations that actually take time
+    // Skip fillers for quick operations
     const fillerPhrases = {
       rag_search: [
-        "Looking that up for you",
-        "Let me find that information",
-        "One moment while I check that"
+        "Let me check that",
+        "One moment",
+        "Looking that up"
       ],
       appointment_processing: [
-        "Please wait while I process that for you",
-        "Let me handle that appointment request",
-        "Processing your appointment details",
-        "One moment while I set that up"
+        "Got it — scheduling now",
+        "Setting that up",
+        "Just a moment"
       ],
       calendar_check: [
-        "Checking availability for you",
-        "Let me see what times are available",
-        "Looking at the calendar"
+        "Checking the calendar",
+        "Let me see what's available",
+        "One moment"
       ],
-      name_email_collection: [
-        "Thanks. I'm processing that information"
-      ],
-      general_processing: [
-        "One moment please",
-        "Let me process that",
-        "Working on that for you"
-      ]
+      name_email_collection: null, // No filler needed for simple acknowledgments
+      general_processing: null // No filler for general quick responses
     };
 
-    const phrases = fillerPhrases[processType] || fillerPhrases.general_processing;
+    const phrases = fillerPhrases[processType];
+    
+    // Return null if no filler needed for this type
+    if (!phrases) return null;
+    
     return phrases[Math.floor(Math.random() * phrases.length)];
   }
 

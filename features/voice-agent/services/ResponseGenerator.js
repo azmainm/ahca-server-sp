@@ -285,20 +285,21 @@ class ResponseGenerator {
    * @returns {string} Appointment confirmation response
    */
   generateAppointmentConfirmationResponse(details, userInfo, calendarType) {
+    // Format date in a more natural way if it's in YYYY-MM-DD format
+    let dateDisplay = details.date;
+    if (details.date && /^\d{4}-\d{2}-\d{2}$/.test(details.date)) {
+      const [year, month, day] = details.date.split('-');
+      const dateObj = new Date(year, parseInt(month) - 1, parseInt(day));
+      dateDisplay = dateObj.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric'
+      });
+    }
+    
     const calendarName = calendarType === 'microsoft' ? 'Microsoft Calendar' : 'Google Calendar';
     
-    return `Excellent! Your appointment has been scheduled successfully in ${calendarName}. 
-
-Appointment Details:
-- Service: ${details.title}  
-- Date & Time: ${details.date} at ${details.timeDisplay || details.time}
-- Duration: 30 minutes
-- Customer: ${userInfo.name} (${userInfo.email})
-- Calendar: ${calendarName}
-
-Our team will contact you at ${userInfo.email} to confirm the appointment details and provide any additional information you may need.
-
-Is there anything else I can help you with today?`;
+    return `Perfect! I've scheduled your ${details.title} for ${dateDisplay} at ${details.timeDisplay || details.time}. You'll receive a calendar invite at ${userInfo.email}. Is there anything else I can help you with?`;
   }
 
   /**

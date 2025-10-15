@@ -129,6 +129,35 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
   }
 
   /**
+   * Normalize email address to remove extra spaces and fix formatting
+   * Fixes issues like "Sherpa prompt .com" → "sherpaprompt.com"
+   * @param {string} email - Raw email address
+   * @returns {string} Normalized email
+   */
+  normalizeEmail(email) {
+    if (!email) return email;
+    
+    // Remove all spaces
+    let normalized = email.replace(/\s+/g, '');
+    
+    // Convert to lowercase
+    normalized = normalized.toLowerCase();
+    
+    // Ensure there's only one @ symbol and it's properly placed
+    const parts = normalized.split('@');
+    if (parts.length === 2) {
+      const [localPart, domain] = parts;
+      // Remove any invalid characters
+      const cleanLocal = localPart.replace(/[^a-z0-9._-]/g, '');
+      const cleanDomain = domain.replace(/[^a-z0-9.-]/g, '');
+      normalized = `${cleanLocal}@${cleanDomain}`;
+    }
+    
+    console.log('📧 [Email Normalization]', { original: email, normalized });
+    return normalized;
+  }
+
+  /**
    * Generate completion response
    * @param {string} name - User's name
    * @param {string} email - User's email
@@ -151,10 +180,10 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
       console.log('📝 [UserInfoCollector] Extraction result:', extracted);
       console.log('📝 [UserInfoCollector] Current user info before update:', currentUserInfo);
       
-      // Update user info with extracted data
+      // Update user info with extracted data (normalize email if present)
       const updatedUserInfo = { ...currentUserInfo };
       if (extracted.name) updatedUserInfo.name = extracted.name;
-      if (extracted.email) updatedUserInfo.email = extracted.email;
+      if (extracted.email) updatedUserInfo.email = this.normalizeEmail(extracted.email);
       
       console.log('📝 [UserInfoCollector] Updated user info:', updatedUserInfo);
       
@@ -264,9 +293,13 @@ Return ONLY: {"email": "extracted@email.com"}`;
       });
       
       const emailData = JSON.parse(response);
+      
+      // Normalize the email: remove extra spaces and ensure proper format
+      const normalizedEmail = this.normalizeEmail(emailData.email);
+      
       return {
         success: true,
-        email: emailData.email
+        email: normalizedEmail
       };
     } catch (error) {
       console.error('❌ [UserInfoCollector] Email change extraction failed, trying regex fallback:', error);
