@@ -228,8 +228,8 @@ class ConversationFlowHandler {
   async handleMainConversation(text, sessionId, session, intent) {
     console.log('🏢 [Flow] Taking main conversation path (Phase 2)');
 
-    // Try to extract name from first user response (if not already set)
-    if (!session.userInfo.name && session.conversationHistory.length <= 2) {
+    // Try to extract name from first user response (if not already set and NOT in appointment flow)
+    if (!session.userInfo.name && session.conversationHistory.length <= 2 && !this.appointmentFlowManager.isFlowActive(session)) {
       const nameExtractResult = await this.tryExtractNameFromResponse(text);
       if (nameExtractResult.name) {
         console.log('👤 [Name Extract] Extracted name from first response:', nameExtractResult.name);
@@ -237,7 +237,13 @@ class ConversationFlowHandler {
       }
     }
 
-    // Check for name/email change requests at any point in conversation
+    // Handle active appointment flow FIRST (before checking for name/email changes)
+    // This prevents "My name is..." during appointment from being treated as a name change
+    if (this.appointmentFlowManager.isFlowActive(session) || intent.isAppointmentRequest) {
+      return await this.handleAppointmentFlow(text, sessionId, session, intent.isAppointmentRequest);
+    }
+
+    // Check for name/email change requests (only if NOT in appointment flow)
     const changeRequest = this.checkForInfoChangeRequest(text);
     
     if (changeRequest.isNameChange || changeRequest.isEmailChange) {
@@ -245,17 +251,12 @@ class ConversationFlowHandler {
     }
 
     // Handle name/email changes during regular conversation (legacy support)
-    if (intent.isNameChange && !this.appointmentFlowManager.isFlowActive(session)) {
+    if (intent.isNameChange) {
       return await this.handleNameChange(text, sessionId, session);
     }
     
-    if (intent.isEmailChange && !this.appointmentFlowManager.isFlowActive(session)) {
+    if (intent.isEmailChange) {
       return await this.handleEmailChange(text, sessionId, session);
-    }
-
-    // Handle active appointment flow
-    if (this.appointmentFlowManager.isFlowActive(session) || intent.isAppointmentRequest) {
-      return await this.handleAppointmentFlow(text, sessionId, session, intent.isAppointmentRequest);
     }
 
     // Handle follow-up after previous query
