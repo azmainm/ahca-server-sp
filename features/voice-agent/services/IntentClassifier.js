@@ -10,22 +10,22 @@ class IntentClassifier {
         /thank you.*no more/i,
         /that.*all.*need/i,
         /goodbye/i,
-        /^bye$/i,
-        /^bye\s/i,
+        /^bye[.,!?\s]*$/i,
         /done.*questions/i,
         /satisfied/i,
         /that.*help.*needed/i,
         /that.*all/i,
-        /^no$/i,              // Simple "no" when asked if they need anything else
-        /^no\s+thanks?$/i,    // "no thanks" or "no thank you"
-        /^nope$/i,            // "nope"
-        /^i'?m?\s+done/i,     // "I'm done" or "I am done"
-        /^i'?m?\s+good/i,     // "I'm good" meaning done
-        /^i'?m?\s+all\s+set/i,// "I'm all set"
-        /^that'?s?\s+it/i,    // "that's it" or "thats it"
-        /^nothing\s+else/i,   // "nothing else"
-        /^all\s+good/i,       // "all good"
-        /^we'?re?\s+done/i    // "we're done"
+        /^no[.,!?\s]*$/i,              // Simple "no" with optional punctuation
+        /^no[,\s]+thank\s*you[.,!?\s]*$/i, // "no thank you" or "no, thank you" with optional punctuation
+        /^no[,\s]+thanks[.,!?\s]*$/i, // "no thanks" or "no, thanks" with optional punctuation
+        /^nope[.,!?\s]*$/i,            // "nope" with optional punctuation
+        /^i'?m?\s+done/i,              // "I'm done" or "I am done"
+        /^i'?m?\s+good/i,              // "I'm good" meaning done
+        /^i'?m?\s+all\s+set/i,         // "I'm all set"
+        /^that'?s?\s+it/i,             // "that's it" or "thats it"
+        /^nothing\s+else/i,            // "nothing else"
+        /^all\s+good/i,                // "all good"
+        /^we'?re?\s+done/i             // "we're done"
       ],
       appointment: [
         /set.*appointment/i,

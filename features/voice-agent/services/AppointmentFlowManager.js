@@ -18,7 +18,8 @@ class AppointmentFlowManager {
       REVIEW: 'review',
       CONFIRM: 'confirm',
       COLLECT_NAME: 'collect_name',
-      COLLECT_EMAIL: 'collect_email'
+      COLLECT_EMAIL: 'collect_email',
+      CONFIRM_EMAIL: 'confirm_email'
     };
 
     // Review confirmation patterns
@@ -116,6 +117,9 @@ class AppointmentFlowManager {
           
         case this.steps.COLLECT_EMAIL:
           return await this.handleEmailCollection(session, text);
+          
+        case this.steps.CONFIRM_EMAIL:
+          return await this.handleEmailConfirmation(session, text);
           
         case this.steps.CONFIRM:
           return await this.handleConfirmation(session, text, getCalendarService);
@@ -645,34 +649,72 @@ class AppointmentFlowManager {
       // Spell back the email for confirmation
       const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
       
-      // If appointment details exist, go to review; otherwise continue with calendar selection
-      const { details } = session.appointmentFlow;
-      if (details.title && details.date && details.time) {
-        session.appointmentFlow.step = this.steps.REVIEW;
-        return {
-          success: true,
-          response: `Thanks! I've got your email as ${spelledEmail}. ${this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo)}`,
-          step: this.steps.REVIEW
-        };
-      } else {
-        // Continue with normal flow
-        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
-        return {
-          success: true,
-          response: `Thanks! I've got your email as ${spelledEmail}. ${this.responseGenerator.generateAppointmentStartResponse()}`,
-          step: this.steps.SELECT_CALENDAR
-        };
-      }
+      // Always go to email confirmation step
+      session.appointmentFlow.step = this.steps.CONFIRM_EMAIL;
+      return {
+        success: true,
+        response: `Thanks! I've got your email as ${spelledEmail}. Is that correct, or would you like to change it?`,
+        step: this.steps.CONFIRM_EMAIL
+      };
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Email extraction failed:', error);
       session.userInfo.email = text.trim();
       
-      // Continue with normal flow
-      session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
+      // Still go to confirmation
+      session.appointmentFlow.step = this.steps.CONFIRM_EMAIL;
+      const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
       return {
         success: true,
-        response: this.responseGenerator.generateAppointmentStartResponse(),
-        step: this.steps.SELECT_CALENDAR
+        response: `Thanks! I've got your email as ${spelledEmail}. Is that correct, or would you like to change it?`,
+        step: this.steps.CONFIRM_EMAIL
+      };
+    }
+  }
+
+  /**
+   * Handle email confirmation step
+   * @param {Object} session - Session object
+   * @param {string} text - User input
+   * @returns {Promise<Object>} Processing result
+   */
+  async handleEmailConfirmation(session, text) {
+    const confirmPatterns = [/yes/i, /correct/i, /that'?s? right/i, /good/i, /ok/i, /okay/i, /sounds good/i, /perfect/i, /looks good/i];
+    const changePatterns = [/no/i, /wrong/i, /incorrect/i, /change/i, /update/i, /fix/i, /different/i, /not right/i];
+
+    if (confirmPatterns.some(pattern => pattern.test(text))) {
+      // Email confirmed, proceed to next step
+      const { details } = session.appointmentFlow;
+      
+      // If appointment details exist, go to review; otherwise continue with calendar selection
+      if (details.title && details.date && details.time) {
+        session.appointmentFlow.step = this.steps.REVIEW;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
+          step: this.steps.REVIEW
+        };
+      } else {
+        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentStartResponse(),
+          step: this.steps.SELECT_CALENDAR
+        };
+      }
+    } else if (changePatterns.some(pattern => pattern.test(text))) {
+      // User wants to change email
+      session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+      return {
+        success: true,
+        response: this.responseGenerator.generateClarificationRequest('email'),
+        step: this.steps.COLLECT_EMAIL
+      };
+    } else {
+      // Unclear response, ask for clarification
+      return {
+        success: true,
+        response: `I didn't catch that. Is your email correct, or would you like to change it? Please say "yes" to confirm or "no" to change it.`,
+        step: this.steps.CONFIRM_EMAIL
       };
     }
   }
@@ -963,13 +1005,17 @@ CRITICAL RULES:
 4. Handle repetitions and clarifications - use the FINAL/CORRECTED email mentioned
 5. Ignore filler words like "it is spelled", "let me spell that", "the email should be"
 6. Convert to lowercase for consistency
+7. MUST contain "@" and a domain with at least one dot (e.g., "@gmail.com")
+8. If the text doesn't contain a valid email pattern, return {"email": null}
 
 Examples:
 - "change my email to j-o-h-n at g-m-a-i-l dot c-o-m" → "john@gmail.com"
 - "email should be A-Z-M-A-I-N-M-O-R-S-H-E-D-0-3 at gmail dot com" → "azmainmorshed03@gmail.com"
 - "it's spelled test at yahoo dot com" → "test@yahoo.com"
+- "Uh, I would like to schedule a demo." → null (not an email)
+- "2:30 PM please" → null (not an email)
 
-Return ONLY: {"email": "extracted@email.com"}`;
+Return ONLY: {"email": "extracted@email.com"} or {"email": null}`;
 
     try {
       const response = await this.openAIService.callOpenAI([
@@ -982,7 +1028,23 @@ Return ONLY: {"email": "extracted@email.com"}`;
       });
       
       const emailData = JSON.parse(response);
-      return emailData.email || null;
+      const extractedEmail = emailData.email;
+      
+      // Basic email validation to ensure it looks like a real email
+      if (!extractedEmail) {
+        console.log('📧 [Email Validation] No email found in text');
+        return null;
+      }
+      
+      // Must contain @ and a domain with at least one dot
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(extractedEmail)) {
+        console.log('📧 [Email Validation] Invalid email format:', extractedEmail);
+        return null;
+      }
+      
+      console.log('✅ [Email Validation] Valid email extracted:', extractedEmail);
+      return extractedEmail;
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Email extraction failed:', error);
       return null;

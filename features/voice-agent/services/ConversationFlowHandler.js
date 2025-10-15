@@ -363,7 +363,12 @@ class ConversationFlowHandler {
       if (nameResult.success) {
         const oldName = session.userInfo.name;
         this.stateManager.updateUserInfo(sessionId, { name: nameResult.name });
-        responses.push(`I've updated your name from ${oldName} to ${nameResult.name}.`);
+        // Only say "from X" if there was an old name that's different
+        if (oldName && oldName !== nameResult.name) {
+          responses.push(`I've updated your name from ${oldName} to ${nameResult.name}.`);
+        } else {
+          responses.push(`I've updated your name to ${nameResult.name}.`);
+        }
       } else {
         responses.push("I'm having trouble updating your name. Could you please clearly state your new name?");
       }

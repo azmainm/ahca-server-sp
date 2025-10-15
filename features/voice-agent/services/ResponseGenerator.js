@@ -163,7 +163,7 @@ class ResponseGenerator {
    * @returns {string} Service collection response
    */
   generateServiceCollectionResponse(serviceTitle) {
-    const response = `Perfect! I'll schedule a ${serviceTitle} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like December 15, 2024 or 2024 dash 12 dash 15.`;
+    const response = `Perfect! I'll schedule a ${serviceTitle} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`;
     return this.formatForTTS(response);
   }
 
@@ -424,7 +424,7 @@ Guidelines:
    */
   generateClarificationRequest(topic) {
     const clarificationRequests = {
-      'date': "I'm having trouble understanding that date format. Could you please provide the date like \"December 15, 2024\" or \"2024-12-15\"?",
+      'date': "I'm having trouble understanding that date format. Could you please provide the date like \"December 15, 2025\" or \"2025-12-15\"?",
       'time': "I couldn't match that to one of the available times. Please choose from the available time slots.",
       'service': "I didn't catch what type of service you need. Could you tell me what kind of fencing service you're looking for?",
       'calendar': "I didn't catch that. Would you like to use Google Calendar or Microsoft Calendar for your appointment? Please say 'Google' or 'Microsoft'.",
@@ -452,12 +452,7 @@ Date: ${details.date}
 Time: ${details.timeDisplay || details.time} (30 minutes)
 Customer: ${userInfo.name} (${userInfo.email})
 
-Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change. For example:
-- "Change service to pricing consultation"
-- "Change date to October 20th" 
-- "Change time to 2 PM"
-- "Change my name to John"
-- "Change my email to john@example.com"`;
+Please review these details. Say "sounds good" to confirm, or tell me what you'd like to change.`;
   }
 
   /**
