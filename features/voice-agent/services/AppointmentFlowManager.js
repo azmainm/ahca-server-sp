@@ -642,31 +642,33 @@ class AppointmentFlowManager {
       const extractedEmail = await this.extractEmail(text);
       if (extractedEmail) {
         session.userInfo.email = extractedEmail;
+        
+        // Spell back the email for confirmation
+        const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
+        
+        // Go to email confirmation step
+        session.appointmentFlow.step = this.steps.CONFIRM_EMAIL;
+        return {
+          success: true,
+          response: `Thanks! I've got your email as ${spelledEmail}. Is that correct, or would you like to change it?`,
+          step: this.steps.CONFIRM_EMAIL
+        };
       } else {
-        session.userInfo.email = text.trim();
+        // No valid email found, ask again
+        console.log('❌ [Email Collection] No valid email found in:', text);
+        return {
+          success: true,
+          response: this.responseGenerator.generateClarificationRequest('email'),
+          step: this.steps.COLLECT_EMAIL
+        };
       }
-      
-      // Spell back the email for confirmation
-      const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
-      
-      // Always go to email confirmation step
-      session.appointmentFlow.step = this.steps.CONFIRM_EMAIL;
-      return {
-        success: true,
-        response: `Thanks! I've got your email as ${spelledEmail}. Is that correct, or would you like to change it?`,
-        step: this.steps.CONFIRM_EMAIL
-      };
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Email extraction failed:', error);
-      session.userInfo.email = text.trim();
-      
-      // Still go to confirmation
-      session.appointmentFlow.step = this.steps.CONFIRM_EMAIL;
-      const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
+      // Ask for email again on error
       return {
         success: true,
-        response: `Thanks! I've got your email as ${spelledEmail}. Is that correct, or would you like to change it?`,
-        step: this.steps.CONFIRM_EMAIL
+        response: this.responseGenerator.generateClarificationRequest('email'),
+        step: this.steps.COLLECT_EMAIL
       };
     }
   }

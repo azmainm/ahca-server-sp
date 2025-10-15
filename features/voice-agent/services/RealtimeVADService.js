@@ -157,6 +157,16 @@ class RealtimeVADService extends EventEmitter {
 
       case 'input_audio_buffer.speech_started':
         console.log('🎤 [RealtimeVAD] Speech started detected');
+        
+        // Clear response queue on interruption (user is speaking, cancel any pending responses)
+        if (this.responseAudioQueue.has(sessionId)) {
+          const queueLength = this.responseAudioQueue.get(sessionId).length;
+          if (queueLength > 0) {
+            console.log('🛑 [RealtimeVAD] User interrupted - clearing', queueLength, 'queued responses for session:', sessionId);
+            this.responseAudioQueue.set(sessionId, []);
+          }
+        }
+        
         vadSession.currentSpeech = {
           startTime: Date.now(),
           audioBuffer: []

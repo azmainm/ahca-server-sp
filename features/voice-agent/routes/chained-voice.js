@@ -57,80 +57,139 @@ const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTim
 // Initialize Realtime VAD service
 const realtimeVADService = new RealtimeVADService();
 
+// Track processing state to prevent overlapping responses
+if (!global.processingLocks) global.processingLocks = new Map();
+
 // Set up VAD event handlers to integrate with existing STT-TTS pipeline
 realtimeVADService.on('transcriptionCompleted', async ({ sessionId, transcript, speech }) => {
   try {
     console.log('📝 [RealtimeVAD] Transcription completed for session:', sessionId, 'Text:', transcript);
     
-    // Check if we need to play a filler phrase
-    const needsFiller = global.pendingFillers?.get(sessionId);
-    if (needsFiller) {
-      // Determine filler type based on transcript content
-      let fillerType = 'general_processing';
-      
-      // Check if this is name/email collection (user providing personal info)
-      if (/name.*is|email.*is|call.*me|my.*name|my.*email|@|\.com|gmail|yahoo|hotmail|spelled|s-p-e-l-l/i.test(transcript)) {
-        fillerType = 'name_email_collection';
-      } else if (/appointment|schedule|book|meeting|consultation/i.test(transcript)) {
-        fillerType = 'appointment_processing';
-      } else if (/available|time|date|calendar/i.test(transcript)) {
-        fillerType = 'calendar_check';
-      } else {
-        fillerType = 'rag_search';
-      }
-      
-      // Get appropriate filler phrase
-      const fillerPhrase = conversationFlowHandler.getFillerPhrase(fillerType);
-      console.log('🔊 [RealtimeVAD] Playing contextual filler phrase:', fillerPhrase, 'Type:', fillerType);
-      
-      // Only play filler if one is provided (not null)
-      if (fillerPhrase) {
-        try {
-          const fillerSynthesis = await openAIService.synthesizeText(fillerPhrase);
-          if (fillerSynthesis.success) {
-            realtimeVADService.queueResponseAudio(sessionId, fillerSynthesis.audio);
-          }
-        } catch (fillerError) {
-          console.error('❌ [RealtimeVAD] Error playing filler phrase:', fillerError);
-        }
-      }
-      
-      // Clear the pending filler
-      global.pendingFillers.delete(sessionId);
+    // Check if we're already processing a transcription for this session
+    const existingLock = global.processingLocks.get(sessionId);
+    if (existingLock && existingLock !== 'interrupted') {
+      console.log('⏭️ [RealtimeVAD] Skipping transcription - already processing:', transcript);
+      // Store this as the latest pending transcription to process after current completes
+      if (!global.latestTranscription) global.latestTranscription = new Map();
+      global.latestTranscription.set(sessionId, { transcript, speech });
+      console.log('💾 [RealtimeVAD] Stored as latest transcription for when current processing completes');
+      return;
     }
     
-    // Process the transcribed text using existing pipeline
-    const processResponse = await conversationFlowHandler.processConversation(transcript, sessionId);
+    // If interrupted, use the latest transcription if available
+    if (existingLock === 'interrupted') {
+      if (global.latestTranscription && global.latestTranscription.has(sessionId)) {
+        const latest = global.latestTranscription.get(sessionId);
+        transcript = latest.transcript;
+        speech = latest.speech;
+        global.latestTranscription.delete(sessionId);
+        console.log('📝 [RealtimeVAD] Using latest transcription after interruption:', transcript);
+      }
+    }
     
-    if (processResponse.success && processResponse.response) {
-      // Convert response to speech using existing TTS
-      const synthesisResult = await openAIService.synthesizeText(processResponse.response);
+    // Set processing lock with unique ID to track this specific processing
+    const processingId = Date.now();
+    global.processingLocks.set(sessionId, processingId);
+    
+    try {
+      // Check if we need to play a filler phrase
+      const needsFiller = global.pendingFillers?.get(sessionId);
+      if (needsFiller) {
+        // Determine filler type based on transcript content
+        let fillerType = 'general_processing';
+        
+        // Check if this is name/email collection (user providing personal info)
+        if (/name.*is|email.*is|call.*me|my.*name|my.*email|@|\.com|gmail|yahoo|hotmail|spelled|s-p-e-l-l/i.test(transcript)) {
+          fillerType = 'name_email_collection';
+        } else if (/appointment|schedule|book|meeting|consultation/i.test(transcript)) {
+          fillerType = 'appointment_processing';
+        } else if (/available|time|date|calendar/i.test(transcript)) {
+          fillerType = 'calendar_check';
+        } else {
+          fillerType = 'rag_search';
+        }
+        
+        // Get appropriate filler phrase
+        const fillerPhrase = conversationFlowHandler.getFillerPhrase(fillerType);
+        console.log('🔊 [RealtimeVAD] Playing contextual filler phrase:', fillerPhrase, 'Type:', fillerType);
+        
+        // Only play filler if one is provided (not null)
+        if (fillerPhrase) {
+          try {
+            const fillerSynthesis = await openAIService.synthesizeText(fillerPhrase);
+            if (fillerSynthesis.success) {
+              realtimeVADService.queueResponseAudio(sessionId, fillerSynthesis.audio);
+            }
+          } catch (fillerError) {
+            console.error('❌ [RealtimeVAD] Error playing filler phrase:', fillerError);
+          }
+        }
+        
+        // Clear the pending filler
+        global.pendingFillers.delete(sessionId);
+      }
       
-      if (synthesisResult.success) {
-        console.log('🔊 [RealtimeVAD] TTS completed for session:', sessionId);
+      // Process the transcribed text using existing pipeline
+      const processResponse = await conversationFlowHandler.processConversation(transcript, sessionId);
+      
+      // Check if this processing was aborted (lock is 'interrupted' or changed by user)
+      const currentLock = global.processingLocks.get(sessionId);
+      if (!currentLock || currentLock === 'interrupted' || currentLock !== processingId) {
+        console.log('🛑 [RealtimeVAD] Processing aborted due to interruption - discarding response');
+        return;
+      }
+      
+      if (processResponse.success && processResponse.response) {
+        // Convert response to speech using existing TTS
+        const synthesisResult = await openAIService.synthesizeText(processResponse.response);
         
-        // Queue the response audio to send back to client
-        realtimeVADService.queueResponseAudio(sessionId, synthesisResult.audio);
-        
-        // Update user info if provided
-        if (processResponse.userInfo) {
-          // Store user info in session for client retrieval
-          console.log('👤 [RealtimeVAD] User info updated:', processResponse.userInfo);
+        // Check again if interrupted during TTS
+        const lockAfterTTS = global.processingLocks.get(sessionId);
+        if (!lockAfterTTS || lockAfterTTS === 'interrupted' || lockAfterTTS !== processingId) {
+          console.log('🛑 [RealtimeVAD] Processing aborted during TTS - discarding response');
+          return;
         }
         
-        // Store calendar link if provided
-        if (processResponse.calendarLink) {
-          console.log('📅 [RealtimeVAD] Calendar link created:', processResponse.calendarLink);
+        if (synthesisResult.success) {
+          console.log('🔊 [RealtimeVAD] TTS completed for session:', sessionId);
+          
+          // Queue the response audio to send back to client
+          realtimeVADService.queueResponseAudio(sessionId, synthesisResult.audio);
+          
+          // Update user info if provided
+          if (processResponse.userInfo) {
+            // Store user info in session for client retrieval
+            console.log('👤 [RealtimeVAD] User info updated:', processResponse.userInfo);
+          }
+          
+          // Store calendar link if provided
+          if (processResponse.calendarLink) {
+            console.log('📅 [RealtimeVAD] Calendar link created:', processResponse.calendarLink);
+          }
         }
+      }
+    } finally {
+      // Only clear the lock if it's still our processing ID
+      if (global.processingLocks.get(sessionId) === processingId) {
+        global.processingLocks.delete(sessionId);
+        console.log('🔓 [RealtimeVAD] Processing lock released for session:', sessionId);
       }
     }
   } catch (error) {
     console.error('❌ [RealtimeVAD] Error processing transcription:', error);
+    // Make sure to release lock on error
+    global.processingLocks.delete(sessionId);
   }
 });
 
 realtimeVADService.on('speechStarted', ({ sessionId }) => {
   console.log('🎤 [RealtimeVAD] Speech started for session:', sessionId);
+  
+  // Mark as interrupted when user starts speaking
+  if (global.processingLocks.get(sessionId)) {
+    console.log('🛑 [RealtimeVAD] User interrupted - marking for latest transcription processing');
+    global.processingLocks.set(sessionId, 'interrupted');
+  }
 });
 
 realtimeVADService.on('speechStopped', async ({ sessionId, speech }) => {
