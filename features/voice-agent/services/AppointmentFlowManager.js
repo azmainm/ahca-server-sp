@@ -642,13 +642,16 @@ class AppointmentFlowManager {
         session.userInfo.email = text.trim();
       }
       
+      // Spell back the email for confirmation
+      const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
+      
       // If appointment details exist, go to review; otherwise continue with calendar selection
       const { details } = session.appointmentFlow;
       if (details.title && details.date && details.time) {
         session.appointmentFlow.step = this.steps.REVIEW;
         return {
           success: true,
-          response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
+          response: `Thanks! I've got your email as ${spelledEmail}. ${this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo)}`,
           step: this.steps.REVIEW
         };
       } else {
@@ -656,7 +659,7 @@ class AppointmentFlowManager {
         session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
         return {
           success: true,
-          response: this.responseGenerator.generateAppointmentStartResponse(),
+          response: `Thanks! I've got your email as ${spelledEmail}. ${this.responseGenerator.generateAppointmentStartResponse()}`,
           step: this.steps.SELECT_CALENDAR
         };
       }
@@ -984,6 +987,22 @@ Return ONLY: {"email": "extracted@email.com"}`;
       console.error('❌ [AppointmentFlowManager] Email extraction failed:', error);
       return null;
     }
+  }
+
+  /**
+   * Spell out email local part for voice confirmation
+   * @param {string} email - Email address
+   * @returns {string} Spelled out local part
+   */
+  spellEmailLocalPart(email) {
+    if (!email || !email.includes('@')) {
+      return email;
+    }
+    
+    const [localPart, domain] = email.split('@');
+    const spelledLocal = localPart.split('').join('-');
+    
+    return `${spelledLocal} at ${domain}`;
   }
 
   /**
