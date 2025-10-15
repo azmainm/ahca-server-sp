@@ -227,6 +227,15 @@ class ConversationFlowHandler {
   async handleMainConversation(text, sessionId, session, intent) {
     console.log('🏢 [Flow] Taking main conversation path (Phase 2)');
 
+    // Try to extract name from first user response (if not already set)
+    if (!session.userInfo.name && session.conversationHistory.length <= 2) {
+      const nameExtractResult = await this.tryExtractNameFromResponse(text);
+      if (nameExtractResult.name) {
+        console.log('👤 [Name Extract] Extracted name from first response:', nameExtractResult.name);
+        this.stateManager.updateUserInfo(sessionId, { name: nameExtractResult.name });
+      }
+    }
+
     // Check for name/email change requests at any point in conversation
     const changeRequest = this.checkForInfoChangeRequest(text);
     
@@ -255,6 +264,28 @@ class ConversationFlowHandler {
 
     // Regular Q&A with RAG
     return await this.handleRegularQA(text, sessionId, session);
+  }
+
+  /**
+   * Try to extract name from user's initial response
+   * @param {string} text - User input
+   * @returns {Promise<Object>} Extraction result with name if found
+   */
+  async tryExtractNameFromResponse(text) {
+    // Look for patterns like "This is John", "I'm Sarah", "My name is Alex"
+    const namePatterns = [
+      /(?:this is|i'm|i am|my name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+      /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),?\s+(?:and|here|I)/i
+    ];
+    
+    for (const pattern of namePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return { name: match[1].trim() };
+      }
+    }
+    
+    return { name: null };
   }
 
   /**

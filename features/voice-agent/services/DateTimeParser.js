@@ -4,11 +4,28 @@
 
 class DateTimeParser {
   constructor() {
-    // Month names for parsing
+    // Month names for parsing (full names)
     this.monthNames = [
       'january', 'february', 'march', 'april', 'may', 'june',
       'july', 'august', 'september', 'october', 'november', 'december'
     ];
+
+    // Month abbreviations mapping
+    this.monthAbbreviations = {
+      'jan': 'january',
+      'feb': 'february',
+      'mar': 'march',
+      'apr': 'april',
+      'may': 'may',
+      'jun': 'june',
+      'jul': 'july',
+      'aug': 'august',
+      'sep': 'september',
+      'sept': 'september',
+      'oct': 'october',
+      'nov': 'november',
+      'dec': 'december'
+    };
 
     // Ordinal number mappings
     this.ordinalMappings = {
@@ -42,14 +59,38 @@ class DateTimeParser {
   }
 
   /**
+   * Normalize month abbreviations to full names
+   * @param {string} text - Input text
+   * @returns {string} Normalized text with full month names
+   */
+  normalizeMonthAbbreviations(text) {
+    let normalizedText = text.toLowerCase();
+    
+    for (const [abbr, fullName] of Object.entries(this.monthAbbreviations)) {
+      // Match abbreviation followed by non-letter or end of string
+      const regex = new RegExp(`\\b${abbr}\\b`, 'gi');
+      normalizedText = normalizedText.replace(regex, fullName);
+    }
+    
+    return normalizedText;
+  }
+
+  /**
    * Parse date from natural language text
    * @param {string} text - Input text containing date
    * @returns {Object} Parse result with success, date, and formatted date
    */
   parseDateFromText(text) {
     try {
-      // First, normalize ordinal numbers
-      const normalizedText = this.normalizeOrdinals(text);
+      console.log('📅 [DateParser] Original text:', text);
+      
+      // First, normalize month abbreviations (Oct -> October)
+      let normalizedText = this.normalizeMonthAbbreviations(text);
+      console.log('📅 [DateParser] After month normalization:', normalizedText);
+      
+      // Then normalize ordinal numbers
+      normalizedText = this.normalizeOrdinals(normalizedText);
+      console.log('📅 [DateParser] After ordinal normalization:', normalizedText);
 
       // Try various date formats
       const datePatterns = [
@@ -70,15 +111,19 @@ class DateTimeParser {
       for (const pattern of datePatterns) {
         const match = normalizedText.match(pattern);
         if (match) {
+          console.log('📅 [DateParser] Pattern matched:', pattern, 'Match:', match);
           const result = this.processDateMatch(match, pattern, datePatterns);
           if (result.success) {
+            console.log('✅ [DateParser] Successfully parsed date:', result);
             return result;
           }
         }
       }
 
+      console.log('❌ [DateParser] No valid date format found');
       return { success: false, error: 'No valid date format found' };
     } catch (error) {
+      console.error('❌ [DateParser] Error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -221,22 +266,27 @@ class DateTimeParser {
   findSelectedTimeSlot(text, availableSlots) {
     const inputLower = text.toLowerCase().trim();
     
+    console.log('🕐 [TimeSlotMatcher] Looking for time in:', text);
+    console.log('🕐 [TimeSlotMatcher] Available slots:', availableSlots.map(s => `${s.display} (${s.start})`));
+    
     // First, try exact match with display format
     for (const slot of availableSlots) {
       if (inputLower === slot.display.toLowerCase()) {
+        console.log('✅ [TimeSlotMatcher] Exact match found:', slot);
         return slot;
       }
     }
     
     // Try to extract time from user input using various patterns
     const timePatterns = [
-      /(\d{1,2}):(\d{2})\s*(am|pm)/i,  // 12:30 PM, 2:00 PM
+      /(\d{1,2}):(\d{2})\s*(am|pm)/i,  // 12:30 PM, 2:00 PM, 2:30 pm
       /(\d{1,2})\s*(am|pm)/i,          // 12 PM, 2 PM
       /(\d{1,2}):(\d{2})/,             // 14:30 (24-hour)
       /(\d{1,2})\s*(?:o'clock)?/i      // 2, 12 o'clock
     ];
     
     let extractedTime = null;
+    let extractedDisplay = null;
     
     for (const pattern of timePatterns) {
       const match = text.match(pattern);
@@ -247,17 +297,20 @@ class DateTimeParser {
           hours = parseInt(match[1]);
           minutes = match[2];
           const meridiem = match[3].toLowerCase();
+          extractedDisplay = `${hours}:${minutes} ${meridiem.toUpperCase()}`;
           if (meridiem === 'pm' && hours !== 12) hours += 12;
           if (meridiem === 'am' && hours === 12) hours = 0;
         } else if (pattern === timePatterns[1]) { // H AM/PM
           hours = parseInt(match[1]);
           minutes = '00';
           const meridiem = match[2].toLowerCase();
+          extractedDisplay = `${hours}:${minutes} ${meridiem.toUpperCase()}`;
           if (meridiem === 'pm' && hours !== 12) hours += 12;
           if (meridiem === 'am' && hours === 12) hours = 0;
         } else if (pattern === timePatterns[2]) { // HH:MM (24-hour)
           hours = parseInt(match[1]);
           minutes = match[2];
+          extractedDisplay = `${hours}:${minutes}`;
         } else if (pattern === timePatterns[3]) { // Just number
           hours = parseInt(match[1]);
           minutes = '00';
@@ -267,18 +320,31 @@ class DateTimeParser {
           } else if (hours >= 1 && hours <= 4) {
             hours += 12; // Convert to PM
           }
+          extractedDisplay = `${hours % 12 || 12}:00 ${hours >= 12 ? 'PM' : 'AM'}`;
         }
         
         extractedTime = `${hours.toString().padStart(2, '0')}:${minutes}`;
+        console.log('🕐 [TimeSlotMatcher] Extracted time:', extractedTime, 'Display:', extractedDisplay);
         break;
       }
     }
     
-    // If we extracted a time, find matching slot
+    // If we extracted a time, find matching slot by start time
     if (extractedTime) {
       for (const slot of availableSlots) {
         if (slot.start === extractedTime) {
+          console.log('✅ [TimeSlotMatcher] Match found by start time:', slot);
           return slot;
+        }
+      }
+      
+      // Also try matching by display if we have it
+      if (extractedDisplay) {
+        for (const slot of availableSlots) {
+          if (slot.display.toLowerCase() === extractedDisplay.toLowerCase()) {
+            console.log('✅ [TimeSlotMatcher] Match found by display:', slot);
+            return slot;
+          }
         }
       }
     }

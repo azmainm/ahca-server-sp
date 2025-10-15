@@ -60,6 +60,23 @@ class AppointmentFlowManager {
     };
     session.awaitingFollowUp = false;
 
+    // Check if we need to collect name/email first
+    if (!session.userInfo.name) {
+      session.appointmentFlow.step = this.steps.COLLECT_NAME;
+      return {
+        success: true,
+        response: "Great! I'd be happy to help you schedule a demo. First, what's your name?",
+        step: this.steps.COLLECT_NAME
+      };
+    } else if (!session.userInfo.email) {
+      session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+      return {
+        success: true,
+        response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'.`,
+        step: this.steps.COLLECT_EMAIL
+      };
+    }
+
     return {
       success: true,
       response: this.responseGenerator.generateAppointmentStartResponse(),
@@ -558,24 +575,54 @@ class AppointmentFlowManager {
         session.userInfo.name = text.trim();
       }
       
-      session.appointmentFlow.step = this.steps.REVIEW;
-      const { details } = session.appointmentFlow;
+      // Check if we need email next
+      if (!session.userInfo.email) {
+        session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+        return {
+          success: true,
+          response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy - for example, 'j-o-h-n at gmail dot com'.`,
+          step: this.steps.COLLECT_EMAIL
+        };
+      }
       
-      return {
-        success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
-      };
+      // If appointment details exist, go to review; otherwise continue with calendar selection
+      const { details } = session.appointmentFlow;
+      if (details.title && details.date && details.time) {
+        session.appointmentFlow.step = this.steps.REVIEW;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
+          step: this.steps.REVIEW
+        };
+      } else {
+        // Continue with normal flow
+        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentStartResponse(),
+          step: this.steps.SELECT_CALENDAR
+        };
+      }
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Name extraction failed:', error);
       session.userInfo.name = text.trim();
-      session.appointmentFlow.step = this.steps.REVIEW;
-      const { details } = session.appointmentFlow;
       
+      // Check if we need email next
+      if (!session.userInfo.email) {
+        session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
+        return {
+          success: true,
+          response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy.`,
+          step: this.steps.COLLECT_EMAIL
+        };
+      }
+      
+      // Continue with normal flow
+      session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
       return {
         success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
+        response: this.responseGenerator.generateAppointmentStartResponse(),
+        step: this.steps.SELECT_CALENDAR
       };
     }
   }
@@ -595,24 +642,34 @@ class AppointmentFlowManager {
         session.userInfo.email = text.trim();
       }
       
-      session.appointmentFlow.step = this.steps.REVIEW;
+      // If appointment details exist, go to review; otherwise continue with calendar selection
       const { details } = session.appointmentFlow;
-      
-      return {
-        success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
-      };
+      if (details.title && details.date && details.time) {
+        session.appointmentFlow.step = this.steps.REVIEW;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
+          step: this.steps.REVIEW
+        };
+      } else {
+        // Continue with normal flow
+        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
+        return {
+          success: true,
+          response: this.responseGenerator.generateAppointmentStartResponse(),
+          step: this.steps.SELECT_CALENDAR
+        };
+      }
     } catch (error) {
       console.error('❌ [AppointmentFlowManager] Email extraction failed:', error);
       session.userInfo.email = text.trim();
-      session.appointmentFlow.step = this.steps.REVIEW;
-      const { details } = session.appointmentFlow;
       
+      // Continue with normal flow
+      session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
       return {
         success: true,
-        response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-        step: this.steps.REVIEW
+        response: this.responseGenerator.generateAppointmentStartResponse(),
+        step: this.steps.SELECT_CALENDAR
       };
     }
   }
@@ -657,7 +714,27 @@ class AppointmentFlowManager {
     const { details, calendarType } = session.appointmentFlow;
     
     try {
-      console.log('📅 Creating calendar appointment with details:', details);
+      console.log('📅 [CreateAppointment] Full appointment details:', JSON.stringify(details, null, 2));
+      console.log('📅 [CreateAppointment] Extracted values:', {
+        title: details.title,
+        date: details.date,
+        time: details.time,
+        timeDisplay: details.timeDisplay,
+        duration: 30
+      });
+      
+      // Validate time format before creating appointment
+      const timeRegex = /^\d{2}:\d{2}$/;
+      if (!timeRegex.test(details.time)) {
+        console.error('❌ [CreateAppointment] Invalid time format:', details.time, 'Expected HH:mm format');
+        // Try to fix common issues
+        if (details.time && details.time.length === 4 && !details.time.includes(':')) {
+          // Format like "1430" -> "14:30"
+          const fixedTime = `${details.time.substring(0, 2)}:${details.time.substring(2)}`;
+          console.log('🔧 [CreateAppointment] Fixed time format:', fixedTime);
+          details.time = fixedTime;
+        }
+      }
       
       const calendarService = getCalendarService(calendarType);
       const appointmentResult = await calendarService.createAppointment(

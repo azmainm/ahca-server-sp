@@ -129,19 +129,29 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
   async processCollection(text, currentUserInfo) {
     try {
       const extracted = await this.extractUserInfo(text);
+      console.log('📝 [UserInfoCollector] Extraction result:', extracted);
+      console.log('📝 [UserInfoCollector] Current user info before update:', currentUserInfo);
       
       // Update user info with extracted data
       const updatedUserInfo = { ...currentUserInfo };
       if (extracted.name) updatedUserInfo.name = extracted.name;
       if (extracted.email) updatedUserInfo.email = extracted.email;
       
+      console.log('📝 [UserInfoCollector] Updated user info:', updatedUserInfo);
+      
       let response;
       
-      if (extracted.hasComplete && extracted.name && extracted.email) {
+      // Check if we now have both name AND email (either from extraction or existing)
+      if (updatedUserInfo.name && updatedUserInfo.email) {
         updatedUserInfo.collected = true;
-        response = this.generateCompletionResponse(extracted.name, extracted.email);
+        response = this.generateCompletionResponse(updatedUserInfo.name, updatedUserInfo.email);
+        console.log('✅ [UserInfoCollector] Collection complete - have both name and email');
       } else {
         response = this.generateMissingInfoResponse(updatedUserInfo);
+        console.log('⏳ [UserInfoCollector] Still missing:', {
+          needsName: !updatedUserInfo.name,
+          needsEmail: !updatedUserInfo.email
+        });
       }
       
       return {
