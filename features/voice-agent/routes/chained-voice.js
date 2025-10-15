@@ -83,13 +83,16 @@ realtimeVADService.on('transcriptionCompleted', async ({ sessionId, transcript, 
       const fillerPhrase = conversationFlowHandler.getFillerPhrase(fillerType);
       console.log('🔊 [RealtimeVAD] Playing contextual filler phrase:', fillerPhrase, 'Type:', fillerType);
       
-      try {
-        const fillerSynthesis = await openAIService.synthesizeText(fillerPhrase);
-        if (fillerSynthesis.success) {
-          realtimeVADService.queueResponseAudio(sessionId, fillerSynthesis.audio);
+      // Only play filler if one is provided (not null)
+      if (fillerPhrase) {
+        try {
+          const fillerSynthesis = await openAIService.synthesizeText(fillerPhrase);
+          if (fillerSynthesis.success) {
+            realtimeVADService.queueResponseAudio(sessionId, fillerSynthesis.audio);
+          }
+        } catch (fillerError) {
+          console.error('❌ [RealtimeVAD] Error playing filler phrase:', fillerError);
         }
-      } catch (fillerError) {
-        console.error('❌ [RealtimeVAD] Error playing filler phrase:', fillerError);
       }
       
       // Clear the pending filler

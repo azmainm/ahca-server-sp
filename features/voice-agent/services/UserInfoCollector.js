@@ -143,6 +143,17 @@ Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com"
     // Convert to lowercase
     normalized = normalized.toLowerCase();
     
+    // Fix missing @ symbol (e.g., "dougatgmail.com" → "doug@gmail.com")
+    // Look for pattern: word+at+domain
+    if (!normalized.includes('@')) {
+      const atPattern = /^([a-z0-9._-]+)at([a-z0-9.-]+\.[a-z]{2,})$/i;
+      const match = normalized.match(atPattern);
+      if (match) {
+        normalized = `${match[1]}@${match[2]}`;
+        console.log('📧 [Email Fix] Added missing @ symbol:', { original: email, fixed: normalized });
+      }
+    }
+    
     // Ensure there's only one @ symbol and it's properly placed
     const parts = normalized.split('@');
     if (parts.length === 2) {
