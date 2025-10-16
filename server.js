@@ -1,10 +1,18 @@
 // server.js
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const WebSocket = require('ws');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocket.Server({ server, path: '/realtime-ws' });
 
 // Middleware
 const corsOptions = {
@@ -26,6 +34,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'After Hours Call Server is running' });
 });
 
-app.listen(PORT, () => {
+// Initialize WebSocket handler
+const { setupRealtimeWebSocket } = require('./features/voice-agent/routes/realtime-websocket');
+setupRealtimeWebSocket(wss);
+
+server.listen(PORT, () => {
   console.log(`AHCA Server running on port ${PORT}`);
+  console.log(`WebSocket server ready at ws://localhost:${PORT}/realtime-ws`);
 });
