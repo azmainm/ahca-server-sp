@@ -179,6 +179,7 @@ class GoogleCalendarService {
     try {
       console.log(`🔍 Finding next available slot starting from ${startDate}`);
       
+      // Use consistent timezone for all operations
       const searchStart = moment.tz(startDate, 'YYYY-MM-DD', 'America/Denver');
       
       for (let i = 0; i < daysToSearch; i++) {
@@ -323,6 +324,8 @@ class GoogleCalendarService {
       const dateTimeStr = `${date} ${time}`;
       console.log('📅 [GoogleCalendar parseDateTime] Input:', { date, time, duration, dateTimeStr });
       
+      // Ensure we're working in the correct timezone consistently
+      // Use America/Denver timezone for all operations to match the calendar
       const startMoment = moment.tz(dateTimeStr, 'YYYY-MM-DD HH:mm', 'America/Denver');
       
       if (!startMoment.isValid()) {
@@ -335,7 +338,10 @@ class GoogleCalendarService {
         startDateTime: startMoment.toISOString(),
         startLocal: startMoment.format('YYYY-MM-DD HH:mm'),
         endDateTime: endMoment.toISOString(),
-        endLocal: endMoment.format('YYYY-MM-DD HH:mm')
+        endLocal: endMoment.format('YYYY-MM-DD HH:mm'),
+        timezone: 'America/Denver',
+        startDateTimeWithTZ: startMoment.format(),
+        endDateTimeWithTZ: endMoment.format()
       });
 
       return {

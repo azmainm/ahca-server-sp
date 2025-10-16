@@ -695,11 +695,11 @@ class RealtimeWebSocketService extends EventEmitter {
           appointmentDetails: result.appointmentDetails
         });
         
+        // Avoid speaking the raw calendar link in model response
         return {
           success: true,
           message: result.response,
-          completed: true,
-          calendarLink: result.calendarLink
+          completed: true
         };
       }
       

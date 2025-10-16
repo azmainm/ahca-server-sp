@@ -230,12 +230,10 @@ class ResponseGenerator {
    */
   generateDateAvailabilityResponse(formattedDate, availableSlots) {
     const slotsText = this.formatSlotsAsRanges(availableSlots);
-    
     if (availableSlots.length === 1) {
       return `Great! ${formattedDate} has one slot available at ${slotsText}. Does that work for you?`;
-    } else {
-      return `Great! On ${formattedDate}, I have slots available ${slotsText}. Which time works best for you?`;
     }
+    return `Great! On ${formattedDate}, I have slots available ${slotsText}. Which time works best for you?`;
   }
 
   /**
@@ -273,7 +271,8 @@ class ResponseGenerator {
     
     const spelledEmail = this.spellEmailLocalPart(userInfo.email);
     
-    const response = `Perfect! I have your ${details.title} scheduled for ${dateDisplay} at ${details.timeDisplay || details.time} with ${userInfo.name} at ${spelledEmail}. Does this look good, or would you like to change anything?`;
+    const title = details.titleDisplay || details.title;
+    const response = `Perfect! I have your ${title} scheduled for ${dateDisplay} at ${details.timeDisplay || details.time} with ${userInfo.name} at ${spelledEmail}. Does this look good, or would you like to change anything?`;
     return this.formatForTTS(response);
   }
 
@@ -299,7 +298,8 @@ class ResponseGenerator {
     
     const calendarName = calendarType === 'microsoft' ? 'Microsoft Calendar' : 'Google Calendar';
     
-    return `Perfect! I've scheduled your ${details.title} for ${dateDisplay} at ${details.timeDisplay || details.time}. You'll receive a calendar invite at ${userInfo.email}. Is there anything else I can help you with?`;
+    const title = details.titleDisplay || details.title;
+    return `Perfect! I've scheduled your ${title} for ${dateDisplay} at ${details.timeDisplay || details.time}. You'll receive a calendar invite at ${userInfo.email}. Is there anything else I can help you with?`;
   }
 
   /**

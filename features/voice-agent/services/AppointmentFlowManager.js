@@ -147,7 +147,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.step = this.steps.COLLECT_TITLE;
       return {
         success: true,
-        response: this.responseGenerator.generateCalendarSelectionResponse('google'),
+        response: "Perfect! I'll add it to your Google Calendar. What type of session would you like? We can do a product demo, a consultation about Call Service Automation, or a discussion about integrations.",
         step: this.steps.COLLECT_TITLE
       };
     } else if (calendarChoice.includes('microsoft') || calendarChoice.includes('outlook')) {
@@ -155,13 +155,13 @@ class AppointmentFlowManager {
       session.appointmentFlow.step = this.steps.COLLECT_TITLE;
       return {
         success: true,
-        response: this.responseGenerator.generateCalendarSelectionResponse('microsoft'),
+        response: "Perfect! I'll add it to your Microsoft Calendar. What type of session would you like? We can do a product demo, a consultation about Call Service Automation, or a discussion about integrations.",
         step: this.steps.COLLECT_TITLE
       };
     } else {
       return {
         success: true,
-        response: this.responseGenerator.generateClarificationRequest('calendar'),
+        response: "I didn't catch that. Please say 'Google' or 'Microsoft' to choose your calendar.",
         step: this.steps.SELECT_CALENDAR
       };
     }
@@ -177,6 +177,10 @@ class AppointmentFlowManager {
     try {
       const serviceTitle = await this.extractServiceType(text);
       session.appointmentFlow.details.title = serviceTitle;
+      // Preserve user phrasing for event title display
+      if (typeof text === 'string' && text.trim().length > 0) {
+        session.appointmentFlow.details.titleDisplay = text.trim();
+      }
       
       // Check if we already have date/time information
       const { details } = session.appointmentFlow;
@@ -191,7 +195,7 @@ class AppointmentFlowManager {
         session.appointmentFlow.step = this.steps.COLLECT_DATE;
         return {
           success: true,
-          response: this.responseGenerator.generateServiceCollectionResponse(serviceTitle),
+          response: `Perfect! I'll schedule a ${serviceTitle}. What date works for you? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. No other format will be accepted.`,
           step: this.steps.COLLECT_DATE
         };
       }
@@ -214,26 +218,56 @@ class AppointmentFlowManager {
    */
   async handleDateCollection(session, text, getCalendarService) {
     const lower = (text || '').toLowerCase();
+
+    // MANDATORY: Only accept exact formats "October 16, 2025" or "16 October 2025"
+    const strictPatterns = [
+      /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\,?\s+\d{4}$/i,
+      /^\d{1,2}(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}$/i
+    ];
+    const isStrict = strictPatterns.some(p => p.test((text || '').trim()));
     
-    // First, check if it's a weekend
+    // Reject ANY relative terms or non-standard formats
+    const isRelative = /(\btoday\b|\btomorrow\b|day\s*after\s*tomorrow|next\s+(mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|three\s+days?\s+later|in\s+three\s+days?|next\s+week|this\s+week|monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(lower);
+
+    // REJECT anything that's not the exact required format
+    if (!isStrict || isRelative) {
+      return {
+        success: true,
+        response: "I need the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. Please say the date exactly like that.",
+        step: this.steps.COLLECT_DATE
+      };
+    }
+
     const dateResult = this.dateTimeParser.parseDateFromText(text);
+    if (!dateResult.success) {
+      return {
+        success: true,
+        response: "I need the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. Please say the date exactly like that.",
+        step: this.steps.COLLECT_DATE
+      };
+    }
+
+    // Check if it's a weekend
     if (dateResult.success) {
       const dateObj = new Date(dateResult.date);
       const dayOfWeek = dateObj.getDay(); // 0=Sunday, 6=Saturday
-      
+
       if (dayOfWeek === 0 || dayOfWeek === 6) {
         // It's a weekend, find next available business day
         const calendarService = getCalendarService(session.appointmentFlow.calendarType);
         const nextAvailable = await calendarService.findNextAvailableSlot(dateResult.date);
-        
+
         if (nextAvailable.success) {
+          // Clear any previously selected time
+          delete session.appointmentFlow.details.time;
+          delete session.appointmentFlow.details.timeDisplay;
           session.appointmentFlow.details.date = nextAvailable.date;
           session.appointmentFlow.details.availableSlots = nextAvailable.availableSlots;
           session.appointmentFlow.step = this.steps.COLLECT_TIME;
-          
+
           return {
             success: true,
-            response: `I see you mentioned a weekend date. We're only available Monday through Friday. The next available date is ${nextAvailable.formattedDate} with slots at: ${nextAvailable.availableSlots.map(slot => slot.display).join(', ')}. Which time works best for you?`,
+            response: `I see you mentioned a weekend date. We're only available Monday through Friday. The next available date is ${nextAvailable.formattedDate} with slots ${this.responseGenerator.formatSlotsAsRanges(nextAvailable.availableSlots)}. Which time works best for you?`,
             step: this.steps.COLLECT_TIME
           };
         } else {
@@ -244,30 +278,6 @@ class AppointmentFlowManager {
           };
         }
       }
-    }
-    
-    // Enforce strict date formats only: "October 16, 2025" or "16 October 2025" (ordinals allowed)
-    const strictPatterns = [
-      /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\,?\s+\d{4}$/i,
-      /^\d{1,2}(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}$/i
-    ];
-    const isStrict = strictPatterns.some(p => p.test((text || '').trim()));
-    const isRelative = /(\btoday\b|\btomorrow\b|day\s*after\s*tomorrow|next\s+(mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday))/i.test(lower);
-    
-    if (!isStrict || isRelative) {
-      return {
-        success: true,
-        response: "Please provide the date in one of these exact formats: 'October 16, 2025' or '16 October 2025'. What date works for you?",
-        step: this.steps.COLLECT_DATE
-      };
-    }
-
-    if (!dateResult.success) {
-      return {
-        success: true,
-        response: "Please provide the date in one of these exact formats: 'October 16, 2025' or '16 October 2025'. What date works for you?",
-        step: this.steps.COLLECT_DATE
-      };
     }
     
     // Check availability using calendar service
@@ -287,6 +297,9 @@ class AppointmentFlowManager {
       const nextAvailable = await calendarService.findNextAvailableSlot(dateResult.date);
       
       if (nextAvailable.success) {
+        // Clear any previously selected time
+        delete session.appointmentFlow.details.time;
+        delete session.appointmentFlow.details.timeDisplay;
         session.appointmentFlow.details.date = nextAvailable.date;
         session.appointmentFlow.details.availableSlots = nextAvailable.availableSlots;
         session.appointmentFlow.step = this.steps.COLLECT_TIME;
@@ -310,6 +323,9 @@ class AppointmentFlowManager {
     }
     
     // Store date and available slots
+    // Clear any previously selected time when changing date
+    delete session.appointmentFlow.details.time;
+    delete session.appointmentFlow.details.timeDisplay;
     session.appointmentFlow.details.date = dateResult.date;
     session.appointmentFlow.details.availableSlots = slotsResult.availableSlots;
     session.appointmentFlow.step = this.steps.COLLECT_TIME;
@@ -337,7 +353,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.details = { title: serviceTitle };
       return {
         success: true,
-        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'.`,
         step: this.steps.COLLECT_DATE
       };
     }
@@ -360,7 +376,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.details = { title: serviceTitle };
       return {
         success: true,
-        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'.`,
         step: this.steps.COLLECT_DATE
       };
     }
@@ -454,27 +470,22 @@ class AppointmentFlowManager {
         const slotsResult = await calendarService.findAvailableSlots(dateResult.date);
         
         if (slotsResult.success && slotsResult.availableSlots.length > 0) {
+          // ALWAYS clear old time when changing date
+          delete details.time;
+          delete details.timeDisplay;
           details.date = dateResult.date;
           details.availableSlots = slotsResult.availableSlots;
           
-          // Check if current time is still available
-          const timeStillAvailable = slotsResult.availableSlots.some(slot => slot.start === details.time);
-          if (!timeStillAvailable) {
-            delete details.time;
-            delete details.timeDisplay;
-            session.appointmentFlow.step = this.steps.COLLECT_TIME;
-            const slotsText = slotsResult.availableSlots.map(slot => slot.display).join(', ');
-            return {
-              hasChanges: true,
-              result: {
-                success: true,
-                response: `Perfect! I've updated your date to ${dateResult.formatted}. Your previous time is no longer available. Here are the available times: ${slotsText}. Which time works best for you?`,
-                step: this.steps.COLLECT_TIME
-              }
-            };
-          }
-          
-          changesApplied.push(`date to ${dateResult.formatted}`);
+          session.appointmentFlow.step = this.steps.COLLECT_TIME;
+          const slotsText = this.responseGenerator.formatSlotsAsRanges(slotsResult.availableSlots);
+          return {
+            hasChanges: true,
+            result: {
+              success: true,
+              response: `Perfect! I've updated your date to ${dateResult.formatted}. Here are the available times: ${slotsText}. Which time works best for you?`,
+              step: this.steps.COLLECT_TIME
+            }
+          };
         }
       }
     }
@@ -565,7 +576,7 @@ class AppointmentFlowManager {
         
         return {
           success: true,
-          response: this.responseGenerator.formatForTTS(`No problem! What date would work best for your ${serviceTitle}? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`),
+          response: `No problem! What date would work best for your ${serviceTitle}? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'.`,
           step: this.steps.COLLECT_DATE
         };
         
@@ -735,7 +746,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
       return {
         success: true,
-        response: this.responseGenerator.generateAppointmentStartResponse(),
+        response: "Great! I'd be happy to help you schedule a demo. First, would you like me to add this to your Google Calendar or Microsoft Calendar? Just say 'Google' or 'Microsoft'.",
         step: this.steps.SELECT_CALENDAR
       };
     } else if (changePatterns.some(pattern => pattern.test(text))) {
