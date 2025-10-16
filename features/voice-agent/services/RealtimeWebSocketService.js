@@ -80,6 +80,9 @@ Important: Parts of calls may be recorded to improve service.`;
         clientWs,
         openaiWs,
         isConnected: false,
+        isResponding: false,  // Track if AI is currently responding
+        activeResponseId: null,  // Track active response ID for cancellation
+        suppressAudio: false, // Drop any in-flight audio after interruption until next response starts
         createdAt: Date.now()
       };
       
@@ -150,7 +153,9 @@ Important: Parts of calls may be recorded to improve service.`;
           type: 'server_vad',
           threshold: 0.5,
           prefix_padding_ms: 300,
-          silence_duration_ms: 700
+          silence_duration_ms: 700,
+          create_response: true,  // Enable automatic response creation (semantic VAD)
+          interrupt_response: true  // Allow interruptions
         },
         tools: this.defineTools(),
         tool_choice: 'auto',
@@ -352,6 +357,25 @@ Important: Parts of calls may be recorded to improve service.`;
 
       case 'input_audio_buffer.speech_started':
         console.log('🎤 [RealtimeWS] Speech started:', sessionId);
+        
+        // Cancel any ongoing AI response (user is interrupting)
+        // Only send cancel if we have an active response (not just finished)
+        if (sessionData.isResponding && sessionData.activeResponseId) {
+          console.log('🛑 [RealtimeWS] User interrupted - canceling AI response:', sessionData.activeResponseId);
+          try {
+            sessionData.openaiWs.send(JSON.stringify({
+              type: 'response.cancel'
+            }));
+          } catch (error) {
+            console.log('⚠️ [RealtimeWS] Cancel failed (response may have completed):', error.message);
+          }
+          sessionData.isResponding = false;
+          sessionData.activeResponseId = null;
+        }
+
+        // Suppress any in-flight audio chunks arriving after interruption
+        sessionData.suppressAudio = true;
+        
         this.sendToClient(sessionData, {
           type: 'speech_started'
         });
@@ -378,10 +402,20 @@ Important: Parts of calls may be recorded to improve service.`;
 
       case 'response.audio.delta':
         // Forward audio chunks to client
-        this.sendToClient(sessionData, {
-          type: 'audio',
-          delta: event.delta
-        });
+        // First audio of a new response unsuppresses playback
+        if (!sessionData.isResponding) {
+          sessionData.suppressAudio = false;
+        }
+        sessionData.isResponding = true;  // Track that AI is responding
+        sessionData.activeResponseId = event.response_id || 'active';  // Track active response
+        
+        // Drop audio if suppression is active (post-interruption residuals)
+        if (!sessionData.suppressAudio) {
+          this.sendToClient(sessionData, {
+            type: 'audio',
+            delta: event.delta
+          });
+        }
         break;
 
       case 'response.audio_transcript.delta':
@@ -412,6 +446,9 @@ Important: Parts of calls may be recorded to improve service.`;
 
       case 'response.done':
         console.log('✅ [RealtimeWS] Response completed');
+        sessionData.isResponding = false;  // AI finished responding
+        sessionData.activeResponseId = null;  // Clear active response ID
+        sessionData.suppressAudio = false; // Clear suppression at end of response
         this.sendToClient(sessionData, {
           type: 'response_done'
         });
