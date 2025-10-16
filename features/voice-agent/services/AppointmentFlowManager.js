@@ -24,7 +24,10 @@ class AppointmentFlowManager {
     // Review confirmation patterns
     this.confirmationPatterns = [
       /sounds good/i, /good/i, /correct/i, /yes/i, /confirm/i, 
-      /schedule/i, /book/i, /go ahead/i, /looks good/i, /perfect/i
+      /schedule/i, /book/i, /go ahead/i, /looks good/i, /perfect/i,
+      /that'?s? all/i, /that'?s? it/i, /nothing else/i, /no.*that'?s? all/i,
+      /no.*that'?s? it/i, /no.*nothing else/i, /all set/i, /ready/i,
+      /proceed/i, /continue/i, /ok/i, /okay/i, /sure/i
     ];
 
     // Change request patterns
