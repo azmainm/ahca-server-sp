@@ -213,17 +213,64 @@ class AppointmentFlowManager {
    * @returns {Promise<Object>} Processing result
    */
   async handleDateCollection(session, text, getCalendarService) {
-    const dateResult = this.dateTimeParser.parseDateFromText(text);
+    const lower = (text || '').toLowerCase();
     
+    // First, check if it's a weekend
+    const dateResult = this.dateTimeParser.parseDateFromText(text);
+    if (dateResult.success) {
+      const dateObj = new Date(dateResult.date);
+      const dayOfWeek = dateObj.getDay(); // 0=Sunday, 6=Saturday
+      
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        // It's a weekend, find next available business day
+        const calendarService = getCalendarService(session.appointmentFlow.calendarType);
+        const nextAvailable = await calendarService.findNextAvailableSlot(dateResult.date);
+        
+        if (nextAvailable.success) {
+          session.appointmentFlow.details.date = nextAvailable.date;
+          session.appointmentFlow.details.availableSlots = nextAvailable.availableSlots;
+          session.appointmentFlow.step = this.steps.COLLECT_TIME;
+          
+          return {
+            success: true,
+            response: `I see you mentioned a weekend date. We're only available Monday through Friday. The next available date is ${nextAvailable.formattedDate} with slots at: ${nextAvailable.availableSlots.map(slot => slot.display).join(', ')}. Which time works best for you?`,
+            step: this.steps.COLLECT_TIME
+          };
+        } else {
+          return {
+            success: true,
+            response: `I see you mentioned a weekend date. We're only available Monday through Friday. I couldn't find any available appointments in the next two weeks. Please contact us to discuss alternative scheduling options.`,
+            step: this.steps.COLLECT_DATE
+          };
+        }
+      }
+    }
+    
+    // Enforce strict date formats only: "October 16, 2025" or "16 October 2025" (ordinals allowed)
+    const strictPatterns = [
+      /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\,?\s+\d{4}$/i,
+      /^\d{1,2}(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}$/i
+    ];
+    const isStrict = strictPatterns.some(p => p.test((text || '').trim()));
+    const isRelative = /(\btoday\b|\btomorrow\b|day\s*after\s*tomorrow|next\s+(mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday))/i.test(lower);
+    
+    if (!isStrict || isRelative) {
+      return {
+        success: true,
+        response: "Please provide the date in one of these exact formats: 'October 16, 2025' or '16 October 2025'. What date works for you?",
+        step: this.steps.COLLECT_DATE
+      };
+    }
+
     if (!dateResult.success) {
       return {
         success: true,
-        response: this.responseGenerator.generateClarificationRequest('date'),
+        response: "Please provide the date in one of these exact formats: 'October 16, 2025' or '16 October 2025'. What date works for you?",
         step: this.steps.COLLECT_DATE
       };
     }
     
-    // Check availability
+    // Check availability using calendar service
     const calendarService = getCalendarService(session.appointmentFlow.calendarType);
     const slotsResult = await calendarService.findAvailableSlots(dateResult.date);
     
@@ -684,25 +731,13 @@ class AppointmentFlowManager {
     const changePatterns = [/no/i, /wrong/i, /incorrect/i, /change/i, /update/i, /fix/i, /different/i, /not right/i];
 
     if (confirmPatterns.some(pattern => pattern.test(text))) {
-      // Email confirmed, proceed to next step
-      const { details } = session.appointmentFlow;
-      
-      // If appointment details exist, go to review; otherwise continue with calendar selection
-      if (details.title && details.date && details.time) {
-        session.appointmentFlow.step = this.steps.REVIEW;
-        return {
-          success: true,
-          response: this.responseGenerator.generateAppointmentReviewResponse(details, session.userInfo),
-          step: this.steps.REVIEW
-        };
-      } else {
-        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
-        return {
-          success: true,
-          response: this.responseGenerator.generateAppointmentStartResponse(),
-          step: this.steps.SELECT_CALENDAR
-        };
-      }
+      // Email confirmed, proceed to calendar selection
+      session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
+      return {
+        success: true,
+        response: this.responseGenerator.generateAppointmentStartResponse(),
+        step: this.steps.SELECT_CALENDAR
+      };
     } else if (changePatterns.some(pattern => pattern.test(text))) {
       // User wants to change email
       session.appointmentFlow.step = this.steps.COLLECT_EMAIL;

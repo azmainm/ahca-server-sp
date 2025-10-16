@@ -163,7 +163,7 @@ class ResponseGenerator {
    * @returns {string} Service collection response
    */
   generateServiceCollectionResponse(serviceTitle) {
-    const response = `Perfect! I'll schedule a ${serviceTitle} for you. Please note that all appointments are 30 minutes long and available Monday through Friday from 12:00 PM to 4:00 PM. What date would work best? Please provide the date in format like December 15, 2025 or 2025 dash 12 dash 15.`;
+    const response = `Perfect! I'll schedule a ${serviceTitle} for you. What date works for you? Please answer ONLY in this format: October 16, 2025 OR 16 October 2025.`;
     return this.formatForTTS(response);
   }
 

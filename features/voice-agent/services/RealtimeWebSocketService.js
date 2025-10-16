@@ -63,7 +63,8 @@ class RealtimeWebSocketService extends EventEmitter {
         isResponding: false,  // Track if AI is currently responding
         activeResponseId: null,  // Track active response ID for cancellation
         suppressAudio: false, // Drop any in-flight audio after interruption until next response starts
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        hasBufferedAudio: false
       };
       
       this.sessions.set(sessionId, sessionData);
@@ -170,7 +171,7 @@ class RealtimeWebSocketService extends EventEmitter {
       {
         type: 'function',
         name: 'schedule_appointment',
-        description: 'Schedule a product demo or consultation appointment. Use this when user wants to book a demo, schedule a meeting, or set up a consultation.',
+        description: 'Schedule a product demo or consultation appointment. When the user mentions booking/scheduling/setting a demo or appointment, IMMEDIATELY call this with action="start". STRICT SEQUENCE: After start → set_calendar → set_service → set_date (MUST be in one of these exact formats ONLY: "October 16, 2025" or "16 October 2025") → set_time (choose from provided slots) → confirm. Do NOT call set_calendar again after it is selected. During name/email collection or email confirmation, only provide the requested info or use confirm; do NOT call other actions.',
         parameters: {
           type: 'object',
           properties: {
@@ -492,10 +493,21 @@ class RealtimeWebSocketService extends EventEmitter {
       
       openaiWs.send(JSON.stringify(functionOutput));
       
-      // Trigger response generation
-      openaiWs.send(JSON.stringify({ type: 'response.create' }));
-      
       console.log('✅ [RealtimeWS] Function result sent:', name);
+      
+      // Prompt the model to produce a follow-up response immediately
+      // Without this, the Realtime API may wait for the next user turn
+      try {
+        const continueResponse = {
+          type: 'response.create',
+          response: {
+            modalities: ['audio', 'text']
+          }
+        };
+        openaiWs.send(JSON.stringify(continueResponse));
+      } catch (e) {
+        console.warn('⚠️ [RealtimeWS] Failed to request follow-up response:', e.message);
+      }
       
     } catch (error) {
       console.error('❌ [RealtimeWS] Function execution error:', error);
@@ -510,7 +522,6 @@ class RealtimeWebSocketService extends EventEmitter {
         }
       }));
       
-      openaiWs.send(JSON.stringify({ type: 'response.create' }));
     }
   }
 
@@ -568,6 +579,63 @@ class RealtimeWebSocketService extends EventEmitter {
       console.log('📅 [Appointment] Action:', action, 'Args:', args);
       
       const session = this.stateManager.getSession(sessionId);
+      const steps = this.conversationFlowHandler.appointmentFlowManager.steps;
+      const currentStep = this.conversationFlowHandler.appointmentFlowManager.getCurrentStep(session);
+
+      // Step-aware guardrails: restrict which actions are valid per step
+      const allowedActionsByStep = {
+        [steps.SELECT_CALENDAR]: new Set(['set_calendar']),
+        [steps.COLLECT_TITLE]: new Set(['set_service']),
+        [steps.COLLECT_DATE]: new Set(['set_date']),
+        [steps.COLLECT_TIME]: new Set(['set_time']),
+        [steps.REVIEW]: new Set(['confirm']),
+        [steps.CONFIRM]: new Set(['confirm']),
+        [steps.COLLECT_NAME]: new Set([]),
+        [steps.COLLECT_EMAIL]: new Set([]),
+        [steps.CONFIRM_EMAIL]: new Set(['confirm', 'set_calendar']) // Allow calendar selection after email confirmation
+      };
+
+      // If flow not initialized and action is not start, initialize first
+      if ((!session.appointmentFlow || !session.appointmentFlow.active) && action !== 'start') {
+        this.conversationFlowHandler.appointmentFlowManager.initializeFlow(session);
+      }
+
+      // Recompute step after potential initialization
+      const stepNow = this.conversationFlowHandler.appointmentFlowManager.getCurrentStep(session);
+
+      // Prevent redundant calendar selection once chosen
+      if (action === 'set_calendar' && session.appointmentFlow && session.appointmentFlow.calendarType) {
+        return {
+          success: true,
+          message: `Calendar is already set to ${session.appointmentFlow.calendarType}. Next, tell me the session type (e.g., product demo).`,
+          needsMoreInfo: true,
+          nextActionHint: 'set_service'
+        };
+      }
+
+      // Enforce allowed actions for current step
+      const allowed = allowedActionsByStep[stepNow];
+      if (allowed && allowed.size > 0 && !allowed.has(action)) {
+        // Provide specific guidance per step
+        const guidanceByStep = {
+          [steps.SELECT_CALENDAR]: 'Please choose a calendar: say "Google" or "Microsoft".',
+          [steps.COLLECT_TITLE]: 'Please specify the session type (e.g., product demo, integration discussion).',
+          [steps.COLLECT_DATE]: 'Please provide the date ONLY in this format: "October 16, 2025" or "16 October 2025".',
+          [steps.COLLECT_TIME]: 'Please choose a time from the available slots I listed.',
+          [steps.REVIEW]: 'Say "sounds good" or "yes" to confirm, or specify what to change.',
+          [steps.CONFIRM]: 'Say "sounds good" or "yes" to confirm.',
+          [steps.COLLECT_NAME]: 'Please provide your name (you can spell it).',
+          [steps.COLLECT_EMAIL]: 'Please provide your email address, spelled out for accuracy.',
+          [steps.CONFIRM_EMAIL]: 'Please say "yes" if your email is correct, or "no" to change it. After confirming, I\'ll ask about your calendar preference.'
+        };
+
+        return {
+          success: true,
+          message: guidanceByStep[stepNow] || 'Please follow the current step instructions.',
+          needsMoreInfo: true,
+          nextActionHint: Array.from(allowed)[0] || 'confirm'
+        };
+      }
       
       // Initialize appointment flow if starting
       if (action === 'start') {
@@ -595,6 +663,16 @@ class RealtimeWebSocketService extends EventEmitter {
       } else if (action === 'set_date') {
         text = args.date;
       } else if (action === 'set_time') {
+        // Ensure date and available slots exist before accepting time
+        const flowDetails = (session.appointmentFlow && session.appointmentFlow.details) || {};
+        if (!flowDetails.availableSlots || !flowDetails.date) {
+          return {
+            success: true,
+            message: 'Please provide the date first in one of these exact formats: "October 16, 2025" or "16 October 2025". I will then list available time slots to choose from.',
+            needsMoreInfo: true,
+            nextActionHint: 'set_date'
+          };
+        }
         text = args.time;
       } else if (action === 'confirm') {
         text = 'yes';
@@ -649,7 +727,7 @@ class RealtimeWebSocketService extends EventEmitter {
       const { name, email } = args;
       console.log('👤 [UserInfo] Updating:', { name, email });
       
-      const session = this.stateManager.getSession(sessionId);
+      const sess = this.stateManager.getSession(sessionId);
       const updates = {};
       
       if (name) {
@@ -672,8 +750,22 @@ class RealtimeWebSocketService extends EventEmitter {
       // Update user info
       this.stateManager.updateUserInfo(sessionId, updates);
       
+      // If in scheduling flow and email set, force confirm email step now
+      const sessionObj = this.stateManager.getSession(sessionId);
+      if (sessionObj.appointmentFlow && sessionObj.appointmentFlow.active && updates.email) {
+        const flow = sessionObj.appointmentFlow;
+          const steps = this.conversationFlowHandler.appointmentFlowManager.steps;
+          flow.step = steps.CONFIRM_EMAIL;
+        const spelled = this.conversationFlowHandler.responseGenerator.spellEmailLocalPart(sessionObj.userInfo.email);
+          return {
+            success: true,
+            message: `Thanks! I've got your email as ${spelled}. Is that correct?`,
+          userInfo: sessionObj.userInfo
+          };
+        }
+      
       // Check if collection is complete
-      const userInfo = session.userInfo;
+      const userInfo = sessionObj.userInfo;
       if (userInfo.name && userInfo.email && !userInfo.collected) {
         this.stateManager.updateUserInfo(sessionId, { collected: true });
       }
@@ -681,7 +773,7 @@ class RealtimeWebSocketService extends EventEmitter {
       // Send update to client
       this.sendToClient(this.sessions.get(sessionId), {
         type: 'user_info_updated',
-        userInfo: session.userInfo
+        userInfo: sessionObj.userInfo
       });
       
       console.log('✅ [UserInfo] Updated successfully');
@@ -689,7 +781,7 @@ class RealtimeWebSocketService extends EventEmitter {
       return {
         success: true,
         message: `Got it! ${name ? `I have your name as ${name}.` : ''} ${email ? `And your email as ${email}.` : ''}`,
-        userInfo: session.userInfo
+        userInfo: sessionObj.userInfo
       };
       
     } catch (error) {
