@@ -83,6 +83,47 @@ class DateTimeParser {
   parseDateFromText(text) {
     try {
       console.log('📅 [DateParser] Original text:', text);
+      const lower = String(text || '').toLowerCase().trim();
+
+      // Handle relative terms first: today, tomorrow, day after tomorrow
+      const today = new Date();
+      const formatDate = (d) => {
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      if (/(^|\b)today(\b|$)/i.test(lower)) {
+        const dateString = formatDate(today);
+        return {
+          success: true,
+          date: dateString,
+          formatted: today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        };
+      }
+
+      if (/(^|\b)tomorrow(\b|$)/i.test(lower)) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + 1);
+        const dateString = formatDate(d);
+        return {
+          success: true,
+          date: dateString,
+          formatted: d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        };
+      }
+
+      if (/(day\s*after(\s*tomorrow)?)|\bafter\s*tomorrow\b/i.test(lower)) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + 2);
+        const dateString = formatDate(d);
+        return {
+          success: true,
+          date: dateString,
+          formatted: d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        };
+      }
       
       // First, normalize month abbreviations (Oct -> October)
       let normalizedText = this.normalizeMonthAbbreviations(text);

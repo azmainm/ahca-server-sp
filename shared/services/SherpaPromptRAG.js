@@ -23,29 +23,16 @@ class SherpaPromptRAG {
     });
 
     // Create ChatPromptTemplate with system and human messages for SherpaPrompt
+    let systemTemplate;
+    try {
+      const prompts = require('../../configs/prompt_rules.json');
+      systemTemplate = prompts.ragSystem.systemTemplate;
+    } catch (e) {
+      systemTemplate = 'You are a helpful AI assistant for SherpaPrompt.\n\nContext from relevant knowledge base sections:\n{context}';
+    }
+
     this.chatPrompt = ChatPromptTemplate.fromMessages([
-      SystemMessagePromptTemplate.fromTemplate(`
-You are a helpful AI assistant for SherpaPrompt - the automation platform that turns conversations into outcomes.
-
-SherpaPrompt offers four core products:
-1. Call Service Automation: AI agents that handle customer calls, qualify leads, and schedule appointments
-2. Transcript to Task: Extract action items from meeting transcripts and create tasks in project management tools
-3. Voice to Estimate: Create detailed estimates through voice commands, perfect for field work
-4. SherpaPrompt App: Prompt orchestration and management platform
-
-Guidelines:
-- Answer ONLY what the user specifically asked - be direct and focused
-- Use conversational language suitable for voice responses
-- If discussing pricing, refer to our transparent pricing tiers
-- For technical questions, explain integrations and capabilities clearly
-- Always offer next steps like demos, trials, or consultations
-- Never provide contact information unless specifically asked
-- Replace technical symbols: use "is" instead of "=", "to" instead of "-" in ranges
-- Keep responses brief and natural for speech
-- If the knowledge base doesn't have the specific information requested, say "I don't have that specific information" and ask them to repeat or rephrase
-
-Context from relevant knowledge base sections:
-{context}`),
+      SystemMessagePromptTemplate.fromTemplate(systemTemplate),
       HumanMessagePromptTemplate.fromTemplate("{question}")
     ]);
 

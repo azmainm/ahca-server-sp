@@ -21,16 +21,14 @@ class UserInfoCollector {
    * @returns {string} System prompt
    */
   getCollectionSystemPrompt() {
-    return `You're a friendly voice assistant for SherpaPrompt - the automation platform that turns conversations into outcomes. Sound natural and conversational.
+    const prompts = require('../../../configs/prompt_rules.json');
+    const cfg = prompts.userInfoCollection;
+    return `${cfg.systemPrompt}
 
 CRITICAL INSTRUCTIONS:
-- ONLY collect name and email - NEVER ask for phone numbers or anything else
-- If you have both name and email, respond EXACTLY with: "Thanks [name]! I've got your email as [email]. Do you have any questions about SherpaPrompt's automation services, or would you like to schedule a demo?"
-- If missing info, ask ONLY for the missing piece (name OR email)
-- Sound conversational, use contractions (I'll, we're, that's, etc.)
-- Keep responses friendly but brief
+${cfg.rules.map(r => `- ${r}`).join('\n')}
 
-Your ONLY job is name and email collection.`;
+${cfg.closing}`;
   }
 
   /**
@@ -39,27 +37,16 @@ Your ONLY job is name and email collection.`;
    * @returns {Promise<Object>} Extraction result
    */
   async extractUserInfo(text) {
-    const extractionPrompt = `You are extracting name and email from user speech. Handle these cases carefully:
+    const prompts = require('../../../configs/prompt_rules.json');
+    const cfg = prompts.extractUserInfo;
+    const extractionPrompt = `${cfg.systemPrompt}
 
 CRITICAL PRIORITY RULES:
-1. If user provides SPELLING (e.g., "it's spelled A-Z-M-A-I-N" or "A-Z-M-A-I-N"), USE THE SPELLED VERSION - this is the correct name/email, ignore any other casual mention
-2. Examples of spelling patterns:
-   - "my name is John, it's spelled J-O-H-N" → use "JOHN"
-   - "Yeah, my name is Osman, it's spelled A-Z-M-A-I-N" → use "AZMAIN"
-   - "it's A-Z-M-A-I-N-M-O-R-S-H-E-D-0-3 at gmail dot com" → use "AZMAINMORSHED03@gmail.com"
-3. Spelled-out names/emails ALWAYS take priority over casual mentions
-4. If user is spelling out their email (e.g., "a-z-m-a-i-n at gmail dot com"), convert it properly
-5. Convert "at" to "@" and "dot" to "." in emails
-6. Handle corrections and clarifications (e.g., "no wait, it's actually...")
-7. Ignore filler words like "um", "uh", "so", "basically", "yeah"
+${cfg.rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
 User input: "${text}"
 
-Return ONLY a JSON object like: {"name": "John Doe", "email": "john@example.com", "hasComplete": true, "needsSpelling": false}
-- Set needsSpelling to true if the name/email seems unclear or contains unusual characters
-- If missing info, set those fields to null and hasComplete to false
-- Convert spelled-out emails properly (a-t becomes @, d-o-t becomes .)
-- ALWAYS prioritize spelled-out versions over casual mentions`;
+${cfg.outputFormat}`;
 
     try {
       const response = await this.openAIService.callOpenAI([

@@ -362,18 +362,15 @@ class ResponseGenerator {
    * @returns {Promise<string>} Generated response
    */
   async generateConversationalResponse(text, conversationHistory = [], userInfo = {}) {
-    const systemPrompt = `You're a friendly voice assistant for SherpaPrompt - the automation platform that turns conversations into outcomes. Chat naturally with customers like you're having a real conversation.
-
-User: ${userInfo.name || 'Customer'} (${userInfo.email || 'No email'})
-
-Guidelines:
-- Sound conversational and human, not robotic or formal
-- Use contractions (I'll, we're, that's, etc.) and casual language
-- Answer what they're asking without being overly wordy
-- Don't sound like you're reading from a script
-- Avoid formal phrases like "I would be happy to assist" - just help them naturally
-- If user says goodbye, thank them casually and mention you hope SherpaPrompt can help automate their workflows
-- Focus on our four core products: Call Service Automation, Transcript to Task, Voice to Estimate, and SherpaPrompt App`;
+    let systemPrompt;
+    try {
+      const prompts = require('../../../configs/prompt_rules.json');
+      systemPrompt = prompts.responseGenerator.conversationalTemplate
+        .replace('{userName}', userInfo.name || 'Customer')
+        .replace('{userEmail}', userInfo.email || 'No email');
+    } catch (e) {
+      systemPrompt = `You're a friendly voice assistant for SherpaPrompt.\n\nUser: ${userInfo.name || 'Customer'} (${userInfo.email || 'No email'})`;
+    }
 
     const messages = [
       { role: 'system', content: systemPrompt },

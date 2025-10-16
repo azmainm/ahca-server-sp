@@ -874,31 +874,19 @@ class AppointmentFlowManager {
    * @returns {Promise<string>} Extracted service type
    */
   async extractServiceType(text) {
-    const serviceExtractionPrompt = `You are extracting the FINAL service type the user wants from their speech. Pay attention to corrections and final intent.
+    const prompts = require('../../../configs/prompt_rules.json');
+    const cfg = prompts.extractServiceType;
+    const serviceExtractionPrompt = `${cfg.systemPrompt}
 
 User said: "${text}"
 
 CRITICAL RULES:
-1. If user corrects themselves (e.g., "no wait, actually I need repair"), use the FINAL/CORRECTED service only
-2. Ignore filler words: "um", "uh", "so", "basically", "I need", "I want", "never mind"
-3. Look for keywords: "installation", "repair", "consultation", "estimate", "quote", "gate", "maintenance", "emergency"
-4. If user says multiple services, pick the LAST one mentioned (that's usually their correction)
-5. Map to these exact service names:
-   - "Product demo" (for product demonstrations, showcasing features)
-   - "Automation consultation" (for consultations, general questions, advice)
-   - "Integration discussion" (for discussing integrations with existing tools)
-   - "Pricing consultation" (for quotes, pricing, estimates)
-   - "Technical consultation" (for technical questions, API discussions)
-   - "Call automation demo" (for call service demonstrations)
-   - "Transcript service demo" (for transcript-to-task demonstrations)
-   - "Voice estimate demo" (for voice-to-estimate demonstrations)
+${cfg.rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
 Examples:
-- "I want to see how it works" → "Product demo"
-- "I need to know about your pricing" → "Pricing consultation"
-- "How does this integrate with my CRM?" → "Integration discussion"
+${cfg.examples.map(e => `- ${e}`).join('\n')}
 
-Return ONLY: {"service": "Product demo"}`;
+${cfg.outputFormat}`;
 
     try {
       const response = await this.openAIService.callOpenAI([
@@ -955,24 +943,17 @@ Return ONLY: {"service": "Product demo"}`;
    * @returns {Promise<string|null>} Extracted name
    */
   async extractName(text) {
-    const nameExtractionPrompt = `Extract the person's name from this text: "${text}"
+    const prompts = require('../../../configs/prompt_rules.json');
+    const cfg = prompts.extractName;
+    const nameExtractionPrompt = `${cfg.systemPrompt} "${text}"
 
 CRITICAL RULES:
-1. Extract ONLY the person's name, ignore all other text
-2. Handle spelled out names (e.g., "J-O-H-N S-M-I-T-H" → "John Smith")
-3. Handle corrections and clarifications - use the FINAL/CORRECTED name mentioned
-4. Ignore filler words like "it is spelled", "let me spell that", "the name should be"
-5. Convert spelled-out letters to proper capitalization
-6. Handle both first and last names if provided
+${cfg.rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
 Examples:
-- "change my name to J-O-H-N S-M-I-T-H" → "John Smith"
-- "call me M-A-R-Y" → "Mary"
-- "my name should be Robert Johnson" → "Robert Johnson"
-- "it's spelled D-O-U-G" → "Doug"
+${cfg.examples.map(e => `- ${e}`).join('\n')}
 
-Return ONLY: {"name": "Extracted Name", "confidence": "high"}
-Set confidence to "low" if the name seems unclear.`;
+${cfg.outputFormat}`;
 
     try {
       const response = await this.openAIService.callOpenAI([
@@ -998,26 +979,17 @@ Set confidence to "low" if the name seems unclear.`;
    * @returns {Promise<string|null>} Extracted email
    */
   async extractEmail(text) {
-    const emailExtractionPrompt = `Extract ONLY the email address from: "${text}"
+    const prompts = require('../../../configs/prompt_rules.json');
+    const cfg = prompts.extractEmail;
+    const emailExtractionPrompt = `${cfg.systemPrompt} "${text}"
 
 CRITICAL RULES:
-1. Extract ONLY the email address, ignore all other text
-2. Handle spelled out emails (convert "at" to "@", "dot" to ".")
-3. Handle letter-by-letter spelling (e.g., "j-o-h-n at g-m-a-i-l dot c-o-m" → "john@gmail.com")
-4. Handle repetitions and clarifications - use the FINAL/CORRECTED email mentioned
-5. Ignore filler words like "it is spelled", "let me spell that", "the email should be"
-6. Convert to lowercase for consistency
-7. MUST contain "@" and a domain with at least one dot (e.g., "@gmail.com")
-8. If the text doesn't contain a valid email pattern, return {"email": null}
+${cfg.rules.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
 Examples:
-- "change my email to j-o-h-n at g-m-a-i-l dot c-o-m" → "john@gmail.com"
-- "email should be A-Z-M-A-I-N-M-O-R-S-H-E-D-0-3 at gmail dot com" → "azmainmorshed03@gmail.com"
-- "it's spelled test at yahoo dot com" → "test@yahoo.com"
-- "Uh, I would like to schedule a demo." → null (not an email)
-- "2:30 PM please" → null (not an email)
+${cfg.examples.map(e => `- ${e}`).join('\n')}
 
-Return ONLY: {"email": "extracted@email.com"} or {"email": null}`;
+${cfg.outputFormat}`;
 
     try {
       const response = await this.openAIService.callOpenAI([
