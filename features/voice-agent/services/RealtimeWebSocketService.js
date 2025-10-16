@@ -750,19 +750,18 @@ class RealtimeWebSocketService extends EventEmitter {
       // Update user info
       this.stateManager.updateUserInfo(sessionId, updates);
       
-      // If in scheduling flow and email set, force confirm email step now
+      // If in scheduling flow and email set, proceed to calendar selection
       const sessionObj = this.stateManager.getSession(sessionId);
       if (sessionObj.appointmentFlow && sessionObj.appointmentFlow.active && updates.email) {
         const flow = sessionObj.appointmentFlow;
-          const steps = this.conversationFlowHandler.appointmentFlowManager.steps;
-          flow.step = steps.CONFIRM_EMAIL;
-        const spelled = this.conversationFlowHandler.responseGenerator.spellEmailLocalPart(sessionObj.userInfo.email);
-          return {
-            success: true,
-            message: `Thanks! I've got your email as ${spelled}. Is that correct?`,
+        const steps = this.conversationFlowHandler.appointmentFlowManager.steps;
+        flow.step = steps.SELECT_CALENDAR;
+        return {
+          success: true,
+          message: "Great! I'd be happy to help you schedule a demo. First, would you like me to add this to your Google Calendar or Microsoft Calendar? Just say 'Google' or 'Microsoft'.",
           userInfo: sessionObj.userInfo
-          };
-        }
+        };
+      }
       
       // Check if collection is complete
       const userInfo = sessionObj.userInfo;

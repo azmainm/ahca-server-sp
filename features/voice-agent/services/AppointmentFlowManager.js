@@ -18,8 +18,7 @@ class AppointmentFlowManager {
       REVIEW: 'review',
       CONFIRM: 'confirm',
       COLLECT_NAME: 'collect_name',
-      COLLECT_EMAIL: 'collect_email',
-      CONFIRM_EMAIL: 'confirm_email'
+      COLLECT_EMAIL: 'collect_email'
     };
 
     // Review confirmation patterns
@@ -117,9 +116,6 @@ class AppointmentFlowManager {
           
         case this.steps.COLLECT_EMAIL:
           return await this.handleEmailCollection(session, text);
-          
-        case this.steps.CONFIRM_EMAIL:
-          return await this.handleEmailConfirmation(session, text);
           
         case this.steps.CONFIRM:
           return await this.handleConfirmation(session, text, getCalendarService);
@@ -701,15 +697,12 @@ class AppointmentFlowManager {
       if (extractedEmail) {
         session.userInfo.email = extractedEmail;
         
-        // Spell back the email for confirmation
-        const spelledEmail = this.spellEmailLocalPart(session.userInfo.email);
-        
-        // Go to email confirmation step
-        session.appointmentFlow.step = this.steps.CONFIRM_EMAIL;
+        // Go directly to calendar selection after collecting email
+        session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
         return {
           success: true,
-          response: `Thanks! I've got your email as ${spelledEmail}. Is that correct, or would you like to change it?`,
-          step: this.steps.CONFIRM_EMAIL
+          response: "Great! I'd be happy to help you schedule a demo. First, would you like me to add this to your Google Calendar or Microsoft Calendar? Just say 'Google' or 'Microsoft'.",
+          step: this.steps.SELECT_CALENDAR
         };
       } else {
         // No valid email found, ask again
@@ -731,41 +724,6 @@ class AppointmentFlowManager {
     }
   }
 
-  /**
-   * Handle email confirmation step
-   * @param {Object} session - Session object
-   * @param {string} text - User input
-   * @returns {Promise<Object>} Processing result
-   */
-  async handleEmailConfirmation(session, text) {
-    const confirmPatterns = [/yes/i, /correct/i, /that'?s? right/i, /good/i, /ok/i, /okay/i, /sounds good/i, /perfect/i, /looks good/i];
-    const changePatterns = [/no/i, /wrong/i, /incorrect/i, /change/i, /update/i, /fix/i, /different/i, /not right/i];
-
-    if (confirmPatterns.some(pattern => pattern.test(text))) {
-      // Email confirmed, proceed to calendar selection
-      session.appointmentFlow.step = this.steps.SELECT_CALENDAR;
-      return {
-        success: true,
-        response: "Great! I'd be happy to help you schedule a demo. First, would you like me to add this to your Google Calendar or Microsoft Calendar? Just say 'Google' or 'Microsoft'.",
-        step: this.steps.SELECT_CALENDAR
-      };
-    } else if (changePatterns.some(pattern => pattern.test(text))) {
-      // User wants to change email
-      session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
-      return {
-        success: true,
-        response: this.responseGenerator.generateClarificationRequest('email'),
-        step: this.steps.COLLECT_EMAIL
-      };
-    } else {
-      // Unclear response, ask for clarification
-      return {
-        success: true,
-        response: `I didn't catch that. Is your email correct, or would you like to change it? Please say "yes" to confirm or "no" to change it.`,
-        step: this.steps.CONFIRM_EMAIL
-      };
-    }
-  }
 
   /**
    * Handle confirmation step
