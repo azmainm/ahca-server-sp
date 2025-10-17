@@ -272,7 +272,7 @@ class ResponseGenerator {
     const spelledEmail = this.spellEmailLocalPart(userInfo.email);
     
     const title = details.titleDisplay || details.title;
-    const response = `Perfect! I have your ${title} scheduled for ${dateDisplay} at ${details.timeDisplay || details.time} with ${userInfo.name} at ${spelledEmail}. Does this look good, or would you like to change anything?`;
+    const response = `Perfect! I have your ${title} scheduled for ${dateDisplay} at ${details.timeDisplay || details.time} with ${userInfo.name} at ${spelledEmail}. Would you like me to confirm this appointment, or would you like to change anything?`;
     return this.formatForTTS(response);
   }
 

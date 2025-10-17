@@ -171,7 +171,7 @@ class RealtimeWebSocketService extends EventEmitter {
       {
         type: 'function',
         name: 'schedule_appointment',
-        description: 'Schedule a product demo or consultation appointment. When the user mentions booking/scheduling/setting a demo or appointment, IMMEDIATELY call this with action="start". STRICT SEQUENCE: After start → set_calendar → set_service → set_date (MUST be in one of these exact formats ONLY: "October 16, 2025" or "16 October 2025") → set_time (choose from provided slots) → confirm. Do NOT call set_calendar again after it is selected. During name/email collection or email confirmation, only provide the requested info or use confirm; do NOT call other actions.',
+        description: 'Schedule a product demo or consultation appointment. When the user mentions booking/scheduling/setting a demo or appointment, IMMEDIATELY call this with action="start". STRICT SEQUENCE: After start → set_calendar → set_service → set_date (MUST be in one of these exact formats ONLY: "October 16, 2025" or "16 October 2025") → set_time (choose from provided slots) → confirm. CRITICAL: After showing the appointment summary/review, if user says "yes", "sounds good", "that\'s fine", "that\'s all", "no that\'s all", "looks good", or any confirmation, you MUST call this function with action="confirm" to actually create the calendar event. Without calling confirm action, the appointment will NOT be created. Do NOT call set_calendar again after it is selected.',
         parameters: {
           type: 'object',
           properties: {
@@ -667,6 +667,30 @@ class RealtimeWebSocketService extends EventEmitter {
         text = args.service;
       } else if (action === 'set_date') {
         text = args.date;
+        
+        // CRITICAL FIX: When changing date, ALWAYS clear old date/time/slots to force fresh lookup
+        if (session.appointmentFlow && session.appointmentFlow.active) {
+          const currentStep = session.appointmentFlow.step;
+          console.log('🔧 [Appointment] Date change detected in step:', currentStep);
+          console.log('🔧 [Appointment] Current details before clear:', JSON.stringify(session.appointmentFlow.details, null, 2));
+          
+          // If we have existing date/time (user is changing date), clear them
+          if (session.appointmentFlow.details && (session.appointmentFlow.details.date || session.appointmentFlow.details.time)) {
+            console.log('🔧 [Appointment] Clearing old date/time/slots to force fresh lookup');
+            
+            // Preserve only title, clear everything else
+            const title = session.appointmentFlow.details?.title;
+            const titleDisplay = session.appointmentFlow.details?.titleDisplay;
+            session.appointmentFlow.details = {
+              ...(title && { title }),
+              ...(titleDisplay && { titleDisplay })
+            };
+            
+            // Reset to COLLECT_DATE step to force slot checking
+            session.appointmentFlow.step = this.conversationFlowHandler.appointmentFlowManager.steps.COLLECT_DATE;
+            console.log('🔧 [Appointment] Reset to COLLECT_DATE, details now:', JSON.stringify(session.appointmentFlow.details, null, 2));
+          }
+        }
       } else if (action === 'set_time') {
         // Ensure date and available slots exist before accepting time
         const flowDetails = (session.appointmentFlow && session.appointmentFlow.details) || {};
@@ -680,7 +704,44 @@ class RealtimeWebSocketService extends EventEmitter {
         }
         text = args.time;
       } else if (action === 'confirm') {
+        console.log('🔧 [Appointment] CONFIRM action triggered');
         text = 'yes';
+        
+        // CRITICAL FIX: When confirming appointment, validate details and ensure proper step
+        if (session.appointmentFlow && session.appointmentFlow.active) {
+          const details = session.appointmentFlow.details || {};
+          const currentStep = session.appointmentFlow.step;
+          
+          console.log('🔧 [Appointment] Current step:', currentStep);
+          console.log('🔧 [Appointment] Current details:', JSON.stringify(details, null, 2));
+          console.log('🔧 [Appointment] User info:', JSON.stringify(session.userInfo, null, 2));
+          console.log('🔧 [Appointment] Calendar type:', session.appointmentFlow.calendarType);
+          
+          // Validate we have ALL required information
+          const hasAllInfo = details.title && details.date && details.time && 
+                            session.userInfo.name && session.userInfo.email &&
+                            session.appointmentFlow.calendarType;
+          
+          if (!hasAllInfo) {
+            console.log('❌ [Appointment] Missing required details:', {
+              title: !!details.title,
+              date: !!details.date,
+              time: !!details.time,
+              name: !!session.userInfo.name,
+              email: !!session.userInfo.email,
+              calendarType: !!session.appointmentFlow.calendarType
+            });
+            return {
+              success: true,
+              message: 'I need to collect some more information before I can confirm the appointment. Let me help you complete the booking.',
+              needsMoreInfo: true
+            };
+          }
+          
+          // Set step to REVIEW to ensure confirmation flow works properly
+          console.log('✅ [Appointment] All details present - setting step to REVIEW for confirmation');
+          session.appointmentFlow.step = this.conversationFlowHandler.appointmentFlowManager.steps.REVIEW;
+        }
       }
       
       console.log('🔄 [Appointment] Calling appointmentFlowManager.processFlow with text:', text);
