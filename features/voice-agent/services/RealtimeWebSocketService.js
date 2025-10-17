@@ -81,6 +81,9 @@ class RealtimeWebSocketService extends EventEmitter {
       // Configure session with function tools
       await this.configureSession(sessionData);
       
+      // Trigger automatic initial greeting
+      await this.triggerInitialGreeting(sessionData);
+      
       console.log('✅ [RealtimeWS] Session created successfully:', sessionId);
       
       return { success: true, sessionId };
@@ -146,6 +149,47 @@ class RealtimeWebSocketService extends EventEmitter {
 
     console.log('⚙️ [RealtimeWS] Configuring session with', config.session.tools.length, 'tools');
     openaiWs.send(JSON.stringify(config));
+  }
+
+  /**
+   * Trigger automatic initial greeting after session setup
+   */
+  async triggerInitialGreeting(sessionData) {
+    const { openaiWs } = sessionData;
+    
+    console.log('🎤 [RealtimeWS] Triggering automatic initial greeting');
+    
+    // Add a small delay to ensure session configuration is processed
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Add a conversation item to simulate the start of conversation
+    // This will trigger the LLM to use its opening behavior from system prompt
+    const startConversation = {
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: '[SESSION_START]'
+          }
+        ]
+      }
+    };
+    
+    openaiWs.send(JSON.stringify(startConversation));
+    
+    // Now trigger a response which should use the opening behavior
+    const initialResponse = {
+      type: 'response.create',
+      response: {
+        modalities: ['audio', 'text']
+      }
+    };
+    
+    openaiWs.send(JSON.stringify(initialResponse));
+    console.log('✅ [RealtimeWS] Initial greeting triggered');
   }
 
   /**
