@@ -42,7 +42,7 @@ class AppointmentFlowManager {
     // Direct change patterns (with new values in same message)
     this.directChangePatterns = {
       service: /change.*service.*to\s+(.+)|service.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
-      date: /change.*date.*to\s+(.+)|date.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
+      date: /change.*date.*to\s+(.+)|date.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead|can.*we.*do\s+(.+)|how.*about\s+(.+)|instead.*of.*that.*how.*about\s+(.+)/i,
       time: /change.*time.*to\s+(.+)|time.*should.*be\s+(.+)|make.*it\s+(.+)\s+instead/i,
       name: /change.*name.*to\s+(.+)|name.*should.*be\s+(.+)|call.*me\s+(.+)/i,
       email: /change.*email.*to\s+(.+)|email.*should.*be\s+(.+)|my email.*is\s+(.+)|actually.*email.*is\s+(.+)|correct.*email.*is\s+(.+)|email.*address.*is\s+(.+)|the email.*is\s+(.+)/i
@@ -218,6 +218,9 @@ class AppointmentFlowManager {
   async handleDateCollection(session, text, getCalendarService) {
     const lower = (text || '').toLowerCase();
 
+    console.log('📅 [DateCollection] Processing date input:', text);
+    console.log('📅 [DateCollection] Current session appointment details:', JSON.stringify(session.appointmentFlow?.details, null, 2));
+
     // MANDATORY: Only accept exact formats "October 16, 2025" or "16 October 2025"
     const strictPatterns = [
       /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\,?\s+\d{4}$/i,
@@ -230,6 +233,7 @@ class AppointmentFlowManager {
 
     // REJECT anything that's not the exact required format
     if (!isStrict || isRelative) {
+      console.log('❌ [DateCollection] Invalid date format or relative terms detected');
       return {
         success: true,
         response: "I need the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. Please say the date exactly like that.",
@@ -237,8 +241,12 @@ class AppointmentFlowManager {
       };
     }
 
+    console.log('🔍 [DateCollection] Parsing date with dateTimeParser...');
     const dateResult = this.dateTimeParser.parseDateFromText(text);
+    console.log('📅 [DateCollection] Date parsing result:', JSON.stringify(dateResult, null, 2));
+    
     if (!dateResult.success) {
+      console.log('❌ [DateCollection] Date parsing failed');
       return {
         success: true,
         response: "I need the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. Please say the date exactly like that.",
@@ -250,11 +258,19 @@ class AppointmentFlowManager {
     if (dateResult.success) {
       const dateObj = new Date(dateResult.date);
       const dayOfWeek = dateObj.getDay(); // 0=Sunday, 6=Saturday
+      console.log('📅 [DateCollection] Date analysis:', {
+        date: dateResult.date,
+        dayOfWeek: dayOfWeek,
+        isWeekend: dayOfWeek === 0 || dayOfWeek === 6
+      });
 
       if (dayOfWeek === 0 || dayOfWeek === 6) {
+        console.log('🚫 [DateCollection] Weekend detected, finding next available business day');
         // It's a weekend, find next available business day
         const calendarService = getCalendarService(session.appointmentFlow.calendarType);
+        console.log('📞 [DateCollection] Calling findNextAvailableSlot for weekend date...');
         const nextAvailable = await calendarService.findNextAvailableSlot(dateResult.date);
+        console.log('📅 [DateCollection] Next available result:', JSON.stringify(nextAvailable, null, 2));
 
         if (nextAvailable.success) {
           // Clear any previously selected time
@@ -264,12 +280,14 @@ class AppointmentFlowManager {
           session.appointmentFlow.details.availableSlots = nextAvailable.availableSlots;
           session.appointmentFlow.step = this.steps.COLLECT_TIME;
 
+          console.log('✅ [DateCollection] Weekend handled, moving to time collection');
           return {
             success: true,
             response: `I see you mentioned a weekend date. We're only available Monday through Friday. The next available date is ${nextAvailable.formattedDate} with slots ${this.responseGenerator.formatSlotsAsRanges(nextAvailable.availableSlots)}. Which time works best for you?`,
             step: this.steps.COLLECT_TIME
           };
         } else {
+          console.log('❌ [DateCollection] No available slots found after weekend');
           return {
             success: true,
             response: `I see you mentioned a weekend date. We're only available Monday through Friday. I couldn't find any available appointments in the next two weeks. Please contact us to discuss alternative scheduling options.`,
@@ -279,11 +297,25 @@ class AppointmentFlowManager {
       }
     }
     
-    // Check availability using calendar service
+    // Check availability using calendar service - ALWAYS call API for date changes
+    console.log('📞 [DateCollection] Getting calendar service for:', session.appointmentFlow.calendarType);
     const calendarService = getCalendarService(session.appointmentFlow.calendarType);
+    
+    if (!calendarService) {
+      console.error('❌ [DateCollection] Calendar service not found');
+      return {
+        success: true,
+        response: 'There was an issue with the calendar service. Please try again.',
+        step: this.steps.COLLECT_DATE
+      };
+    }
+    
+    console.log('🔍 [DateCollection] Calling findAvailableSlots API for date:', dateResult.date);
     const slotsResult = await calendarService.findAvailableSlots(dateResult.date);
+    console.log('📅 [DateCollection] Slots API result:', JSON.stringify(slotsResult, null, 2));
     
     if (!slotsResult.success) {
+      console.error('❌ [DateCollection] Slots API call failed:', slotsResult.error);
       return {
         success: true,
         response: this.responseGenerator.generateErrorResponse('appointment', 'Please try another date or contact us for assistance.'),
@@ -292,8 +324,10 @@ class AppointmentFlowManager {
     }
     
     if (slotsResult.availableSlots.length === 0) {
+      console.log('📅 [DateCollection] No slots available for requested date, finding next available');
       // Find next available date
       const nextAvailable = await calendarService.findNextAvailableSlot(dateResult.date);
+      console.log('📅 [DateCollection] Next available result:', JSON.stringify(nextAvailable, null, 2));
       
       if (nextAvailable.success) {
         // Clear any previously selected time
@@ -303,6 +337,7 @@ class AppointmentFlowManager {
         session.appointmentFlow.details.availableSlots = nextAvailable.availableSlots;
         session.appointmentFlow.step = this.steps.COLLECT_TIME;
         
+        console.log('✅ [DateCollection] Alternative date found, moving to time collection');
         return {
           success: true,
           response: this.responseGenerator.generateNoAvailabilityResponse(
@@ -313,6 +348,7 @@ class AppointmentFlowManager {
           step: this.steps.COLLECT_TIME
         };
       } else {
+        console.log('❌ [DateCollection] No alternative dates available');
         return {
           success: true,
           response: `I'm sorry, but ${dateResult.formatted} has no available slots, and I couldn't find any available appointments in the next two weeks. Please contact us to discuss alternative scheduling options.`,
@@ -323,11 +359,14 @@ class AppointmentFlowManager {
     
     // Store date and available slots
     // Clear any previously selected time when changing date
+    console.log('✅ [DateCollection] Slots found, storing date and clearing previous time selection');
     delete session.appointmentFlow.details.time;
     delete session.appointmentFlow.details.timeDisplay;
     session.appointmentFlow.details.date = dateResult.date;
     session.appointmentFlow.details.availableSlots = slotsResult.availableSlots;
     session.appointmentFlow.step = this.steps.COLLECT_TIME;
+    
+    console.log('📅 [DateCollection] Updated appointment details:', JSON.stringify(session.appointmentFlow.details, null, 2));
     
     return {
       success: true,
@@ -413,24 +452,41 @@ class AppointmentFlowManager {
   async handleReview(session, text, getCalendarService) {
     const { details } = session.appointmentFlow;
     
+    console.log('📋 [AppointmentFlow] handleReview - User input:', text);
+    console.log('📋 [AppointmentFlow] handleReview - Current step:', session.appointmentFlow.step);
+    console.log('📋 [AppointmentFlow] handleReview - Appointment details:', JSON.stringify(details, null, 2));
+    
     // Check for direct changes with new values in the same message
     const directChanges = await this.processDirectChanges(session, text, getCalendarService);
     if (directChanges.hasChanges) {
+      console.log('📋 [AppointmentFlow] handleReview - Direct changes detected');
       return directChanges.result;
     }
     
+    // Enhanced confirmation patterns - including "no it's fine", "no that's good", etc.
+    const confirmationPatterns = [
+      /yes/i, /confirm/i, /schedule/i, /book/i, /go ahead/i, /correct/i, /sounds good/i,
+      /that's good/i, /that's fine/i, /it's fine/i, /looks good/i, /perfect/i,
+      /no.*fine/i, /no.*good/i, /no.*correct/i, /no.*okay/i, /no.*ok/i,
+      /no.*that's.*all/i, /no.*all.*set/i, /no.*we're.*good/i, /no.*everything.*good/i,
+      /fine/i, /good/i, /okay/i, /ok$/i, /all.*set/i, /we're.*good/i
+    ];
+    
     // Check for confirmation
-    if (this.confirmationPatterns.some(pattern => pattern.test(text))) {
+    if (confirmationPatterns.some(pattern => pattern.test(text))) {
+      console.log('✅ [AppointmentFlow] handleReview - Confirmation detected, creating appointment');
       return await this.createAppointment(session, getCalendarService);
     }
     
     // Check for individual change requests
     for (const [changeType, pattern] of Object.entries(this.changePatterns)) {
       if (pattern.test(text)) {
+        console.log('📋 [AppointmentFlow] handleReview - Change request detected:', changeType);
         return this.handleChangeRequest(session, changeType);
       }
     }
     
+    console.log('📋 [AppointmentFlow] handleReview - No clear action detected, asking for clarification');
     return {
       success: true,
       response: `I didn't catch what you'd like to change. Please say "sounds good" to confirm the appointment, or tell me specifically what you'd like to change: "service", "date", "time", "name", or "email". and what you'd like to change it to.`,
@@ -461,7 +517,7 @@ class AppointmentFlowManager {
     // Check for direct date change
     const dateMatch = text.match(this.directChangePatterns.date);
     if (dateMatch) {
-      const newDateText = (dateMatch[1] || dateMatch[2] || dateMatch[3]).trim();
+      const newDateText = (dateMatch[1] || dateMatch[2] || dateMatch[3] || dateMatch[4] || dateMatch[5] || dateMatch[6]).trim();
       const dateResult = this.dateTimeParser.parseDateFromText(newDateText);
       
       if (dateResult.success) {
@@ -768,6 +824,10 @@ class AppointmentFlowManager {
     const { details, calendarType } = session.appointmentFlow;
     
     try {
+      console.log('🚀 [CreateAppointment] STARTING APPOINTMENT CREATION');
+      console.log('📅 [CreateAppointment] Session ID:', session.sessionId);
+      console.log('📅 [CreateAppointment] Calendar Type:', calendarType);
+      console.log('📅 [CreateAppointment] User Info:', JSON.stringify(session.userInfo, null, 2));
       console.log('📅 [CreateAppointment] Full appointment details:', JSON.stringify(details, null, 2));
       console.log('📅 [CreateAppointment] Extracted values:', {
         title: details.title,
@@ -776,6 +836,32 @@ class AppointmentFlowManager {
         timeDisplay: details.timeDisplay,
         duration: 30
       });
+      
+      // Validate required fields
+      if (!details.title || !details.date || !details.time) {
+        console.error('❌ [CreateAppointment] Missing required fields:', {
+          title: !!details.title,
+          date: !!details.date,
+          time: !!details.time
+        });
+        return {
+          success: true,
+          response: "I'm missing some appointment details. Let's start over with scheduling.",
+          appointmentCreated: false
+        };
+      }
+      
+      if (!session.userInfo.email || !session.userInfo.name) {
+        console.error('❌ [CreateAppointment] Missing user info:', {
+          email: !!session.userInfo.email,
+          name: !!session.userInfo.name
+        });
+        return {
+          success: true,
+          response: "I need your name and email to schedule the appointment. Please provide them.",
+          appointmentCreated: false
+        };
+      }
       
       // Validate time format before creating appointment
       const timeRegex = /^\d{2}:\d{2}$/;
@@ -787,10 +873,29 @@ class AppointmentFlowManager {
           const fixedTime = `${details.time.substring(0, 2)}:${details.time.substring(2)}`;
           console.log('🔧 [CreateAppointment] Fixed time format:', fixedTime);
           details.time = fixedTime;
+        } else {
+          console.error('❌ [CreateAppointment] Cannot fix time format, aborting');
+          return {
+            success: true,
+            response: "There's an issue with the time format. Let's reschedule.",
+            appointmentCreated: false
+          };
         }
       }
       
+      console.log('📞 [CreateAppointment] Getting calendar service for:', calendarType);
       const calendarService = getCalendarService(calendarType);
+      
+      if (!calendarService) {
+        console.error('❌ [CreateAppointment] Calendar service not found for type:', calendarType);
+        return {
+          success: true,
+          response: "There's an issue with the calendar service. Please try again.",
+          appointmentCreated: false
+        };
+      }
+      
+      console.log('🔄 [CreateAppointment] Calling calendar service createAppointment...');
       const appointmentResult = await calendarService.createAppointment(
         {
           title: details.title,
@@ -803,12 +908,17 @@ class AppointmentFlowManager {
         session.userInfo.name
       );
 
+      console.log('📋 [CreateAppointment] Calendar service result:', JSON.stringify(appointmentResult, null, 2));
+
       // Reset appointment flow
       session.appointmentFlow.active = false;
       session.appointmentFlow.step = this.steps.NONE;
       session.appointmentFlow.details = {};
 
       if (appointmentResult.success) {
+        console.log('✅ [CreateAppointment] SUCCESS - Appointment created successfully');
+        console.log('🔗 [CreateAppointment] Calendar link:', appointmentResult.eventLink);
+        
         // Store calendar link in session for UI access
         session.lastAppointment = {
           calendarLink: appointmentResult.eventLink,
@@ -816,15 +926,19 @@ class AppointmentFlowManager {
           details: details
         };
         
-        return {
+        const result = {
           success: true,
           response: this.responseGenerator.generateAppointmentConfirmationResponse(details, session.userInfo, calendarType),
           appointmentCreated: true,
           calendarLink: appointmentResult.eventLink,
           appointmentDetails: details
         };
+        
+        console.log('📤 [CreateAppointment] Returning result:', JSON.stringify(result, null, 2));
+        return result;
       } else {
-        console.error('Calendar appointment creation failed:', appointmentResult.error);
+        console.error('❌ [CreateAppointment] Calendar appointment creation failed:', appointmentResult.error);
+        console.error('❌ [CreateAppointment] Full error details:', appointmentResult);
         return {
           success: true,
           response: this.responseGenerator.generateAppointmentErrorResponse(details.title),
@@ -832,10 +946,11 @@ class AppointmentFlowManager {
         };
       }
     } catch (error) {
-      console.error('❌ [AppointmentFlowManager] Appointment creation failed:', error);
+      console.error('❌ [CreateAppointment] EXCEPTION during appointment creation:', error);
+      console.error('❌ [CreateAppointment] Error stack:', error.stack);
       return {
         success: true,
-        response: this.responseGenerator.generateAppointmentErrorResponse(details.title),
+        response: this.responseGenerator.generateAppointmentErrorResponse(details?.title || 'appointment'),
         appointmentCreated: false
       };
     }

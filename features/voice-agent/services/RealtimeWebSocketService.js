@@ -204,13 +204,13 @@ class RealtimeWebSocketService extends EventEmitter {
       {
         type: 'function',
         name: 'update_user_info',
-        description: 'Update or collect user information (name and/or email). Use this when user provides their name or email address.',
+        description: 'CRITICAL: ALWAYS call this function immediately when user provides their name or email. Examples: "My name is John", "I\'m Sarah", "Call me Dave", "My email is...", etc. This stores their information for personalization and appointment booking. Call this even if just acknowledging their name in conversation.',
         parameters: {
           type: 'object',
           properties: {
             name: {
               type: 'string',
-              description: 'User\'s full name'
+              description: 'User\'s full name (extract from phrases like "My name is...", "I\'m...", "Call me...", etc.)'
             },
             email: {
               type: 'string',
@@ -379,6 +379,9 @@ class RealtimeWebSocketService extends EventEmitter {
         
         // Add to conversation history
         this.stateManager.addMessage(sessionId, 'user', event.transcript);
+        
+        // FALLBACK: Check if transcription contains name information and OpenAI didn't call update_user_info
+        await this.checkForMissedNameInfo(sessionData, event.transcript);
         break;
 
       case 'response.audio.delta':
@@ -421,7 +424,9 @@ class RealtimeWebSocketService extends EventEmitter {
         break;
 
       case 'response.function_call_arguments.done':
-        console.log('🔧 [RealtimeWS] Function call:', event.name, event.arguments);
+        console.log('🔧 [RealtimeWS] Function call detected:', event.name);
+        console.log('🔧 [RealtimeWS] Function arguments:', event.arguments);
+        console.log('🔧 [RealtimeWS] Full event:', JSON.stringify(event, null, 2));
         await this.handleFunctionCall(sessionData, event);
         break;
 
@@ -678,22 +683,33 @@ class RealtimeWebSocketService extends EventEmitter {
         text = 'yes';
       }
       
+      console.log('🔄 [Appointment] Calling appointmentFlowManager.processFlow with text:', text);
       const result = await this.conversationFlowHandler.appointmentFlowManager.processFlow(
         session,
         text,
         this.conversationFlowHandler.getCalendarService
       );
       
+      console.log('📋 [Appointment] ProcessFlow result:', JSON.stringify(result, null, 2));
+      
       // Check if appointment was completed
-      if (result.calendarLink) {
-        console.log('✅ [Appointment] Scheduled successfully');
+      if (result.calendarLink || result.appointmentCreated) {
+        console.log('✅ [Appointment] Appointment creation detected');
+        console.log('🔗 [Appointment] Calendar link:', result.calendarLink);
+        console.log('📅 [Appointment] Appointment details:', JSON.stringify(result.appointmentDetails, null, 2));
         
         // Send to client
-        this.sendToClient(this.sessions.get(sessionId), {
-          type: 'appointment_created',
-          calendarLink: result.calendarLink,
-          appointmentDetails: result.appointmentDetails
-        });
+        const clientSession = this.sessions.get(sessionId);
+        if (clientSession && clientSession.clientWs) {
+          console.log('📤 [Appointment] Sending appointment_created message to client');
+          this.sendToClient(clientSession, {
+            type: 'appointment_created',
+            calendarLink: result.calendarLink,
+            appointmentDetails: result.appointmentDetails
+          });
+        } else {
+          console.error('❌ [Appointment] No client WebSocket found for session:', sessionId);
+        }
         
         // Avoid speaking the raw calendar link in model response
         return {
@@ -703,6 +719,7 @@ class RealtimeWebSocketService extends EventEmitter {
         };
       }
       
+      console.log('📋 [Appointment] Continuing appointment flow, no completion detected');
       return {
         success: true,
         message: result.response,
@@ -720,26 +737,127 @@ class RealtimeWebSocketService extends EventEmitter {
   }
 
   /**
+   * Check for missed name/email information in transcription
+   * Fallback mechanism when OpenAI doesn't call update_user_info
+   */
+  async checkForMissedNameInfo(sessionData, transcript) {
+    const { sessionId } = sessionData;
+    const session = this.stateManager.getSession(sessionId);
+    
+    let foundName = null;
+    let foundEmail = null;
+    
+    // Check for name patterns (only if we don't already have a name)
+    if (!session.userInfo.name) {
+      const namePatterns = [
+        /my name is ([a-zA-Z\s]+)/i,
+        /i'm ([a-zA-Z\s]+)/i,
+        /call me ([a-zA-Z\s]+)/i,
+        /i am ([a-zA-Z\s]+)/i
+      ];
+      
+      for (const pattern of namePatterns) {
+        const match = transcript.match(pattern);
+        if (match) {
+          const extractedName = match[1].trim();
+          
+          // Avoid common false positives
+          const falsePositives = ['good', 'fine', 'okay', 'ready', 'here', 'listening', 'interested', 'looking', 'done', 'back'];
+          if (!falsePositives.includes(extractedName.toLowerCase()) && extractedName.length > 1) {
+            foundName = extractedName;
+            console.log('🔍 [RealtimeWS] FALLBACK: Detected missed name in transcription:', extractedName);
+            break;
+          }
+        }
+      }
+    }
+    
+    // Check for email patterns (only if we don't already have an email)
+    if (!session.userInfo.email) {
+      const emailPatterns = [
+        /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
+        /my email is ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
+        /email.*is ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
+      ];
+      
+      for (const pattern of emailPatterns) {
+        const match = transcript.match(pattern);
+        if (match) {
+          const extractedEmail = match[1] || match[0];
+          if (extractedEmail.includes('@') && extractedEmail.includes('.')) {
+            // Use the email as transcribed by OpenAI
+            foundEmail = extractedEmail.toLowerCase().trim();
+            console.log('🔍 [RealtimeWS] FALLBACK: Detected missed email in transcription:', foundEmail);
+            break;
+          }
+        }
+      }
+    }
+    
+    // If we found name or email, trigger the update
+    if (foundName || foundEmail) {
+      console.log('🔍 [RealtimeWS] Original transcript:', transcript);
+      
+      const updates = {};
+      if (foundName) updates.name = foundName;
+      if (foundEmail) updates.email = foundEmail;
+      
+      // Manually trigger the user info update
+      await this.handleUserInfo(sessionId, updates);
+      
+      // Also send a manual function call to OpenAI to keep it in sync
+      try {
+        const functionOutput = {
+          type: 'conversation.item.create',
+          item: {
+            type: 'function_call_output',
+            call_id: 'fallback_' + Date.now(),
+            output: JSON.stringify({ 
+              success: true, 
+              message: `${foundName ? `Name set to ${foundName}` : ''}${foundName && foundEmail ? ', ' : ''}${foundEmail ? `Email set to ${foundEmail}` : ''}` 
+            })
+          }
+        };
+        sessionData.openaiWs.send(JSON.stringify(functionOutput));
+        console.log('✅ [RealtimeWS] FALLBACK: Sent manual function result to OpenAI');
+      } catch (error) {
+        console.warn('⚠️ [RealtimeWS] FALLBACK: Failed to sync with OpenAI:', error.message);
+      }
+    }
+  }
+
+  /**
    * Handle user info update function
    */
   async handleUserInfo(sessionId, args) {
     try {
       const { name, email } = args;
-      console.log('👤 [UserInfo] Updating:', { name, email });
+      console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email });
+      console.log('👤 [UserInfo] Session ID:', sessionId);
       
       const sess = this.stateManager.getSession(sessionId);
+      console.log('👤 [UserInfo] Current session user info:', JSON.stringify(sess.userInfo, null, 2));
+      
       const updates = {};
       
       if (name) {
+        console.log('👤 [UserInfo] Setting name:', name);
         updates.name = name;
       }
       
       if (email) {
+        console.log('👤 [UserInfo] Processing email:', email);
+        
+        // Use the email as provided by the user
+        const userEmail = email.toLowerCase().trim();
+        
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (emailRegex.test(email)) {
-          updates.email = email;
+        if (emailRegex.test(userEmail)) {
+          console.log('✅ [UserInfo] Email format valid');
+          updates.email = userEmail;
         } else {
+          console.log('❌ [UserInfo] Invalid email format:', email);
           return {
             success: false,
             message: 'That email format doesn\'t look right. Could you spell it out for me?'
@@ -747,12 +865,16 @@ class RealtimeWebSocketService extends EventEmitter {
         }
       }
       
+      console.log('👤 [UserInfo] Applying updates:', updates);
       // Update user info
       this.stateManager.updateUserInfo(sessionId, updates);
       
       // If in scheduling flow and email set, proceed to calendar selection
       const sessionObj = this.stateManager.getSession(sessionId);
+      console.log('👤 [UserInfo] Updated session user info:', JSON.stringify(sessionObj.userInfo, null, 2));
+      
       if (sessionObj.appointmentFlow && sessionObj.appointmentFlow.active && updates.email) {
+        console.log('📅 [UserInfo] In appointment flow, proceeding to calendar selection');
         const flow = sessionObj.appointmentFlow;
         const steps = this.conversationFlowHandler.appointmentFlowManager.steps;
         flow.step = steps.SELECT_CALENDAR;
@@ -766,10 +888,12 @@ class RealtimeWebSocketService extends EventEmitter {
       // Check if collection is complete
       const userInfo = sessionObj.userInfo;
       if (userInfo.name && userInfo.email && !userInfo.collected) {
+        console.log('✅ [UserInfo] Collection complete, marking as collected');
         this.stateManager.updateUserInfo(sessionId, { collected: true });
       }
       
       // Send update to client
+      console.log('📤 [UserInfo] Sending user_info_updated to client');
       this.sendToClient(this.sessions.get(sessionId), {
         type: 'user_info_updated',
         userInfo: sessionObj.userInfo
