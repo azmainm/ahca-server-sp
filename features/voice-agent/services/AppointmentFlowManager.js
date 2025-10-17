@@ -146,7 +146,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.step = this.steps.COLLECT_TITLE;
       return {
         success: true,
-        response: "Perfect! I'll add it to your Google Calendar. What type of session would you like? We can do a product demo, a consultation about Call Service Automation, or a discussion about integrations.",
+        response: "Perfect! I'll add it to your Google Calendar. What type of session would you like? We can do a product demo, a consultation, or a discussion about integrations.",
         step: this.steps.COLLECT_TITLE
       };
     } else if (calendarChoice.includes('microsoft') || calendarChoice.includes('outlook')) {
@@ -154,7 +154,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.step = this.steps.COLLECT_TITLE;
       return {
         success: true,
-        response: "Perfect! I'll add it to your Microsoft Calendar. What type of session would you like? We can do a product demo, a consultation about Call Service Automation, or a discussion about integrations.",
+        response: "Perfect! I'll add it to your Microsoft Calendar. What type of session would you like? We can do a product demo, a consultation, or a discussion about integrations.",
         step: this.steps.COLLECT_TITLE
       };
     } else {
@@ -194,7 +194,7 @@ class AppointmentFlowManager {
         session.appointmentFlow.step = this.steps.COLLECT_DATE;
         return {
           success: true,
-          response: `Perfect! I'll schedule a ${serviceTitle}. What date works for you? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. No other format will be accepted.`,
+          response: `Perfect! I'll schedule a ${serviceTitle}. What date works for you? You MUST say the date in this EXACT format: 'October 16, 2025'. No other format will be accepted.`,
           step: this.steps.COLLECT_DATE
         };
       }
@@ -221,7 +221,7 @@ class AppointmentFlowManager {
     console.log('📅 [DateCollection] Processing date input:', text);
     console.log('📅 [DateCollection] Current session appointment details:', JSON.stringify(session.appointmentFlow?.details, null, 2));
 
-    // MANDATORY: Only accept exact formats "October 16, 2025" or "16 October 2025"
+    // MANDATORY: Only accept exact formats "October 16, 2025"
     const strictPatterns = [
       /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\,?\s+\d{4}$/i,
       /^\d{1,2}(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}$/i
@@ -236,7 +236,7 @@ class AppointmentFlowManager {
       console.log('❌ [DateCollection] Invalid date format or relative terms detected');
       return {
         success: true,
-        response: "I need the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. Please say the date exactly like that.",
+        response: "I need the date in this this EXACT format: 'October 16, 2025'. Please say the date exactly like that.",
         step: this.steps.COLLECT_DATE
       };
     }
@@ -249,7 +249,7 @@ class AppointmentFlowManager {
       console.log('❌ [DateCollection] Date parsing failed');
       return {
         success: true,
-        response: "I need the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'. Please say the date exactly like that.",
+        response: "I need the date in this EXACT format: 'October 16, 2025'. Please say the date exactly like that.",
         step: this.steps.COLLECT_DATE
       };
     }
@@ -391,7 +391,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.details = { title: serviceTitle };
       return {
         success: true,
-        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'.`,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? You MUST say the date in this EXACT format: 'October 16, 2025'.`,
         step: this.steps.COLLECT_DATE
       };
     }
@@ -414,7 +414,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.details = { title: serviceTitle };
       return {
         success: true,
-        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'.`,
+        response: `I understand you'd like to change the date. What date would work best for your ${serviceTitle}? You MUST say the date in this EXACT format: 'October 16, 2025'.`,
         step: this.steps.COLLECT_DATE
       };
     }
@@ -631,7 +631,7 @@ class AppointmentFlowManager {
         
         return {
           success: true,
-          response: `No problem! What date would work best for your ${serviceTitle}? You MUST say the date in one of these EXACT formats: 'October 16, 2025' or '16 October 2025'.`,
+          response: `No problem! What date would work best for your ${serviceTitle}? You MUST say the date in this EXACT format: 'October 16, 2025'.`,
           step: this.steps.COLLECT_DATE
         };
         
