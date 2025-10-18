@@ -75,7 +75,7 @@ class AppointmentFlowManager {
       session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
       return {
         success: true,
-        response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'.`,
+        response: `Perfect, ${session.userInfo.name}! What's your email address? Please spell it out for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot com'.`,
         step: this.steps.COLLECT_EMAIL
       };
     }
@@ -194,7 +194,7 @@ class AppointmentFlowManager {
         session.appointmentFlow.step = this.steps.COLLECT_DATE;
         return {
           success: true,
-          response: `Perfect! I'll schedule a ${serviceTitle}. What date works for you? You MUST say the date in this EXACT format: 'October 16, 2025'. No other format will be accepted.`,
+          response: `Perfect! I'll schedule a ${serviceTitle}. What date works for you? You MUST say the date in this EXACT format: 'October 16, 2025'.`,
           step: this.steps.COLLECT_DATE
         };
       }
@@ -664,7 +664,7 @@ class AppointmentFlowManager {
         session.appointmentFlow.step = this.steps.COLLECT_EMAIL;
         return {
           success: true,
-          response: "No problem! What email address should I use for this appointment? Please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot c-o-m'.",
+          response: "No problem! What email address should I use for this appointment? Please spell it out letter by letter for accuracy - for example, 'j-o-h-n at g-m-a-i-l dot com'.",
           step: this.steps.COLLECT_EMAIL
         };
         
