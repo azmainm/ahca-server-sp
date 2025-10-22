@@ -21,9 +21,32 @@ The SherpaPrompt Voice Agent System is a comprehensive AI-powered voice automati
   - *"Got it — scheduling now"* - Appointment requests
   - *"One moment"* - Quick processing acknowledgment
 
+## Multi-Tenant Architecture
+
+This system now supports **multiple businesses** using the same infrastructure with complete data isolation. Each business has:
+
+- **Dedicated phone number** for Twilio calls
+- **Isolated MongoDB collection** for knowledge base storage  
+- **Separate vector search index** for RAG queries
+- **Business-specific configurations** for calendar, email, and company info
+- **Custom AI agent personality** and prompts
+
+### Business Identification Flow
+
+```
+Incoming Call → Twilio Phone Number → Business ID Lookup → Load Business Config → Route to Business-Specific Services
+```
+
+### Data Isolation
+
+- **MongoDB Collections:** `knowledge_base_sherpaprompt`, `knowledge_base_acme_corp`, etc.
+- **Vector Indexes:** `vector_index_sherpaprompt`, `vector_index_acme_corp`, etc.
+- **Configuration Files:** `/configs/businesses/{businessId}/config.json`
+- **Environment Variables:** `BUSINESS_{BUSINESSID}_*` prefixed credentials
+
 ## Architecture
 
-This system follows OpenAI's **Realtime API Architecture** with integrated VAD:
+This system follows OpenAI's **Realtime API Architecture** with integrated VAD and multi-tenant support:
 
 ```
 Audio Input → Realtime VAD → STT (Whisper) → GPT-5-nano → TTS → Audio Output
@@ -47,8 +70,11 @@ For comprehensive system documentation including architecture, data flows, API e
 
 **[📖 SherpaPrompt Voice Agent System Documentation](./docs/SHERPAPROMPT_VOICE_AGENT_SYSTEM.md)**
 
-This document covers:
+**[🏢 Multi-Tenant Business Onboarding Guide](./docs/MULTI_TENANT_ONBOARDING.md)**
+
+This documentation covers:
 - Complete system architecture and component interactions
+- Multi-tenant setup and business onboarding procedures
 - Detailed API documentation and data flows
 - RAG system implementation and knowledge base structure
 - Calendar integration and email service configuration

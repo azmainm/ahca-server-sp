@@ -1,7 +1,9 @@
 const { TwilioBridgeService } = require('../services/TwilioBridgeService');
 const { realtimeWSService } = require('./realtime-websocket');
+const { TenantContextManager } = require('../../../shared/services/TenantContextManager');
 
 let bridge; // initialized by setup function
+const tenantContextManager = new TenantContextManager();
 
 /**
  * Setup Twilio Media Streams WebSocket server
@@ -12,7 +14,22 @@ function setupTwilioMediaWebSocket(wss) {
   wss.on('connection', (ws, req) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     console.log('🔗 [TwilioWS] Incoming Twilio Media WS connection from', req.socket.remoteAddress);
+    
+    // Extract connection parameters
     let callSid = url.searchParams.get('callSid');
+    const businessId = url.searchParams.get('businessId');
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    
+    console.log('📋 [TwilioWS] Connection params:', { callSid, businessId, from, to });
+    
+    // Validate business ID
+    if (!businessId) {
+      console.error('❌ [TwilioWS] No businessId in WebSocket connection, closing');
+      ws.close(1008, 'Missing business ID');
+      return;
+    }
+    
     let streamSid = null;
     let commitTimer = null;
 
@@ -27,7 +44,12 @@ function setupTwilioMediaWebSocket(wss) {
         case 'start':
           streamSid = msg.start?.streamSid;
           callSid = callSid || msg.start?.callSid || `call-${Date.now()}`;
-          console.log('🎬 [TwilioWS] start event', { callSid, streamSid });
+          console.log('🎬 [TwilioWS] start event', { callSid, streamSid, businessId });
+          
+          // Store business context for this session
+          tenantContextManager.setTenantContext(callSid, businessId);
+          console.log(`🏢 [TwilioWS] Set tenant context: ${callSid} -> ${businessId}`);
+          
           await bridge.start(callSid, ws, streamSid);
           // periodic commit to lower latency
           commitTimer = setInterval(() => bridge.commit(callSid), 600);
@@ -40,6 +62,10 @@ function setupTwilioMediaWebSocket(wss) {
           console.log('⏹️ [TwilioWS] stop event');
           clearInterval(commitTimer);
           await bridge.stop(callSid);
+          
+          // Clean up tenant context
+          tenantContextManager.removeTenantContext(callSid);
+          console.log(`🗑️ [TwilioWS] Removed tenant context for: ${callSid}`);
           break;
         default:
           break;
@@ -50,10 +76,16 @@ function setupTwilioMediaWebSocket(wss) {
       console.log('🔌 [TwilioWS] WS closed');
       clearInterval(commitTimer);
       await bridge.stop(callSid);
+      
+      // Clean up tenant context on close
+      if (callSid) {
+        tenantContextManager.removeTenantContext(callSid);
+        console.log(`🗑️ [TwilioWS] Cleaned up tenant context on close: ${callSid}`);
+      }
     });
   });
 }
 
-module.exports = { setupTwilioMediaWebSocket };
+module.exports = { setupTwilioMediaWebSocket, tenantContextManager };
 
 

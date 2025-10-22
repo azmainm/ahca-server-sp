@@ -14,6 +14,10 @@ const { MicrosoftCalendarService } = require('../../../shared/services/Microsoft
 const { CompanyInfoService } = require('../../../shared/services/CompanyInfoService');
 const { EmailService } = require('../../../shared/services/EmailService');
 
+// Import multi-tenant services
+const { BusinessConfigService } = require('../../../shared/services/BusinessConfigService');
+const { tenantContextManager } = require('./twilio-media');
+
 // Import refactored services
 const { ConversationStateManager } = require('../services/ConversationStateManager');
 const { UserInfoCollector } = require('../services/UserInfoCollector');
@@ -26,7 +30,10 @@ const { OpenAIService } = require('../services/OpenAIService');
 
 const router = express.Router();
 
-// Initialize services
+// Initialize multi-tenant services
+const businessConfigService = new BusinessConfigService();
+
+// Initialize default services (for backward compatibility)
 const openAIService = new OpenAIService();
 const embeddingService = new EmbeddingService();
 const sherpaPromptRAG = new SherpaPromptRAG();
@@ -43,12 +50,94 @@ const intentClassifier = new IntentClassifier();
 const responseGenerator = new ResponseGenerator(openAIService);
 const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator);
 
+// Multi-tenant service factory
+async function getBusinessServices(sessionId) {
+  try {
+    // Initialize business config service if needed
+    if (!businessConfigService.isInitialized()) {
+      await businessConfigService.initialize();
+    }
+
+    // Get business ID from session context
+    const businessId = tenantContextManager.getBusinessId(sessionId);
+    
+    if (!businessId) {
+      console.warn(`⚠️ [ChainedVoice] No business ID found for session: ${sessionId}, using default services`);
+      return {
+        businessId: null,
+        businessConfig: null,
+        embeddingService,
+        sherpaPromptRAG,
+        googleCalendarService,
+        microsoftCalendarService,
+        companyInfoService,
+        emailService
+      };
+    }
+
+    // Get business configuration
+    const businessConfig = businessConfigService.getBusinessConfig(businessId);
+    
+    if (!businessConfig) {
+      console.error(`❌ [ChainedVoice] Business config not found for: ${businessId}`);
+      throw new Error(`Business configuration not found for: ${businessId}`);
+    }
+
+    console.log(`🏢 [ChainedVoice] Loading services for business: ${businessId} (${businessConfig.businessName})`);
+
+    // Create business-specific services
+    const businessEmbeddingService = EmbeddingService.createForBusiness(businessConfig);
+    const businessSherpaPromptRAG = new SherpaPromptRAG(); // Uses same instance but with business-specific embedding service
+    
+    // Create calendar services based on business configuration
+    let businessGoogleCalendarService = null;
+    let businessMicrosoftCalendarService = null;
+    
+    if (businessConfig.calendar.provider === 'google' && businessConfig.calendar.google) {
+      businessGoogleCalendarService = GoogleCalendarService.createForBusiness(businessConfig.calendar.google);
+    }
+    
+    if (businessConfig.calendar.provider === 'microsoft' && businessConfig.calendar.microsoft) {
+      businessMicrosoftCalendarService = MicrosoftCalendarService.createForBusiness(businessConfig.calendar.microsoft);
+    }
+    
+    // Create business-specific company info and email services
+    const businessCompanyInfoService = CompanyInfoService.createForBusiness(businessConfig.companyInfo);
+    const businessEmailService = EmailService.createForBusiness(businessConfig.email);
+
+    return {
+      businessId,
+      businessConfig,
+      embeddingService: businessEmbeddingService,
+      sherpaPromptRAG: businessSherpaPromptRAG,
+      googleCalendarService: businessGoogleCalendarService || googleCalendarService,
+      microsoftCalendarService: businessMicrosoftCalendarService || microsoftCalendarService,
+      companyInfoService: businessCompanyInfoService,
+      emailService: businessEmailService
+    };
+
+  } catch (error) {
+    console.error(`❌ [ChainedVoice] Error loading business services:`, error);
+    // Fallback to default services
+    return {
+      businessId: null,
+      businessConfig: null,
+      embeddingService,
+      sherpaPromptRAG,
+      googleCalendarService,
+      microsoftCalendarService,
+      companyInfoService,
+      emailService
+    };
+  }
+}
+
 // Helper functions
-function getCalendarService(calendarType) {
+function getCalendarService(calendarType, businessServices) {
   if (calendarType === 'microsoft') {
-    return microsoftCalendarService;
+    return businessServices.microsoftCalendarService;
   } else {
-    return googleCalendarService;
+    return businessServices.googleCalendarService;
   }
 }
 
@@ -178,7 +267,36 @@ router.post('/process', async (req, res) => {
       });
     }
 
-    const result = await conversationFlowHandler.processConversation(text, sessionId);
+    console.log('🤖 [ChainedVoice] Processing request for session:', sessionId);
+
+    // Get business-specific services for this session
+    const businessServices = await getBusinessServices(sessionId);
+
+    // Initialize conversation flow handler with business-specific services
+    const businessConversationFlowHandler = new ConversationFlowHandler({
+      stateManager,
+      userInfoCollector,
+      appointmentFlowManager,
+      intentClassifier,
+      responseGenerator,
+      companyInfoService: businessServices.companyInfoService,
+      sherpaPromptRAG: businessServices.sherpaPromptRAG,
+      embeddingService: businessServices.embeddingService,
+      emailService: businessServices.emailService
+    });
+
+    // Set helper functions with business services
+    const getCalendarServiceForBusiness = (calendarType) => getCalendarService(calendarType, businessServices);
+    businessConversationFlowHandler.setHelpers(getCalendarServiceForBusiness, extractSearchTerms);
+
+    // Process conversation with business-specific handler
+    const result = await businessConversationFlowHandler.processConversation(text, sessionId);
+
+    // Add business context to response
+    if (businessServices.businessId) {
+      result.businessId = businessServices.businessId;
+      result.businessName = businessServices.businessConfig?.businessName;
+    }
 
     if (result.success) {
       res.json(result);

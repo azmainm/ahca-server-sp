@@ -8,24 +8,102 @@ const fetch = require('node-fetch');
 const { Resend } = require('resend');
 
 class EmailService {
-  constructor() {
+  constructor(emailConfig = null) {
     this.client = null;
     this.resend = null;
     this.initialized = false;
     this.resendInitialized = false;
+    this.emailConfig = emailConfig;
+    
+    // Log configuration
+    if (emailConfig) {
+      console.log(`🏢 [EmailService] Configured for business with provider: ${emailConfig.provider}`);
+      console.log(`   📧 From Email: ${emailConfig.fromEmail}`);
+    } else {
+      console.log('⚠️ [EmailService] No email config provided, will use environment variables');
+    }
+    
     this.init();
+  }
+
+  /**
+   * Create a new EmailService instance for a specific business
+   * @param {Object} emailConfig - Email configuration from business config
+   * @returns {EmailService} New instance configured for the business
+   */
+  static createForBusiness(emailConfig) {
+    if (!emailConfig) {
+      throw new Error('Email configuration is required');
+    }
+    
+    const requiredFields = ['provider', 'fromEmail', 'fromName'];
+    for (const field of requiredFields) {
+      if (!emailConfig[field]) {
+        throw new Error(`Missing required email config field: ${field}`);
+      }
+    }
+    
+    if (emailConfig.provider === 'resend' && !emailConfig.apiKey) {
+      throw new Error('Resend provider requires apiKey in email config');
+    }
+    
+    if (emailConfig.provider === 'mailchimp' && !emailConfig.apiKey) {
+      throw new Error('Mailchimp provider requires apiKey in email config');
+    }
+    
+    return new EmailService(emailConfig);
   }
 
   /**
    * Initialize email clients (Resend and Mailchimp)
    */
   init() {
+    if (this.emailConfig) {
+      // Use business-specific configuration
+      this.initWithBusinessConfig();
+    } else {
+      // Fallback to environment variables (backward compatibility)
+      this.initWithEnvironmentVariables();
+    }
+  }
+
+  /**
+   * Initialize with business-specific configuration
+   */
+  initWithBusinessConfig() {
+    const config = this.emailConfig;
+    
+    if (config.provider === 'resend') {
+      try {
+        this.resend = new Resend(config.apiKey);
+        this.resendInitialized = true;
+        console.log(`✅ [EmailService] Resend client initialized for business with API key: ${config.apiKey.substring(0, 8)}...`);
+      } catch (error) {
+        console.error('❌ [EmailService] Failed to initialize Resend client with business config:', error);
+      }
+    } else if (config.provider === 'mailchimp') {
+      try {
+        this.client = mailchimp(config.apiKey);
+        this.initialized = true;
+        console.log(`✅ [EmailService] Mailchimp client initialized for business with API key: ${config.apiKey.substring(0, 8)}...`);
+      } catch (error) {
+        console.error('❌ [EmailService] Failed to initialize Mailchimp client with business config:', error);
+      }
+    } else {
+      console.warn(`⚠️ [EmailService] Unsupported email provider: ${config.provider}`);
+    }
+  }
+
+  /**
+   * Initialize with environment variables (backward compatibility)
+   */
+  initWithEnvironmentVariables() {
     // Initialize Resend (primary)
     try {
       if (process.env.RESEND_API_KEY) {
         this.resend = new Resend(process.env.RESEND_API_KEY);
         this.resendInitialized = true;
-        console.log('✅ [EmailService] Resend client initialized successfully');
+        console.log('✅ [EmailService] Resend client initialized successfully (legacy mode)');
       } else {
         console.warn('⚠️ [EmailService] RESEND_API_KEY not found in environment variables');
       }
@@ -38,7 +116,7 @@ class EmailService {
       if (process.env.MAILCHIMP_API_KEY) {
         this.client = mailchimp(process.env.MAILCHIMP_API_KEY);
         this.initialized = true;
-        console.log('✅ [EmailService] Mailchimp client initialized successfully');
+        console.log('✅ [EmailService] Mailchimp client initialized successfully (legacy mode)');
       } else {
         console.warn('⚠️ [EmailService] MAILCHIMP_API_KEY not found in environment variables');
       }
@@ -277,13 +355,22 @@ Guidelines:
     try {
       const userName = userInfo.name || 'Valued Customer';
       
+      // Use business-specific email configuration if available
+      const fromEmail = this.emailConfig ? 
+        `${this.emailConfig.fromName} <${this.emailConfig.fromEmail}>` : 
+        'SherpaPrompt <onboarding@resend.dev>';
+      
+      const replyToEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'onboarding@resend.dev';
+      
       const emailData = {
-        from: 'SherpaPrompt <onboarding@resend.dev>',
+        from: fromEmail,
         to: [userInfo.email],
-        subject: 'Your SherpaPrompt Conversation Summary',
+        subject: 'Your Conversation Summary',
         html: htmlContent,
         text: textContent,
-        reply_to: 'onboarding@resend.dev'
+        reply_to: replyToEmail
       };
 
       console.log('📧 [EmailService] Sending email via Resend...');
@@ -326,12 +413,25 @@ Guidelines:
     try {
       const userName = userInfo.name || 'Valued Customer';
 
+      // Use business-specific email configuration if available
+      const fromEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'noreply@sherpaprompt.com';
+      
+      const fromName = this.emailConfig ? 
+        this.emailConfig.fromName : 
+        'SherpaPrompt';
+      
+      const replyToEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'info@sherpaprompt.com';
+
       const message = {
         html: htmlContent,
         text: textContent,
-        subject: 'Your SherpaPrompt Conversation Summary',
-        from_email: 'noreply@sherpaprompt.com',
-        from_name: 'SherpaPrompt',
+        subject: 'Your Conversation Summary',
+        from_email: fromEmail,
+        from_name: fromName,
         to: [
           {
             email: userInfo.email,
@@ -340,7 +440,7 @@ Guidelines:
           }
         ],
         headers: {
-          'Reply-To': 'info@sherpaprompt.com'
+          'Reply-To': replyToEmail
         },
         important: false,
         track_opens: true,
