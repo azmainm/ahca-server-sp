@@ -180,5 +180,5 @@ function setupRealtimeWebSocket(wss) {
   console.log('✅ [RealtimeWS] WebSocket handler ready');
 }
 
-module.exports = { setupRealtimeWebSocket };
+module.exports = { setupRealtimeWebSocket, realtimeWSService };
 
