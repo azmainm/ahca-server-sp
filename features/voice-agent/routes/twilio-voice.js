@@ -20,11 +20,11 @@ router.post('/voice', (req, res) => {
       }
     }
 
-    const publicBaseUrl = process.env.PUBLIC_BASE_URL;
-    // Twilio requires secure websockets
-    const scheme = 'wss';
-    const host = publicBaseUrl ? publicBaseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '') : req.get('host');
-
+    // Derive host/proto from request (works behind proxies when trust proxy is enabled)
+    const forwardedHost = req.get('x-forwarded-host') || req.get('host');
+    const proto = (req.get('x-forwarded-proto') || req.protocol || 'https').toLowerCase();
+    const scheme = proto === 'https' ? 'wss' : 'ws';
+    const host = (forwardedHost || '').replace(/\/$/, '');
     const streamUrl = `${scheme}://${host}/twilio-media`;
 
     const from = req.body.From || '';
