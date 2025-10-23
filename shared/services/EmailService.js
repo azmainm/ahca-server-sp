@@ -82,12 +82,22 @@ class EmailService {
         console.error('❌ [EmailService] Failed to initialize Resend client with business config:', error);
       }
     } else if (config.provider === 'mailchimp') {
-      try {
-        this.client = mailchimp(config.apiKey);
-        this.initialized = true;
-        console.log(`✅ [EmailService] Mailchimp client initialized for business with API key: ${config.apiKey.substring(0, 8)}...`);
-      } catch (error) {
-        console.error('❌ [EmailService] Failed to initialize Mailchimp client with business config:', error);
+      // Check if it's a Marketing API key (contains datacenter suffix like -us12)
+      if (config.apiKey && config.apiKey.includes('-us')) {
+        // Initialize for Marketing API
+        this.mailchimpMarketingApiKey = config.apiKey;
+        this.mailchimpServerPrefix = config.apiKey.split('-')[1]; // Extract server prefix
+        this.mailchimpMarketingInitialized = true;
+        console.log(`✅ [EmailService] Mailchimp Marketing API initialized for business with server: ${this.mailchimpServerPrefix}`);
+      } else {
+        // Try Transactional API
+        try {
+          this.client = mailchimp(config.apiKey);
+          this.initialized = true;
+          console.log(`✅ [EmailService] Mailchimp Transactional client initialized for business with API key: ${config.apiKey.substring(0, 8)}...`);
+        } catch (error) {
+          console.error('❌ [EmailService] Failed to initialize Mailchimp Transactional client with business config:', error);
+        }
       }
     } else {
       console.warn(`⚠️ [EmailService] Unsupported email provider: ${config.provider}`);
@@ -114,9 +124,20 @@ class EmailService {
     // Initialize Mailchimp (fallback)
     try {
       if (process.env.MAILCHIMP_API_KEY) {
-        this.client = mailchimp(process.env.MAILCHIMP_API_KEY);
-        this.initialized = true;
-        console.log('✅ [EmailService] Mailchimp client initialized successfully (legacy mode)');
+        // Check if it's a Marketing API key (contains datacenter suffix like -us12)
+        if (process.env.MAILCHIMP_API_KEY.includes('-us')) {
+          // Initialize for Marketing API
+          this.mailchimpMarketingApiKey = process.env.MAILCHIMP_API_KEY;
+          this.mailchimpServerPrefix = process.env.MAILCHIMP_SERVER_PREFIX || process.env.MAILCHIMP_API_KEY.split('-')[1];
+          this.mailchimpAudienceId = process.env.MAILCHIMP_AUDIENCE_ID;
+          this.mailchimpMarketingInitialized = true;
+          console.log('✅ [EmailService] Mailchimp Marketing API initialized successfully (legacy mode)');
+        } else {
+          // Try Transactional API
+          this.client = mailchimp(process.env.MAILCHIMP_API_KEY);
+          this.initialized = true;
+          console.log('✅ [EmailService] Mailchimp Transactional client initialized successfully (legacy mode)');
+        }
       } else {
         console.warn('⚠️ [EmailService] MAILCHIMP_API_KEY not found in environment variables');
       }
@@ -129,7 +150,7 @@ class EmailService {
    * Check if email service is ready
    */
   isReady() {
-    return this.resendInitialized || (this.initialized && this.client);
+    return this.resendInitialized || (this.initialized && this.client) || this.mailchimpMarketingInitialized;
   }
 
   /**
@@ -492,6 +513,189 @@ Guidelines:
   }
 
   /**
+   * Send email via Mailchimp Marketing API (for lead notifications)
+   * @param {Object} userInfo - User information
+   * @param {string} htmlContent - HTML email content
+   * @param {string} textContent - Plain text email content
+   * @param {string} customSubject - Custom subject line (optional)
+   * @returns {Promise<Object>} Result of email sending
+   */
+  async sendViaMailchimpMarketing(userInfo, htmlContent, textContent, customSubject = null) {
+    try {
+      if (!this.mailchimpMarketingInitialized) {
+        return { success: false, error: 'Mailchimp Marketing API not initialized' };
+      }
+
+      const userName = userInfo.name || 'Valued Customer';
+      
+      // Use business-specific email configuration if available
+      const fromEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'noreply@sherpaprompt.com';
+      
+      const fromName = this.emailConfig ? 
+        this.emailConfig.fromName : 
+        'SherpaPrompt';
+
+      const subject = customSubject || 'Your Conversation Summary';
+
+      console.log('📧 [EmailService] Sending email via Mailchimp Marketing API...');
+      
+      // Step 1: First check if the email exists in the audience, if not add it
+      const audienceId = this.mailchimpAudienceId || process.env.MAILCHIMP_AUDIENCE_ID;
+      
+      if (!audienceId) {
+        return { success: false, error: 'Mailchimp audience ID not configured' };
+      }
+
+      // Check if member exists
+      const memberHash = require('crypto').createHash('md5').update(userInfo.email.toLowerCase()).digest('hex');
+      
+      try {
+        // Try to get the member
+        const memberResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/lists/${audienceId}/members/${memberHash}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!memberResponse.ok && memberResponse.status === 404) {
+          // Member doesn't exist, add them
+          console.log('📧 [EmailService] Adding new member to audience...');
+          const addMemberResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/lists/${audienceId}/members`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email_address: userInfo.email,
+              status: 'subscribed',
+              merge_fields: {
+                FNAME: userName.split(' ')[0] || '',
+                LNAME: userName.split(' ').slice(1).join(' ') || ''
+              }
+            })
+          });
+
+          if (!addMemberResponse.ok) {
+            const error = await addMemberResponse.json();
+            console.error('❌ [EmailService] Failed to add member:', error);
+            return { success: false, error: `Failed to add member: ${error.detail}` };
+          }
+          console.log('✅ [EmailService] Member added to audience');
+        }
+      } catch (error) {
+        console.error('❌ [EmailService] Error checking/adding member:', error);
+        return { success: false, error: `Member management failed: ${error.message}` };
+      }
+
+      // Step 2: Create a campaign
+      const campaignData = {
+        type: 'regular',
+        recipients: {
+          list_id: audienceId,
+          segment_opts: {
+            match: 'any',
+            conditions: [{
+              condition_type: 'EmailAddress',
+              field: 'EMAIL',
+              op: 'is',
+              value: userInfo.email
+            }]
+          }
+        },
+        settings: {
+          subject_line: subject,
+          from_name: fromName,
+          reply_to: fromEmail,
+          title: `Lead Notification - ${Date.now()}`
+        }
+      };
+
+      console.log('📧 [EmailService] Creating campaign...');
+      const campaignResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/campaigns`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(campaignData)
+      });
+
+      if (!campaignResponse.ok) {
+        const error = await campaignResponse.json();
+        console.error('❌ [EmailService] Failed to create campaign:', error);
+        return { success: false, error: `Campaign creation failed: ${error.detail}` };
+      }
+
+      const campaign = await campaignResponse.json();
+      console.log('✅ [EmailService] Campaign created:', campaign.id);
+
+      // Step 3: Set campaign content
+      const contentData = {
+        html: htmlContent,
+        plain_text: textContent
+      };
+
+      const contentResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/campaigns/${campaign.id}/content`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(contentData)
+      });
+
+      if (!contentResponse.ok) {
+        const error = await contentResponse.json();
+        console.error('❌ [EmailService] Failed to set campaign content:', error);
+        return { success: false, error: `Content setting failed: ${error.detail}` };
+      }
+
+      console.log('✅ [EmailService] Campaign content set');
+
+      // Step 4: Send the campaign
+      const sendResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/campaigns/${campaign.id}/actions/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!sendResponse.ok) {
+        const error = await sendResponse.json();
+        console.error('❌ [EmailService] Failed to send campaign:', error);
+        return { success: false, error: `Campaign sending failed: ${error.detail}` };
+      }
+
+      console.log('✅ [EmailService] Campaign sent successfully!');
+      console.log('📧 [EmailService] Email sent to:', userInfo.email);
+      console.log('📧 [EmailService] Subject:', subject);
+
+      return {
+        success: true,
+        messageId: campaign.id,
+        status: 'sent',
+        email: userInfo.email,
+        provider: 'mailchimp-marketing',
+        campaignId: campaign.id,
+        note: 'Email sent via Mailchimp Marketing API campaign'
+      };
+
+    } catch (error) {
+      console.error('❌ [EmailService] Error sending via Mailchimp Marketing:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send via Mailchimp Marketing' 
+      };
+    }
+  }
+
+  /**
    * Send conversation summary email to user
    * @param {Object} userInfo - User information (name, email)
    * @param {Array} conversationHistory - Conversation messages
@@ -644,7 +848,13 @@ Best regards,
 SherpaPrompt
       `.trim();
 
-      // Try Resend first (primary)
+      // Check if business is configured for Mailchimp Marketing API (like Superior Fencing)
+      if (this.emailConfig && this.emailConfig.provider === 'mailchimp' && this.mailchimpMarketingInitialized) {
+        console.log('📧 [EmailService] Using Mailchimp Marketing API as configured provider');
+        return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
+      }
+
+      // Try Resend first (primary) for businesses not specifically configured for Mailchimp
       if (this.resendInitialized) {
         console.log('📧 [EmailService] Using Resend as primary email provider');
         const resendResult = await this.sendViaResend(userInfo, htmlContent, textContent);
@@ -655,10 +865,16 @@ SherpaPrompt
         }
       }
 
-      // Fallback to Mailchimp if Resend fails or is not available
+      // Fallback to Mailchimp Transactional if Resend fails or is not available
       if (this.initialized && this.client) {
-        console.log('📧 [EmailService] Using Mailchimp as fallback email provider');
+        console.log('📧 [EmailService] Using Mailchimp Transactional as fallback email provider');
         return await this.sendViaMailchimp(userInfo, htmlContent, textContent);
+      }
+
+      // Final fallback to Mailchimp Marketing API if nothing else is available
+      if (this.mailchimpMarketingInitialized) {
+        console.log('📧 [EmailService] Using Mailchimp Marketing API as final fallback email provider');
+        return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
       }
 
       // No email providers available
@@ -685,7 +901,8 @@ SherpaPrompt
 
     const results = {
       resend: { available: false, working: false },
-      mailchimp: { available: false, working: false }
+      mailchimp: { available: false, working: false },
+      mailchimpMarketing: { available: false, working: false }
     };
 
     // Test Resend
@@ -701,22 +918,50 @@ SherpaPrompt
       }
     }
 
-    // Test Mailchimp
+    // Test Mailchimp Transactional
     if (this.initialized && this.client) {
       results.mailchimp.available = true;
       try {
         const response = await this.client.users.ping();
-        console.log('✅ [EmailService] Mailchimp connection test successful');
+        console.log('✅ [EmailService] Mailchimp Transactional connection test successful');
         results.mailchimp.working = true;
         results.mailchimp.ping = response.PING || 'PONG';
       } catch (error) {
-        console.error('❌ [EmailService] Mailchimp connection test failed:', error);
+        console.error('❌ [EmailService] Mailchimp Transactional connection test failed:', error);
         results.mailchimp.error = error.message;
       }
     }
 
-    const hasWorkingProvider = results.resend.working || results.mailchimp.working;
-    const primaryProvider = results.resend.working ? 'Resend' : (results.mailchimp.working ? 'Mailchimp' : 'None');
+    // Test Mailchimp Marketing API
+    if (this.mailchimpMarketingInitialized) {
+      results.mailchimpMarketing.available = true;
+      try {
+        const response = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/ping`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ [EmailService] Mailchimp Marketing API connection test successful');
+          results.mailchimpMarketing.working = true;
+          results.mailchimpMarketing.ping = data.health_status || 'PONG';
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error('❌ [EmailService] Mailchimp Marketing API connection test failed:', error);
+        results.mailchimpMarketing.error = error.message;
+      }
+    }
+
+    const hasWorkingProvider = results.resend.working || results.mailchimp.working || results.mailchimpMarketing.working;
+    const primaryProvider = results.resend.working ? 'Resend' : 
+                           (results.mailchimp.working ? 'Mailchimp Transactional' : 
+                           (results.mailchimpMarketing.working ? 'Mailchimp Marketing' : 'None'));
 
     return { 
       success: hasWorkingProvider, 

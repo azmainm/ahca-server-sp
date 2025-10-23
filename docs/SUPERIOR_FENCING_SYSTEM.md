@@ -189,9 +189,13 @@ This lead was collected by Mason, Superior Fence & Construction's virtual assist
 ```
 
 **Email Service Configuration**:
-- Uses same Mailchimp account as SherpaPrompt
-- Environment variable: `MAILCHIMP_API_KEY`
-- Will be updated to Superior Fencing's email system later
+- **Provider**: Mailchimp Marketing API 
+- **Environment Variables**: 
+  - `MAILCHIMP_API_KEY` (Marketing API key)
+  - `MAILCHIMP_AUDIENCE_ID` (Required for campaign targeting)
+- **Process**: Creates Mailchimp campaigns and sends immediately
+- **Audience Management**: Automatically adds recipients to Mailchimp audience
+- **Note**: Superior Fencing uses ONLY Mailchimp - no Resend integration
 
 ---
 
