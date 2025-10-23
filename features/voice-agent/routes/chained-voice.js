@@ -27,6 +27,7 @@ const { IntentClassifier } = require('../services/IntentClassifier');
 const { ResponseGenerator } = require('../services/ResponseGenerator');
 const { ConversationFlowHandler } = require('../services/ConversationFlowHandler');
 const { OpenAIService } = require('../services/OpenAIService');
+const { SuperiorFencingHandler } = require('../services/SuperiorFencingHandler');
 
 const router = express.Router();
 
@@ -85,20 +86,38 @@ async function getBusinessServices(sessionId) {
 
     console.log(`🏢 [ChainedVoice] Loading services for business: ${businessId} (${businessConfig.businessName})`);
 
-    // Create business-specific services
-    const businessEmbeddingService = EmbeddingService.createForBusiness(businessConfig);
-    const businessSherpaPromptRAG = new SherpaPromptRAG(); // Uses same instance but with business-specific embedding service
+    // Create business-specific services based on enabled features
+    let businessEmbeddingService = null;
+    let businessSherpaPromptRAG = null;
     
-    // Create calendar services based on business configuration
+    // Only create RAG services if enabled for this business
+    if (businessConfig.features?.ragEnabled !== false) {
+      businessEmbeddingService = EmbeddingService.createForBusiness(businessConfig);
+      businessSherpaPromptRAG = new SherpaPromptRAG(); // Uses same instance but with business-specific embedding service
+      console.log(`✅ [ChainedVoice] RAG services enabled for business: ${businessId}`);
+    } else {
+      console.log(`⚠️ [ChainedVoice] RAG services disabled for business: ${businessId}`);
+      // Use null services - conversation handler will handle gracefully
+      businessEmbeddingService = null;
+      businessSherpaPromptRAG = null;
+    }
+
+    // Create calendar services based on business configuration and features
     let businessGoogleCalendarService = null;
     let businessMicrosoftCalendarService = null;
-    
-    if (businessConfig.calendar.provider === 'google' && businessConfig.calendar.google) {
-      businessGoogleCalendarService = GoogleCalendarService.createForBusiness(businessConfig.calendar.google);
-    }
-    
-    if (businessConfig.calendar.provider === 'microsoft' && businessConfig.calendar.microsoft) {
-      businessMicrosoftCalendarService = MicrosoftCalendarService.createForBusiness(businessConfig.calendar.microsoft);
+
+    if (businessConfig.features?.appointmentBookingEnabled !== false) {
+      if (businessConfig.calendar.provider === 'google' && businessConfig.calendar.google) {
+        businessGoogleCalendarService = GoogleCalendarService.createForBusiness(businessConfig.calendar.google);
+        console.log(`✅ [ChainedVoice] Google Calendar enabled for business: ${businessId}`);
+      }
+
+      if (businessConfig.calendar.provider === 'microsoft' && businessConfig.calendar.microsoft) {
+        businessMicrosoftCalendarService = MicrosoftCalendarService.createForBusiness(businessConfig.calendar.microsoft);
+        console.log(`✅ [ChainedVoice] Microsoft Calendar enabled for business: ${businessId}`);
+      }
+    } else {
+      console.log(`⚠️ [ChainedVoice] Appointment booking disabled for business: ${businessId}`);
     }
     
     // Create business-specific company info and email services
@@ -108,8 +127,8 @@ async function getBusinessServices(sessionId) {
     return {
       businessId,
       businessConfig,
-      embeddingService: businessEmbeddingService,
-      sherpaPromptRAG: businessSherpaPromptRAG,
+      embeddingService: businessEmbeddingService || embeddingService, // Fallback to default if disabled
+      sherpaPromptRAG: businessSherpaPromptRAG || sherpaPromptRAG, // Fallback to default if disabled
       googleCalendarService: businessGoogleCalendarService || googleCalendarService,
       microsoftCalendarService: businessMicrosoftCalendarService || microsoftCalendarService,
       companyInfoService: businessCompanyInfoService,
@@ -272,25 +291,41 @@ router.post('/process', async (req, res) => {
     // Get business-specific services for this session
     const businessServices = await getBusinessServices(sessionId);
 
-    // Initialize conversation flow handler with business-specific services
-    const businessConversationFlowHandler = new ConversationFlowHandler({
-      stateManager,
-      userInfoCollector,
-      appointmentFlowManager,
-      intentClassifier,
-      responseGenerator,
-      companyInfoService: businessServices.companyInfoService,
-      sherpaPromptRAG: businessServices.sherpaPromptRAG,
-      embeddingService: businessServices.embeddingService,
-      emailService: businessServices.emailService
-    });
+    let result;
 
-    // Set helper functions with business services
-    const getCalendarServiceForBusiness = (calendarType) => getCalendarService(calendarType, businessServices);
-    businessConversationFlowHandler.setHelpers(getCalendarServiceForBusiness, extractSearchTerms);
+    // Check if this is Superior Fencing and use specialized handler
+    if (SuperiorFencingHandler.shouldHandle(businessServices.businessId)) {
+      console.log('🏢 [ChainedVoice] Using Superior Fencing specialized handler');
+      
+      const superiorFencingHandler = new SuperiorFencingHandler(
+        businessServices.emailService,
+        businessServices.companyInfoService
+      );
+      
+      result = await superiorFencingHandler.processConversation(text, sessionId);
+    } else {
+      // Use standard conversation flow handler for other businesses
+      console.log('🏢 [ChainedVoice] Using standard conversation flow handler');
+      
+      const businessConversationFlowHandler = new ConversationFlowHandler({
+        stateManager,
+        userInfoCollector,
+        appointmentFlowManager,
+        intentClassifier,
+        responseGenerator,
+        companyInfoService: businessServices.companyInfoService,
+        sherpaPromptRAG: businessServices.sherpaPromptRAG,
+        embeddingService: businessServices.embeddingService,
+        emailService: businessServices.emailService
+      });
 
-    // Process conversation with business-specific handler
-    const result = await businessConversationFlowHandler.processConversation(text, sessionId);
+      // Set helper functions with business services
+      const getCalendarServiceForBusiness = (calendarType) => getCalendarService(calendarType, businessServices);
+      businessConversationFlowHandler.setHelpers(getCalendarServiceForBusiness, extractSearchTerms);
+
+      // Process conversation with business-specific handler
+      result = await businessConversationFlowHandler.processConversation(text, sessionId);
+    }
 
     // Add business context to response
     if (businessServices.businessId) {

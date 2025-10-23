@@ -3,6 +3,8 @@
  * Phase 2: Coordinates all services and manages conversation state transitions
  */
 
+const { EmergencyCallHandler } = require('./EmergencyCallHandler');
+
 class ConversationFlowHandler {
   constructor(services) {
     // Inject all required services
@@ -16,6 +18,9 @@ class ConversationFlowHandler {
     this.fencingRAG = services.fencingRAG; // Backward compatibility
     this.embeddingService = services.embeddingService;
     this.emailService = services.emailService;
+    
+    // Initialize emergency handler
+    this.emergencyHandler = new EmergencyCallHandler();
     
     // Helper functions passed from route
     this.getCalendarService = null;
@@ -131,6 +136,30 @@ class ConversationFlowHandler {
       
       // Add user message to history
       this.stateManager.addMessage(sessionId, 'user', text);
+
+      // Check for emergency calls first (highest priority)
+      if (this.emergencyHandler.isEmergencyCall(text)) {
+        console.log('🚨 [ConversationFlowHandler] Emergency call detected');
+        const businessConfig = this.companyInfoService.getRawCompanyData();
+        
+        if (this.emergencyHandler.isEmergencyHandlingEnabled(businessConfig)) {
+          const emergencyResponse = this.emergencyHandler.handleEmergencyCall(
+            businessConfig.businessId || 'unknown', 
+            sessionId, 
+            text
+          );
+          
+          return {
+            success: true,
+            response: emergencyResponse.message,
+            sessionId,
+            isEmergency: true,
+            emergencyRouted: true,
+            userInfo: session.userInfo,
+            conversationHistory: session.conversationHistory
+          };
+        }
+      }
 
       // Classify user intent
       const intent = this.intentClassifier.classifyIntent(text);
@@ -527,40 +556,50 @@ Does this look good, or would you like to change anything else?`;
    * @returns {Promise<Object>} Processing result
    */
   async processNewQuestion(text, sessionId, session, isFollowUp) {
-    // Try RAG first for all queries
-    console.log('🔍 [RAG] Searching knowledge base for:', text);
-    
-    // Search knowledge base with RAG
-    const searchTerms = this.extractSearchTerms(text);
     let contextInfo = '';
     let hadFunctionCalls = true;
     let fillerPhrase = null;
 
-    if (searchTerms.length > 0) {
-      console.log('🔍 [RAG] Searching for:', searchTerms);
+    // Check if RAG is enabled for this business
+    const businessConfig = this.companyInfoService.getRawCompanyData();
+    const ragEnabled = businessConfig?.features?.ragEnabled !== false;
+
+    if (ragEnabled && this.embeddingService && this.sherpaPromptRAG) {
+      // Try RAG first for all queries
+      console.log('🔍 [RAG] Searching knowledge base for:', text);
       
-      // Set filler phrase for RAG search
-      fillerPhrase = this.getFillerPhrase('rag_search');
-      
-      const searchResults = await this.embeddingService.searchSimilarContent(searchTerms.join(' '), 5);
-      
-      if (searchResults && searchResults.length > 0) {
-        contextInfo = this.sherpaPromptRAG.formatContext(searchResults);
-        console.log('📚 [RAG] Found relevant info from', searchResults.length, 'sources');
+      // Search knowledge base with RAG
+      const searchTerms = this.extractSearchTerms(text);
+
+      if (searchTerms.length > 0) {
+        console.log('🔍 [RAG] Searching for:', searchTerms);
+        
+        // Set filler phrase for RAG search
+        fillerPhrase = this.getFillerPhrase('rag_search');
+        
+        const searchResults = await this.embeddingService.searchSimilarContent(searchTerms.join(' '), 5);
+        
+        if (searchResults && searchResults.length > 0) {
+          contextInfo = this.sherpaPromptRAG.formatContext(searchResults);
+          console.log('📚 [RAG] Found relevant info from', searchResults.length, 'sources');
+        }
+      } else {
+        // If no specific keywords found, try a general search with the full text
+        console.log('🔍 [RAG] No specific keywords found, searching with full text');
+        
+        // Set filler phrase for general search
+        fillerPhrase = this.getFillerPhrase('rag_search');
+        
+        const searchResults = await this.embeddingService.searchSimilarContent(text, 3);
+        
+        if (searchResults && searchResults.length > 0) {
+          contextInfo = this.sherpaPromptRAG.formatContext(searchResults);
+          console.log('📚 [RAG] Found relevant info from general search:', searchResults.length, 'sources');
+        }
       }
     } else {
-      // If no specific keywords found, try a general search with the full text
-      console.log('🔍 [RAG] No specific keywords found, searching with full text');
-      
-      // Set filler phrase for general search
-      fillerPhrase = this.getFillerPhrase('rag_search');
-      
-      const searchResults = await this.embeddingService.searchSimilarContent(text, 3);
-      
-      if (searchResults && searchResults.length > 0) {
-        contextInfo = this.sherpaPromptRAG.formatContext(searchResults);
-        console.log('📚 [RAG] Found relevant info from general search:', searchResults.length, 'sources');
-      }
+      console.log('⚠️ [RAG] RAG disabled for this business, skipping knowledge base search');
+      hadFunctionCalls = false;
     }
 
     let response;

@@ -1,9 +1,18 @@
 {
   "phoneToBusinessMap": {
     "+15555551234": "sherpaprompt",
-    "+15555555678": "acme-corp"
+    "+15555555678": "acme-corp",
+    "+15035501817": "superior-fencing"
+  },
+  "sharedNumbers": {
+    "+15035501817": {
+      "note": "TEMPORARY: This number is shared between sherpaprompt and superior-fencing",
+      "primary": "superior-fencing",
+      "secondary": "sherpaprompt",
+      "instructions": "Twilio developers: Set up dedicated number for Superior Fencing when ready"
+    }
   },
   "description": "Maps Twilio phone numbers to business IDs. Add new entries when onboarding businesses.",
-  "lastUpdated": "2024-10-22T00:00:00.000Z",
-  "version": "1.0"
+  "lastUpdated": "2024-10-23T00:00:00.000Z",
+  "version": "1.1"
 }
