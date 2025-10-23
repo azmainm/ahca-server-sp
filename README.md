@@ -115,7 +115,7 @@ npm run dev
 
 ### VAD Integration Architecture
 
-#### RealtimeVADService.js
+#### RealtimeVADService (`features/voice-agent/services/realtime/RealtimeVADService.js`)
 Manages WebSocket connections to OpenAI Realtime API for automatic voice activity detection:
 
 ```javascript
@@ -161,15 +161,30 @@ The voice processing pipeline has been refactored into a modular, maintainable a
 - **Service Layer**: 8 specialized service classes with single responsibilities  
 - **Orchestration**: Central ConversationFlowHandler coordinating all services
 
-**📋 Service Classes:**
+**📋 Service Classes (Organized by Category):**
+
+**Conversation Services** (`services/conversation/`):
+- `ConversationFlowHandler` - Central orchestrator
 - `ConversationStateManager` - Session state management
 - `UserInfoCollector` - Name/email collection logic
+
+**Integration Services** (`services/integrations/`):
 - `AppointmentFlowManager` - Complete appointment booking flow
+- `EmergencyCallHandler` - Emergency call detection and routing
+
+**Utility Services** (`services/utils/`):
 - `IntentClassifier` - User intent classification
 - `DateTimeParser` - Date/time parsing utilities
 - `ResponseGenerator` - Natural language response generation
 - `OpenAIService` - OpenAI API wrapper with retry logic
-- `ConversationFlowHandler` - Central orchestrator
+
+**Real-time Services** (`services/realtime/`):
+- `RealtimeVADService` - Voice Activity Detection
+- `RealtimeWebSocketService` - OpenAI Realtime API integration
+- `TwilioBridgeService` - Twilio Media Stream bridge
+
+**Business Services** (`services/business/`):
+- `SuperiorFencingHandler` - Superior Fencing specialized handler
 
 📖 **For detailed architecture documentation, see [docs/VOICE_AGENT_ARCHITECTURE.md](docs/VOICE_AGENT_ARCHITECTURE.md)**
 
@@ -207,14 +222,14 @@ const sessions = new Map();
 
 #### 3. Semantic RAG Implementation
 
-**EmbeddingService (`services/EmbeddingService.js`)**
+**EmbeddingService (`shared/services/EmbeddingService.js`)**
 - Manages OpenAI embeddings (text-embedding-3-small)
 - **Semantic chunking** using sliding window approach with embedding comparison
 - Handles MongoDB Atlas Vector Search integration
 - Provides similarity search functionality
 - Creates semantically coherent chunks based on meaning changes
 
-**FencingRAG (`services/FencingRAG.js`)**
+**SherpaPromptRAG (`shared/services/SherpaPromptRAG.js`)**
 - LangChain-based RAG implementation
 - Uses GPT-4 for response generation
 - Formats context from semantically chunked knowledge base

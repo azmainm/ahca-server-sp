@@ -3,15 +3,17 @@
  * Sets up WebSocket connections for OpenAI Realtime API integration
  */
 
-const { RealtimeWebSocketService } = require('../services/RealtimeWebSocketService');
-const { ConversationFlowHandler } = require('../services/ConversationFlowHandler');
-const { ConversationStateManager } = require('../services/ConversationStateManager');
-const { UserInfoCollector } = require('../services/UserInfoCollector');
-const { AppointmentFlowManager } = require('../services/AppointmentFlowManager');
-const { DateTimeParser } = require('../services/DateTimeParser');
-const { IntentClassifier } = require('../services/IntentClassifier');
-const { ResponseGenerator } = require('../services/ResponseGenerator');
-const { OpenAIService } = require('../services/OpenAIService');
+const {
+  RealtimeWebSocketService,
+  ConversationFlowHandler,
+  ConversationStateManager,
+  UserInfoCollector,
+  AppointmentFlowManager,
+  DateTimeParser,
+  IntentClassifier,
+  ResponseGenerator,
+  OpenAIService
+} = require('../services');
 const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
 const { SherpaPromptRAG } = require('../../../shared/services/SherpaPromptRAG');
 const { GoogleCalendarService } = require('../../../shared/services/GoogleCalendarService');

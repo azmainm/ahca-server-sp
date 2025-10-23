@@ -11,7 +11,7 @@ Successfully migrated the voice agent system from a chained STT-TTS architecture
 ### New Files Created:
 
 #### Server Side (ahca-server):
-1. **`features/voice-agent/services/RealtimeWebSocketService.js`** (650+ lines)
+1. **`features/voice-agent/services/realtime/RealtimeWebSocketService.js`** (650+ lines)
    - Main service managing OpenAI Realtime API WebSocket connections
    - Defines 3 function tools for AI (search, appointment, user info)
    - Handles bidirectional audio streaming

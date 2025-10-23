@@ -1,4 +1,4 @@
-const { TwilioBridgeService } = require('../services/TwilioBridgeService');
+const { TwilioBridgeService } = require('../services');
 const { realtimeWSService } = require('./realtime-websocket');
 const { TenantContextManager } = require('../../../shared/services/TenantContextManager');
 

@@ -3,7 +3,7 @@
  * Phase 2: Coordinates all services and manages conversation state transitions
  */
 
-const { EmergencyCallHandler } = require('./EmergencyCallHandler');
+const { EmergencyCallHandler } = require('../integrations/EmergencyCallHandler');
 
 class ConversationFlowHandler {
   constructor(services) {

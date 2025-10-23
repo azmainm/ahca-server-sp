@@ -68,8 +68,15 @@ The system uses **Mason** as the virtual assistant and follows a strict conversa
 
 ## Core System Components
 
+> **Note**: The voice agent services have been organized into logical clusters for better maintainability:
+> - `business/` - Business-specific handlers
+> - `conversation/` - Core conversation handling
+> - `integrations/` - External service integrations  
+> - `realtime/` - Real-time communication services
+> - `utils/` - Utility services
+
 ### 1. Superior Fencing Handler
-**File**: `/features/voice-agent/services/SuperiorFencingHandler.js`
+**File**: `/features/voice-agent/services/business/SuperiorFencingHandler.js`
 
 **Purpose**: Specialized conversation handler that follows Superior Fencing's script
 
@@ -98,7 +105,7 @@ this.states = {
 - Uses simple pattern matching for name/phone extraction
 
 ### 2. Emergency Call Handler
-**File**: `/features/voice-agent/services/EmergencyCallHandler.js`
+**File**: `/features/voice-agent/services/integrations/EmergencyCallHandler.js`
 
 **Purpose**: Detects and routes emergency calls
 
@@ -212,7 +219,7 @@ BUSINESS_SUPERIOR_FENCING_TWILIO_PHONE=+1234567890
 ## Developer Tasks & Integration Points
 
 ### 1. Twilio Integration (HIGH PRIORITY)
-**File to modify**: `/features/voice-agent/services/EmergencyCallHandler.js`
+**File to modify**: `/features/voice-agent/services/integrations/EmergencyCallHandler.js`
 
 **Required Implementation**:
 ```javascript
@@ -299,7 +306,7 @@ return twiml.toString();
 **Solution**: Check Mailchimp API key and email service configuration
 
 **Issue**: Name/phone extraction failing
-**Solution**: Improve regex patterns in `SuperiorFencingHandler.js` methods
+**Solution**: Improve regex patterns in `SuperiorFencingHandler.js` methods (located in `/features/voice-agent/services/business/`)
 
 ---
 
@@ -314,7 +321,7 @@ return twiml.toString();
 ### Code Locations for Future Features
 - **RAG Enable**: Change `ragEnabled: true` in config.json
 - **Calendar Enable**: Change `appointmentBookingEnabled: true` and add calendar config
-- **SMS**: Add SMS service to `SuperiorFencingHandler.js`
+- **SMS**: Add SMS service to `SuperiorFencingHandler.js` (in `/features/voice-agent/services/business/`)
 - **CRM**: Add CRM integration to `sendLeadEmail()` method
 
 ---
@@ -322,8 +329,8 @@ return twiml.toString();
 ## Summary for Developers
 
 **Primary Files to Work With**:
-1. `/features/voice-agent/services/SuperiorFencingHandler.js` - Main conversation logic
-2. `/features/voice-agent/services/EmergencyCallHandler.js` - Emergency routing (needs Twilio implementation)
+1. `/features/voice-agent/services/business/SuperiorFencingHandler.js` - Main conversation logic
+2. `/features/voice-agent/services/integrations/EmergencyCallHandler.js` - Emergency routing (needs Twilio implementation)
 3. `/configs/businesses/superior-fencing/config.json` - Business configuration
 4. `/configs/businesses.json` - Phone number mapping
 

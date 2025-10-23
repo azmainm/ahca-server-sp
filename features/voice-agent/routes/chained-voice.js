@@ -19,15 +19,17 @@ const { BusinessConfigService } = require('../../../shared/services/BusinessConf
 const { tenantContextManager } = require('./twilio-media');
 
 // Import refactored services
-const { ConversationStateManager } = require('../services/ConversationStateManager');
-const { UserInfoCollector } = require('../services/UserInfoCollector');
-const { AppointmentFlowManager } = require('../services/AppointmentFlowManager');
-const { DateTimeParser } = require('../services/DateTimeParser');
-const { IntentClassifier } = require('../services/IntentClassifier');
-const { ResponseGenerator } = require('../services/ResponseGenerator');
-const { ConversationFlowHandler } = require('../services/ConversationFlowHandler');
-const { OpenAIService } = require('../services/OpenAIService');
-const { SuperiorFencingHandler } = require('../services/SuperiorFencingHandler');
+const {
+  ConversationStateManager,
+  UserInfoCollector,
+  ConversationFlowHandler,
+  AppointmentFlowManager,
+  DateTimeParser,
+  IntentClassifier,
+  ResponseGenerator,
+  OpenAIService,
+  SuperiorFencingHandler
+} = require('../services');
 
 const router = express.Router();
 
