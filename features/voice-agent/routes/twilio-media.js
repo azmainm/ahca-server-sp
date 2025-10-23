@@ -14,7 +14,6 @@ function setupTwilioMediaWebSocket(wss) {
     console.log('🔗 [TwilioWS] Incoming Twilio Media WS connection from', req.socket.remoteAddress);
     let callSid = url.searchParams.get('callSid');
     let streamSid = null;
-    let commitTimer = null;
 
     ws.on('message', async (raw) => {
       let msg;
@@ -29,8 +28,6 @@ function setupTwilioMediaWebSocket(wss) {
           callSid = callSid || msg.start?.callSid || `call-${Date.now()}`;
           console.log('🎬 [TwilioWS] start event', { callSid, streamSid });
           await bridge.start(callSid, ws, streamSid);
-          // periodic commit to lower latency
-          commitTimer = setInterval(() => bridge.commit(callSid), 600);
           break;
         case 'media':
           // media payload size can be logged if needed
@@ -38,7 +35,6 @@ function setupTwilioMediaWebSocket(wss) {
           break;
         case 'stop':
           console.log('⏹️ [TwilioWS] stop event');
-          clearInterval(commitTimer);
           await bridge.stop(callSid);
           break;
         default:
@@ -48,7 +44,6 @@ function setupTwilioMediaWebSocket(wss) {
 
     ws.on('close', async () => {
       console.log('🔌 [TwilioWS] WS closed');
-      clearInterval(commitTimer);
       await bridge.stop(callSid);
     });
   });

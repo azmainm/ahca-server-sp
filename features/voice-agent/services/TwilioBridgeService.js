@@ -1,8 +1,10 @@
 const WebSocket = require('ws');
 
 /**
- * TwilioBridgeService
- * Bridges Twilio Media Streams (PCMU 8k) with OpenAI Realtime session (PCM16 24k)
+ * TwilioBridgeService (Simplified)
+ * Purpose: lossless format bridge only.
+ * - Inbound: Twilio μ-law 8k → decode → upsample x3 (zero-order) → PCM16 24k → OpenAI
+ * - Outbound: OpenAI PCM16 24k → downsample ÷3 (decimate) → μ-law 8k → Twilio
  */
 class TwilioBridgeService {
   constructor(realtimeWSService) {
@@ -10,35 +12,31 @@ class TwilioBridgeService {
     this.callSidToSession = new Map();
   }
 
-  /**
-   * Create a Realtime session with a stub client that forwards assistant audio back to Twilio
-   */
   async start(callSid, twilioWs, streamSid) {
     const sessionId = `twilio-${callSid}`;
 
-    // Stub client implements minimal WebSocket-like interface that the service expects
     const stubClient = {
       readyState: WebSocket.OPEN,
       send: (jsonStr) => {
         try {
           const msg = JSON.parse(jsonStr);
           this.onAgentMessage(callSid, streamSid, twilioWs, msg);
-        } catch (_) {
-          // Ignore non-JSON
-        }
+        } catch (_) {}
       },
       on: () => {},
       close: () => {}
     };
 
     await this.realtimeWSService.createSession(stubClient, sessionId);
-    this.callSidToSession.set(callSid, { sessionId, streamSid, twilioWs });
+    this.callSidToSession.set(callSid, {
+      sessionId,
+      streamSid,
+      twilioWs,
+      outMuLawRemainder: Buffer.alloc(0)
+    });
     return sessionId;
   }
 
-  /**
-   * Stop/cleanup
-   */
   async stop(callSid) {
     const entry = this.callSidToSession.get(callSid);
     if (entry) {
@@ -47,135 +45,177 @@ class TwilioBridgeService {
     }
   }
 
-  /**
-   * Handle incoming Twilio media payload
-   * Twilio sends base64 μ-law at 8kHz; we decode, upsample to 24k PCM16, and forward
-   */
-  handleTwilioMedia(callSid, base64Ulaw) {
+  // =========================
+  // Inbound: Twilio -> OpenAI
+  // =========================
+  handleTwilioMedia(callSid, payloadBase64) {
     const entry = this.callSidToSession.get(callSid);
-    if (!entry) return;
-
-    const pcm8 = this.decodeUlawToPCM16(Buffer.from(base64Ulaw, 'base64'));
-    const pcm24 = this.resampleLinearPCM16(pcm8, 8000, 24000);
-
-    const audioBase64 = pcm24.toString('base64');
-    const { sessionId } = entry;
-    const sessionData = this.realtimeWSService.sessions.get(sessionId);
-    if (sessionData && sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {
-      sessionData.openaiWs.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: audioBase64 }));
-      // Optional: commit periodically could be managed by caller
-    }
-  }
-
-  /**
-   * Flush/commit audio buffer
-   */
-  commit(callSid) {
-    const entry = this.callSidToSession.get(callSid);
-    if (!entry) return;
-    const sessionData = this.realtimeWSService.sessions.get(entry.sessionId);
-    if (sessionData && sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {
-      sessionData.openaiWs.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
-    }
-  }
-
-  /**
-   * Convert agent audio back to Twilio
-   */
-  onAgentMessage(callSid, streamSid, twilioWs, msg) {
-    if (!msg || msg.type !== 'audio' || !msg.delta) return;
-    // msg.delta is base64 PCM16 24k
-    const pcm24 = Buffer.from(msg.delta, 'base64');
-    const pcm8 = this.resampleLinearPCM16(pcm24, 24000, 8000);
-    const ulaw = this.encodePCM16ToUlaw(pcm8);
-    const payload = ulaw.toString('base64');
+    if (!entry || !payloadBase64) return;
 
     try {
-      const out = {
-        event: 'media',
-        streamSid,
-        media: { payload }
-      };
-      if (twilioWs.readyState === WebSocket.OPEN) {
-        twilioWs.send(JSON.stringify(out));
+      // 1) base64 μ-law bytes -> Buffer
+      const muLawBuf = Buffer.from(payloadBase64, 'base64');
+
+      // 2) μ-law decode -> Int16Array (PCM16 8k)
+      const pcm8k = this.decodeMuLawToPCM16(muLawBuf);
+
+      // 3) upsample 8k -> 24k (x3)
+      const pcm24k = this.upsample8kTo24k(pcm8k);
+
+      // 4) Int16 -> base64
+      const pcm24kBase64 = this.int16ToBase64(pcm24k);
+
+      // 5) Send to OpenAI Realtime as input_audio_buffer.append via service
+      const sessionData = this.realtimeWSService.sessions.get(entry.sessionId);
+      if (sessionData) {
+        this.realtimeWSService.handleClientMessage(sessionData, {
+          type: 'audio',
+          data: pcm24kBase64
+        });
+        entry.bufferedSamples24k += pcm24k.length;
       }
     } catch (e) {
-      // swallow
+      // Swallow to keep real-time path resilient
+      // eslint-disable-next-line no-console
+      console.warn('⚠️ [TwilioBridge] Inbound media handling error:', e.message);
     }
   }
 
-  /**
-   * μ-law encode: PCM16 (LE) -> μ-law bytes
-   */
-  encodePCM16ToUlaw(pcm16Buffer) {
-    const samples = new Int16Array(pcm16Buffer.buffer, pcm16Buffer.byteOffset, pcm16Buffer.byteLength / 2);
-    const out = Buffer.alloc(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      out[i] = this.linearToMuLawSample(samples[i]);
+  // =========================
+  // Outbound: OpenAI -> Twilio
+  // =========================
+  onAgentMessage(callSid, streamSid, twilioWs, msg) {
+    if (!msg) return;
+    if (msg.type === 'audio' && msg.delta) {
+      const entry = this.callSidToSession.get(callSid);
+      if (!entry) return;
+
+      try {
+        // 1) base64 PCM16 24k -> Int16Array
+        const pcm24k = this.base64ToInt16(msg.delta);
+
+        // 2) downsample 24k -> 8k
+        const pcm8k = this.downsample24kTo8k(pcm24k);
+
+        // 3) encode PCM16 -> μ-law bytes
+        const muLawBuf = this.encodePCM16ToMuLaw(pcm8k);
+
+        // 4) prepend any remainder and chunk into 160-byte frames (20ms @ 8kHz)
+        const combined = Buffer.concat([entry.outMuLawRemainder, muLawBuf]);
+        const FRAME_SIZE = 160; // bytes
+        const totalFrames = Math.floor(combined.length / FRAME_SIZE);
+        const remainderBytes = combined.length % FRAME_SIZE;
+
+        if (totalFrames > 0 && twilioWs && twilioWs.readyState === WebSocket.OPEN) {
+          for (let i = 0; i < totalFrames; i++) {
+            const frame = combined.subarray(i * FRAME_SIZE, (i + 1) * FRAME_SIZE);
+            const payload = frame.toString('base64');
+            const out = {
+              event: 'media',
+              streamSid: streamSid,
+              media: { payload }
+            };
+            twilioWs.send(JSON.stringify(out));
+          }
+        }
+
+        // 5) store remainder
+        entry.outMuLawRemainder = remainderBytes > 0 ? combined.subarray(combined.length - remainderBytes) : Buffer.alloc(0);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('⚠️ [TwilioBridge] Outbound audio handling error:', e.message);
+      }
+    }
+  }
+
+  // =========================
+  // Helpers: encoding/decoding/resampling
+  // =========================
+  decodeMuLawToPCM16(muLawBuf) {
+    const out = new Int16Array(muLawBuf.length);
+    for (let i = 0; i < muLawBuf.length; i++) {
+      out[i] = this.muLawDecodeSample(muLawBuf[i]);
     }
     return out;
   }
 
-  /**
-   * μ-law decode: μ-law bytes -> PCM16 (LE)
-   */
-  decodeUlawToPCM16(ulawBuffer) {
-    const out = Buffer.alloc(ulawBuffer.length * 2);
-    const view = new DataView(out.buffer, out.byteOffset, out.byteLength);
-    for (let i = 0; i < ulawBuffer.length; i++) {
-      const s = this.muLawToLinearSample(ulawBuffer[i]);
-      view.setInt16(i * 2, s, true);
+  encodePCM16ToMuLaw(pcm) {
+    const out = Buffer.alloc(pcm.length);
+    for (let i = 0; i < pcm.length; i++) {
+      out[i] = this.muLawEncodeSample(pcm[i]);
     }
     return out;
   }
 
-  // Based on ITU-T G.711 μ-law
-  linearToMuLawSample(sample) {
-    const MULAW_MAX = 0x1FFF;
-    const MULAW_BIAS = 33;
-    let sign = (sample >> 8) & 0x80;
-    if (sign !== 0) sample = -sample;
-    if (sample > MULAW_MAX) sample = MULAW_MAX;
-    sample = sample + MULAW_BIAS;
+  muLawDecodeSample(uVal) {
+    // Correct G.711 µ-law decode (8-bit to 16-bit)
+    let u = (~uVal) & 0xff;
+    const sign = (u & 0x80) ? -1 : 1;
+    const exponent = (u >> 4) & 0x07;
+    const mantissa = u & 0x0f;
+    // Recreate magnitude, then remove bias (132)
+    let magnitude = ((mantissa | 0x10) << (exponent + 3)) - 132;
+    let sample = sign * magnitude;
+    if (sample > 32767) sample = 32767;
+    if (sample < -32768) sample = -32768;
+    return sample;
+  }
+
+  muLawEncodeSample(sample) {
+    // Clamp
+    let s = sample;
+    if (s > 32767) s = 32767;
+    if (s < -32768) s = -32768;
+
+    const BIAS = 0x84; // 132
+    let sign = (s < 0) ? 0x80 : 0x00;
+    if (s < 0) s = -s;
+    s += BIAS;
+    if (s > 0x7fff) s = 0x7fff;
+
     let exponent = 7;
-    for (let expMask = 0x4000; (sample & expMask) === 0 && exponent > 0; expMask >>= 1) {
-      exponent--;
-    }
-    const mantissa = (sample >> (exponent + 3)) & 0x0F;
-    let ulaw = ~(sign | (exponent << 4) | mantissa) & 0xFF;
-    return ulaw;
+    for (let expMask = 0x4000; (s & expMask) === 0 && exponent > 0; exponent--, expMask >>= 1) {}
+    let mantissa = (s >> ((exponent === 0) ? 4 : (exponent + 3))) & 0x0f;
+    let uVal = ~(sign | (exponent << 4) | mantissa) & 0xff;
+    return uVal;
   }
 
-  muLawToLinearSample(ulawByte) {
-    ulawByte = ~ulawByte & 0xFF;
-    const sign = ulawByte & 0x80;
-    const exponent = (ulawByte >> 4) & 0x07;
-    const mantissa = ulawByte & 0x0F;
-    const MULAW_BIAS = 33;
-    let sample = ((mantissa << 3) + MULAW_BIAS) << exponent;
-    sample -= MULAW_BIAS;
-    return sign ? -sample : sample;
+  upsample8kTo24k(pcm8k) {
+    const out = new Int16Array(pcm8k.length * 3);
+    for (let i = 0, j = 0; i < pcm8k.length; i++) {
+      const v = pcm8k[i];
+      out[j++] = v;
+      out[j++] = v;
+      out[j++] = v;
+    }
+    return out;
   }
 
-  /**
-   * Very simple linear resampler (nearest-neighbor). Low latency, acceptable quality for telephony.
-   */
-  resampleLinearPCM16(srcBuf, srcRate, dstRate) {
-    if (srcRate === dstRate) return Buffer.from(srcBuf);
-    const srcSamples = new Int16Array(srcBuf.buffer, srcBuf.byteOffset, srcBuf.byteLength / 2);
-    const ratio = dstRate / srcRate;
-    const dstLength = Math.floor(srcSamples.length * ratio);
-    const dstBuf = Buffer.alloc(dstLength * 2);
-    const dstView = new DataView(dstBuf.buffer, dstBuf.byteOffset, dstBuf.byteLength);
-    for (let i = 0; i < dstLength; i++) {
-      const srcIndex = Math.floor(i / ratio);
-      const s = srcSamples[Math.min(srcSamples.length - 1, srcIndex)] || 0;
-      dstView.setInt16(i * 2, s, true);
+  downsample24kTo8k(pcm24k) {
+    const len = Math.floor(pcm24k.length / 3);
+    const out = new Int16Array(len);
+    for (let i = 0, j = 0; j < len; j++) {
+      // Average groups of 3 to reduce aliasing a bit
+      const a = pcm24k[i++];
+      const b = pcm24k[i++];
+      const c = pcm24k[i++];
+      let avg = Math.round((a + b + c) / 3);
+      if (avg > 32767) avg = 32767;
+      if (avg < -32768) avg = -32768;
+      out[j] = avg;
     }
-    return dstBuf;
+    return out;
+  }
+
+  int16ToBase64(int16) {
+    const buf = Buffer.from(int16.buffer, int16.byteOffset, int16.byteLength);
+    return buf.toString('base64');
+  }
+
+  base64ToInt16(b64) {
+    const buf = Buffer.from(b64, 'base64');
+    return new Int16Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 2));
   }
 }
 
 module.exports = { TwilioBridgeService };
-
-
