@@ -1147,11 +1147,15 @@ class RealtimeWebSocketService extends EventEmitter {
       const session = this.stateManager.getSession(sessionId);
       
       // Send conversation summary email
-      if (session && session.userInfo && session.userInfo.collected) {
+      // Only send if user info was collected or if it's Superior Fencing (fixed email)
+      const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
+      if (session && (session.userInfo?.collected || businessId === 'superior-fencing')) {
         await this.conversationFlowHandler.sendConversationSummary(sessionId, session)
           .catch(error => {
             console.error('❌ [Email] Failed to send summary:', error);
           });
+      } else {
+        console.log('📧 [Email] Skipping email - no user info collected for session:', sessionId);
       }
       
       // Close OpenAI connection
@@ -1164,6 +1168,12 @@ class RealtimeWebSocketService extends EventEmitter {
       
       // Cleanup conversation state
       this.stateManager.deleteSession(sessionId);
+      
+      // Clean up tenant context (moved here to ensure email sending works)
+      if (this.tenantContextManager) {
+        this.tenantContextManager.removeTenantContext(sessionId);
+        console.log(`🗑️ [RealtimeWS] Cleaned up tenant context for session: ${sessionId}`);
+      }
       
       console.log('✅ [RealtimeWS] Session closed:', sessionId);
     }

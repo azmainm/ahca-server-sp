@@ -150,7 +150,7 @@ class EmailService {
    * Check if email service is ready
    */
   isReady() {
-    return this.resendInitialized || (this.initialized && this.client) || this.mailchimpMarketingInitialized;
+    return this.mailchimpMarketingInitialized;
   }
 
   /**
@@ -700,9 +700,10 @@ Guidelines:
    * @param {Object} userInfo - User information (name, email)
    * @param {Array} conversationHistory - Conversation messages
    * @param {Object} appointmentDetails - Appointment information (optional)
+   * @param {string} businessName - Business name for email template (optional)
    * @returns {Promise<Object>} Result of email sending
    */
-  async sendConversationSummary(userInfo, conversationHistory, appointmentDetails = null) {
+  async sendConversationSummary(userInfo, conversationHistory, appointmentDetails = null, businessName = null) {
     if (!this.isReady()) {
       console.error('❌ [EmailService] Email service not initialized');
       return { success: false, error: 'Email service not available' };
@@ -725,13 +726,15 @@ Guidelines:
       // Create email content
       const userName = userInfo.name || 'Valued Customer';
       const summaryBullets = summaryData.keyPoints.map(point => `<li>${point}</li>`).join('\n');
+      const companyName = businessName || 'SherpaPrompt';
+      const companyEmoji = businessName === 'Superior Fence & Construction' ? '🏗️' : '🤖';
 
       const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Your SherpaPrompt Conversation Summary</title>
+    <title>Your ${companyName} Conversation Summary</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background-color: #2c5530; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
@@ -746,14 +749,14 @@ Guidelines:
 </head>
 <body>
     <div class="header">
-        <div class="logo">🤖 SherpaPrompt</div>
+        <div class="logo">${companyEmoji} ${companyName}</div>
         <p>Your Conversation Summary</p>
     </div>
     
     <div class="content">
         <h2>Hello ${userName}!</h2>
         
-        <p>Thank you for contacting SherpaPrompt. Here's a summary of our conversation:</p>
+        <p>Thank you for contacting ${companyName}. Here's a summary of our conversation:</p>
         
         <div class="summary-section">
             <h3>📋 Conversation Overview</h3>
@@ -782,19 +785,11 @@ Guidelines:
         </div>
         ` : ''}
         
-        <p>If you have any additional questions or need further assistance, please don't hesitate to contact us:</p>
         
-        <ul>
-            <li><strong>Website:</strong> sherpaprompt.com</li>
-            <li><strong>Email:</strong> info@sherpaprompt.com</li>
-            <li><strong>Hours:</strong> Monday - Friday, 12:00 PM - 4:00 PM</li>
-        </ul>
-        
-        <p>We appreciate your interest in our automation services and look forward to helping you transform your workflows!</p>
     </div>
     
     <div class="footer">
-        <p>This email was sent from SherpaPrompt's AI Assistant.<br>
+        <p>This email was sent from ${companyName}'s AI Assistant.<br>
         If you have any concerns about this email, please contact us directly.</p>
     </div>
 </body>
@@ -804,7 +799,7 @@ Guidelines:
       const textContent = `
 Hello ${userName}!
 
-Thank you for contacting SherpaPrompt. Here's a summary of our conversation:
+Thank you for contacting ${companyName}. Here's a summary of our conversation:
 
 CONVERSATION OVERVIEW:
 ${summaryData.summary}
@@ -837,45 +832,25 @@ NEXT STEPS:
 ${summaryData.nextSteps}
 ` : ''}
 
-If you have any additional questions, please contact us:
-• Website: sherpaprompt.com
-• Email: info@sherpaprompt.com
-• Hours: Monday - Friday, 12:00 PM - 4:00 PM
+
 
 We appreciate your interest in our automation services!
 
 Best regards,
-SherpaPrompt
+${companyName}
       `.trim();
 
-      // Check if business is configured for Mailchimp Marketing API (like Superior Fencing)
-      if (this.emailConfig && this.emailConfig.provider === 'mailchimp' && this.mailchimpMarketingInitialized) {
-        console.log('📧 [EmailService] Using Mailchimp Marketing API as configured provider');
-        return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
-      }
-
-      // Try Resend first (primary) for businesses not specifically configured for Mailchimp
-      if (this.resendInitialized) {
-        console.log('📧 [EmailService] Using Resend as primary email provider');
-        const resendResult = await this.sendViaResend(userInfo, htmlContent, textContent);
-        if (resendResult.success) {
-          return resendResult;
-        } else {
-          console.warn('⚠️ [EmailService] Resend failed, trying Mailchimp fallback:', resendResult.error);
-        }
-      }
-
-      // Fallback to Mailchimp Transactional if Resend fails or is not available
-      if (this.initialized && this.client) {
-        console.log('📧 [EmailService] Using Mailchimp Transactional as fallback email provider');
-        return await this.sendViaMailchimp(userInfo, htmlContent, textContent);
-      }
-
-      // Final fallback to Mailchimp Marketing API if nothing else is available
+      // Use Mailchimp Marketing API as the only email provider
       if (this.mailchimpMarketingInitialized) {
-        console.log('📧 [EmailService] Using Mailchimp Marketing API as final fallback email provider');
+        console.log('📧 [EmailService] Using Mailchimp Marketing API');
         return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
       }
+
+      // Note: Resend is disabled - keeping code for future use but not using it
+      // if (this.resendInitialized) {
+      //   console.log('📧 [EmailService] Using Resend (disabled)');
+      //   return await this.sendViaResend(userInfo, htmlContent, textContent);
+      // }
 
       // No email providers available
       console.error('❌ [EmailService] No email providers available');
@@ -958,10 +933,8 @@ SherpaPrompt
       }
     }
 
-    const hasWorkingProvider = results.resend.working || results.mailchimp.working || results.mailchimpMarketing.working;
-    const primaryProvider = results.resend.working ? 'Resend' : 
-                           (results.mailchimp.working ? 'Mailchimp Transactional' : 
-                           (results.mailchimpMarketing.working ? 'Mailchimp Marketing' : 'None'));
+    const hasWorkingProvider = results.mailchimpMarketing.working;
+    const primaryProvider = results.mailchimpMarketing.working ? 'Mailchimp Marketing' : 'None';
 
     return { 
       success: hasWorkingProvider, 

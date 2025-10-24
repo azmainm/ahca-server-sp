@@ -127,7 +127,9 @@ const conversationFlowHandler = new ConversationFlowHandler({
   companyInfoService,
   sherpaPromptRAG,
   embeddingService,
-  emailService
+  emailService,
+  businessConfigService,
+  tenantContextManager
 });
 
 conversationFlowHandler.setHelpers(getCalendarService, extractSearchTerms);
@@ -204,9 +206,7 @@ function setupRealtimeWebSocket(wss) {
     // Handle WebSocket close
     ws.on('close', () => {
       console.log('🔌 [RealtimeWS] Client disconnected');
-      // Clean up tenant context
-      tenantContextManager.removeTenantContext(sessionId);
-      console.log(`🗑️ [RealtimeWS] Cleaned up tenant context for session: ${sessionId}`);
+      // Note: Tenant context cleanup moved to closeSession method to ensure email sending works
     });
   });
 

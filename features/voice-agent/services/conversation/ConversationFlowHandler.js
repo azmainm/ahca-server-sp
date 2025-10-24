@@ -18,6 +18,8 @@ class ConversationFlowHandler {
     this.fencingRAG = services.fencingRAG; // Backward compatibility
     this.embeddingService = services.embeddingService;
     this.emailService = services.emailService;
+    this.businessConfigService = services.businessConfigService;
+    this.tenantContextManager = services.tenantContextManager;
     
     // Initialize emergency handler
     this.emergencyHandler = new EmergencyCallHandler();
@@ -659,7 +661,48 @@ Does this look good, or would you like to change anything else?`;
         return { success: false, reason: 'Email already sent' };
       }
 
-      // Check if user has provided email
+      // Get business ID from tenant context
+      const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
+      console.log('📧 [Email] Business ID for session:', businessId);
+
+      // Handle Superior Fencing with fixed email
+      if (businessId === 'superior-fencing') {
+        console.log('📧 [Email] Using fixed email for Superior Fencing');
+        // Create user info with fixed email for Superior Fencing
+        const fixedUserInfo = {
+          name: (session.userInfo && session.userInfo.name) || 'Superior Fencing Customer',
+          email: 'azmainmorshed03@gmail.com',
+          collected: true
+        };
+        
+        // Check if there's meaningful conversation to summarize
+        if (!session.conversationHistory || session.conversationHistory.length < 2) {
+          console.log('📧 [Email] Skipping email - insufficient conversation history for session:', sessionId);
+          return { success: false, reason: 'Insufficient conversation history' };
+        }
+
+        console.log('📧 [Email] Sending Superior Fencing summary to fixed email:', fixedUserInfo.email);
+        
+        // Send the email with fixed recipient
+        const emailResult = await this.emailService.sendConversationSummary(
+          fixedUserInfo,
+          session.conversationHistory,
+          session.lastAppointment,
+          'Superior Fence & Construction'
+        );
+
+        if (emailResult.success) {
+          // Mark email as sent to prevent duplicates
+          session.emailSent = true;
+          console.log('✅ [Email] Superior Fencing summary sent successfully:', emailResult.messageId);
+          return { success: true, messageId: emailResult.messageId };
+        } else {
+          console.error('❌ [Email] Failed to send Superior Fencing summary:', emailResult.error);
+          return { success: false, error: emailResult.error };
+        }
+      }
+
+      // For other businesses (like SherpaPrompt), check if user has provided email
       if (!session.userInfo || !session.userInfo.email || !session.userInfo.collected) {
         console.log('📧 [Email] Skipping email - no user email collected for session:', sessionId);
         return { success: false, reason: 'No user email available' };
@@ -689,7 +732,8 @@ Does this look good, or would you like to change anything else?`;
       const emailResult = await this.emailService.sendConversationSummary(
         currentUserInfo,
         session.conversationHistory,
-        session.lastAppointment
+        session.lastAppointment,
+        'SherpaPrompt'
       );
 
       if (emailResult.success) {
