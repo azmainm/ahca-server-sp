@@ -21,21 +21,50 @@ The SherpaPrompt Voice Agent System is a comprehensive AI-powered voice automati
   - *"Got it — scheduling now"* - Appointment requests
   - *"One moment"* - Quick processing acknowledgment
 
-## Multi-Tenant Architecture
+## 🏢 Multi-Tenant Architecture
 
-This system now supports **multiple businesses** using the same infrastructure with complete data isolation. Each business has:
+The system supports **multiple businesses** sharing the same infrastructure with complete isolation:
 
-- **Dedicated phone number** for Twilio calls
-- **Isolated MongoDB collection** for knowledge base storage  
-- **Separate vector search index** for RAG queries
-- **Business-specific configurations** for calendar, email, and company info
-- **Custom AI agent personality** and prompts
+### **Current Businesses**
+- **SherpaPrompt**: Full-featured automation platform (RAG, appointments, demos)
+- **Superior Fence & Construction**: Lead collection and inquiry management
 
-### Business Identification Flow
+### **Business Isolation Features**
+- **Dedicated Configurations**: Each business has isolated config files and AI prompts
+- **Dynamic Agent Selection**: Client-side toggle or phone-based routing
+- **Business-Specific AI Behavior**: Custom personalities, greetings, and conversation flows
+- **Feature Flags**: Enable/disable RAG, appointments, email summaries per business
+- **Isolated Email Systems**: Business-appropriate templates and recipient addresses
+- **Phone Number Routing**: Automatic business identification via Twilio numbers
 
+### **Business Identification Flow**
 ```
-Incoming Call → Twilio Phone Number → Business ID Lookup → Load Business Config → Route to Business-Specific Services
+Client Toggle → WebSocket URL → TenantContextManager → BusinessConfigService → AI Agent → Business Flow
 ```
+
+1. **Client Selection**: User toggles between businesses in the UI
+2. **WebSocket Connection**: `businessId` passed in URL (`?businessId=superior-fencing`)
+3. **Server Processing**: Business context stored and configurations loaded
+4. **AI Activation**: Business-specific prompts, tools, and behavior activated
+5. **Flow Execution**: Conversation follows business-specific rules and email delivery
+
+### **Configuration Structure**
+```
+/configs/
+├── businesses.json          # Phone → Business ID mapping
+├── businesses/
+│   ├── sherpaprompt/        # SherpaPrompt configuration
+│   │   ├── config.json      # Technical settings
+│   │   └── prompt_rules.json # AI behavior
+│   └── superior-fencing/    # Superior Fencing configuration
+│       ├── config.json      # Technical settings  
+│       └── prompt_rules.json # AI behavior
+```
+
+For more details, see:
+- [Multi-Tenant Architecture Guide](docs/MULTI_TENANT_ARCHITECTURE.md)
+- [Business Onboarding Guide](docs/BUSINESS_ONBOARDING_GUIDE.md)  
+- [Business Switching Guide](docs/BUSINESS_SWITCHING_GUIDE.md)
 
 ### Data Isolation
 

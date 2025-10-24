@@ -1,245 +1,209 @@
-# Business Identification and Switching Guide
+# Business Switching Guide
 
-## Overview (In Layman Terms)
+## 🔄 How Business Identification and Switching Works
 
-The AHCA system now supports **client-side business selection** in addition to the existing **phone-based routing**. Think of it like having a **universal remote control** that can switch between different TV channels - except here, you're switching between different AI assistants (Scout for SherpaPrompt and Mason for Superior Fencing).
+This guide explains how the multi-tenant system identifies which business to use and activates the correct AI agent and conversation flow.
 
-## How It Works: Step-by-Step
+## 🎯 Client-Side Business Selection
 
-### 1. **Client-Side Business Selection**
+### Toggle Interface
+The client provides a toggle interface allowing users to switch between businesses:
 
-When you open the web interface at `http://localhost:3000`, you'll see:
+```javascript
+// In VoiceAgent.jsx
+const [selectedBusiness, setSelectedBusiness] = useState('sherpaprompt');
 
-```
-┌─────────────────────────────────────┐
-│  [SherpaPrompt] [Superior Fencing]  │  ← Toggle Buttons
-│                                     │
-│        SherpaPrompt                 │  ← Current Business Name
-│    Conversations into Outcomes      │  ← Business Tagline
-│         AI Agent: Scout             │  ← Agent Name
-│                                     │
-│      [🎤 Start Conversation]        │  ← Main Button
-└─────────────────────────────────────┘
-```
-
-**What happens when you click a toggle:**
-- The interface immediately updates to show the selected business information
-- The agent name changes (Scout ↔ Mason)
-- The services list updates to show business-specific offerings
-- The color scheme changes (Purple for SherpaPrompt, Green for Superior Fencing)
-
-### 2. **WebSocket Connection with Business Context**
-
-When you click "Start Conversation":
-
-```
-Client Side:                    Server Side:
-┌─────────────────┐            ┌──────────────────────┐
-│ User clicks     │            │                      │
-│ "Start"         │   ────────▶│ 1. Extract businessId│
-│                 │            │    from URL params   │
-│ selectedBusiness│            │                      │
-│ = "sherpaprompt"│            │ 2. Load business     │
-│                 │            │    configuration     │
-└─────────────────┘            │                      │
-                               │ 3. Store session     │
-                               │    context           │
-                               │                      │
-                               │ 4. Load business-    │
-                               │    specific prompts  │
-                               └──────────────────────┘
+const businessConfigs = {
+  'sherpaprompt': {
+    name: 'SherpaPrompt',
+    agent: 'Scout',
+    // ... other config
+  },
+  'superior-fencing': {
+    name: 'Superior Fence & Construction', 
+    agent: 'Mason',
+    // ... other config
+  }
+};
 ```
 
-**Technical Details:**
-- Client sends: `ws://localhost:3001/realtime-ws?businessId=sherpaprompt`
-- Server extracts `businessId` from URL parameters
-- Server looks up business configuration from `configs/businesses/{businessId}/`
+### WebSocket Connection
+When a business is selected, the client passes the `businessId` in the WebSocket URL:
 
-### 3. **Business Configuration Loading**
-
-The server follows this identification process:
-
-```
-1. WebSocket URL: ws://localhost:3001/realtime-ws?businessId=superior-fencing
-                                                    ↓
-2. Extract businessId: "superior-fencing"
-                                                    ↓
-3. Load config from: configs/businesses/superior-fencing/config.json
-                                                    ↓
-4. Load prompts from: configs/businesses/superior-fencing/prompt_rules.json
-                                                    ↓
-5. Create session with business-specific AI agent (Mason)
+```javascript
+const wsUrlWithBusiness = `${WS_URL}?businessId=${selectedBusiness}`;
+const ws = new WebSocket(wsUrlWithBusiness);
 ```
 
-### 4. **Agent Activation and Flow Selection**
+## 🔗 Server-Side Business Identification
 
-Once the business is identified, the system activates the appropriate agent:
+### 1. URL Parameter Extraction
+The server extracts the business ID from the WebSocket connection:
 
-#### **For SherpaPrompt (Scout):**
-```
-Agent: Scout
-Capabilities:
-├── ✅ Knowledge Base Search (RAG)
-├── ✅ Appointment Booking
-├── ✅ Product Demos
-├── ✅ Calendar Integration
-└── ✅ Complex Conversations
-
-Greeting: "Hi there, I'm Scout, SherpaPrompt's virtual assistant..."
+```javascript
+// In realtime-websocket.js
+const url = new URL(req.url, `http://${req.headers.host}`);
+const businessId = url.searchParams.get('businessId') || 'sherpaprompt';
 ```
 
-#### **For Superior Fencing (Mason):**
-```
-Agent: Mason
-Capabilities:
-├── ❌ Knowledge Base Search (Disabled)
-├── ❌ Appointment Booking (Disabled)
-├── ✅ Information Collection
-├── ✅ Emergency Routing
-└── ✅ Basic Lead Capture
+### 2. Tenant Context Storage
+The business ID is stored in the `TenantContextManager` for the session:
 
-Greeting: "Hi there, I'm Mason, Superior Fence & Construction's virtual assistant..."
+```javascript
+tenantContextManager.setTenantContext(sessionId, businessId);
 ```
 
-## Technical Implementation Details
+### 3. Configuration Loading
+`BusinessConfigService` loads the business-specific configuration:
 
-### **Client-Side (ahca-client)**
-
-1. **Business Toggle Component:**
-   ```jsx
-   const [selectedBusiness, setSelectedBusiness] = useState('sherpaprompt');
-   
-   // Toggle buttons update the selected business
-   <button onClick={() => handleBusinessToggle('superior-fencing')}>
-     Superior Fencing
-   </button>
-   ```
-
-2. **WebSocket Connection:**
-   ```javascript
-   const wsUrlWithBusiness = `${WS_URL}?businessId=${selectedBusiness}`;
-   const ws = new WebSocket(wsUrlWithBusiness);
-   ```
-
-3. **Dynamic UI Updates:**
-   - Business name, tagline, and agent name change instantly
-   - Service list updates to show business-specific offerings
-   - Color scheme adapts to business branding
-
-### **Server-Side (ahca-server)**
-
-1. **Business ID Extraction:**
-   ```javascript
-   const url = new URL(req.url, `http://${req.headers.host}`);
-   const businessId = url.searchParams.get('businessId') || 'sherpaprompt';
-   ```
-
-2. **Configuration Loading:**
-   ```javascript
-   const businessConfig = businessConfigService.getBusinessConfig(businessId);
-   const promptPath = `configs/businesses/${businessId}/prompt_rules.json`;
-   ```
-
-3. **Session Context Storage:**
-   ```javascript
-   tenantContextManager.setTenantContext(sessionId, businessId);
-   ```
-
-4. **Business-Specific Prompt Loading:**
-   ```javascript
-   getSystemPrompt(sessionId) {
-     const businessId = this.tenantContextManager.getBusinessId(sessionId);
-     // Load business-specific prompt_rules.json
-     return businessPrompts.realtimeSystem.full;
-   }
-   ```
-
-## What Happens During a Conversation
-
-### **SherpaPrompt Flow:**
-1. **User:** "What does SherpaPrompt do?"
-2. **System:** Loads SherpaPrompt's knowledge base
-3. **Scout:** Searches RAG system for product information
-4. **Response:** Detailed explanation of automation services
-5. **Follow-up:** "Would you like to schedule a demo?"
-
-### **Superior Fencing Flow:**
-1. **User:** "I need fence repair"
-2. **System:** Loads Superior Fencing's simple collection flow
-3. **Mason:** "Could I start with your name?"
-4. **Collection:** Name → Phone → Reason for call
-5. **Result:** Information sent to team via email
-
-## Key Differences in Behavior
-
-| Feature | SherpaPrompt (Scout) | Superior Fencing (Mason) |
-|---------|---------------------|-------------------------|
-| **Knowledge Search** | ✅ Full RAG system | ❌ No knowledge base |
-| **Appointment Booking** | ✅ Google Calendar | ❌ Information only |
-| **Conversation Style** | Consultative, detailed | Efficient, focused |
-| **Emergency Handling** | ❌ Not configured | ✅ Press # for emergency |
-| **Lead Processing** | Demo scheduling | Basic info collection |
-
-## Error Handling
-
-### **Invalid Business ID:**
-```
-Client: ws://localhost:3001/realtime-ws?businessId=invalid-business
-Server: ❌ Business config not found for: invalid-business
-Result: WebSocket closes with error 1008
+```javascript
+const businessConfig = businessConfigService.getBusinessConfig(businessId);
+// Loads from: /configs/businesses/{businessId}/config.json
 ```
 
-### **Missing Configuration:**
+## 🤖 AI Agent Activation
+
+### 1. Dynamic Prompt Loading
+The system loads business-specific AI prompts:
+
+```javascript
+// In RealtimeWebSocketService.js
+getSystemPrompt(sessionId) {
+  const businessId = this.tenantContextManager.getBusinessId(sessionId);
+  const promptPath = `configs/businesses/${businessId}/prompt_rules.json`;
+  // Loads business-specific AI behavior
+}
 ```
-Server: ⚠️ Failed to load business-specific prompt, using default
-Result: Falls back to SherpaPrompt configuration
+
+### 2. Tool Configuration
+Different businesses get different AI tools based on their features:
+
+```javascript
+defineTools(sessionId) {
+  const businessId = this.tenantContextManager.getBusinessId(sessionId);
+  
+  if (businessId === 'superior-fencing') {
+    // Only basic info collection
+    return [updateUserInfoTool];
+  } else {
+    // Full feature set for SherpaPrompt
+    return [updateUserInfoTool, ragSearchTool, appointmentTool];
+  }
+}
 ```
 
-### **Network Issues:**
+## 🎭 Business-Specific Behavior
+
+### Superior Fencing Flow
+1. **Agent**: Mason
+2. **Greeting**: "Hi there, I'm Mason, Superior Fence & Construction's virtual assistant..."
+3. **Capabilities**: Basic info collection (name, phone, reason)
+4. **Tools**: Only `update_user_info`
+5. **Email**: Fixed recipient (`azmainmorshed03@gmail.com`)
+
+### SherpaPrompt Flow  
+1. **Agent**: Scout
+2. **Greeting**: "Hi there, I'm Scout, SherpaPrompt's virtual assistant..."
+3. **Capabilities**: Full feature set (RAG, appointments, demos)
+4. **Tools**: `update_user_info`, `search_knowledge_base`, `schedule_appointment`
+5. **Email**: User-provided email address
+
+## 📞 Alternative: Phone Number Routing
+
+For Twilio calls, business identification works differently:
+
+### 1. Phone Number Mapping
+Incoming calls are mapped using `/configs/businesses.json`:
+
+```json
+{
+  "phoneToBusinessMap": {
+    "+15555551234": "sherpaprompt",
+    "+15035501817": "superior-fencing"
+  }
+}
 ```
-Client: Connection lost during business switch
-Result: Automatic reconnection with last selected business
+
+### 2. Automatic Business Selection
+The system automatically identifies the business based on the called number:
+
+```javascript
+const businessId = phoneToBusinessMap[calledNumber];
+tenantContextManager.setTenantContext(callSid, businessId);
 ```
 
-## Testing the Implementation
+## 🔄 Complete Flow Diagram
 
-### **Manual Testing Steps:**
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
+│   Client Toggle │───▶│  WebSocket URL   │───▶│ Server Extraction   │
+│  (businessId)   │    │ ?businessId=xxx  │    │ Extract businessId  │
+└─────────────────┘    └──────────────────┘    └─────────────────────┘
+                                                          │
+                                                          ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐
+│ Business Flow   │◀───│  AI Agent Setup  │◀───│ TenantContextManager│
+│ Execution       │    │ Load prompts     │    │ Store businessId    │
+└─────────────────┘    │ Configure tools  │    └─────────────────────┘
+                       └──────────────────┘              │
+                                 ▲                       ▼
+                       ┌──────────────────┐    ┌─────────────────────┐
+                       │ RealtimeWS       │    │ BusinessConfig      │
+                       │ Service          │    │ Service             │
+                       └──────────────────┘    │ Load config.json    │
+                                               │ Load prompt_rules   │
+                                               └─────────────────────┘
+```
 
-1. **Open the client:** `http://localhost:3000`
-2. **Test SherpaPrompt:**
-   - Click "SherpaPrompt" toggle (should be selected by default)
-   - Start conversation
-   - Ask: "What are your services?"
-   - Expect: Detailed product information from Scout
+## 🎯 Key Components
 
-3. **Test Superior Fencing:**
-   - Click "Superior Fencing" toggle
-   - Notice UI changes (green theme, Mason agent)
-   - Start conversation
-   - Say: "I need fence repair"
-   - Expect: Mason asks for name, phone, reason
+### TenantContextManager
+- **Purpose**: Maintains session → business mapping
+- **Methods**: `setTenantContext()`, `getBusinessId()`, `removeTenantContext()`
+- **Scope**: Per WebSocket session or Twilio call
 
-4. **Test Business Switching:**
-   - Switch between businesses during conversation
-   - Each new conversation should use the correct agent
-   - UI should update immediately
+### BusinessConfigService  
+- **Purpose**: Loads and validates business configurations
+- **Files**: `config.json` (technical), `prompt_rules.json` (AI behavior)
+- **Validation**: Ensures required fields are present
 
-### **Expected Behaviors:**
+### RealtimeWebSocketService
+- **Purpose**: Configures OpenAI Realtime API per business
+- **Dynamic Loading**: Prompts, tools, and behavior based on business ID
+- **Session Management**: Maintains business context throughout conversation
 
-✅ **Correct Agent Activation:** Scout for SherpaPrompt, Mason for Superior Fencing
-✅ **Business-Specific Prompts:** Different conversation flows and capabilities
-✅ **UI Updates:** Immediate visual feedback when switching businesses
-✅ **Session Isolation:** Each conversation uses the selected business context
-✅ **Graceful Fallbacks:** System handles errors and missing configurations
+## 🔒 Session Isolation
 
-## Summary
+Each session maintains complete isolation:
+- **Configuration**: Business-specific settings loaded per session
+- **AI Behavior**: Different prompts and personalities per business  
+- **Tools**: Feature-specific function availability
+- **Email**: Business-appropriate templates and recipients
+- **Logging**: All logs include business context for debugging
 
-The business identification and switching system works like a **smart dispatcher**:
+## 🚀 Benefits
 
-1. **Client Selection:** User chooses which business they want to interact with
-2. **Context Passing:** Client sends business ID to server via WebSocket URL
-3. **Configuration Loading:** Server loads business-specific settings and prompts
-4. **Agent Activation:** Appropriate AI agent (Scout or Mason) is activated
-5. **Flow Execution:** Conversation follows business-specific rules and capabilities
+1. **Zero Code Changes**: Adding businesses requires only configuration
+2. **Complete Isolation**: No cross-business data leakage
+3. **Dynamic Switching**: Real-time business selection in client
+4. **Scalable**: Supports unlimited businesses
+5. **Maintainable**: Clear separation of business logic
 
-This allows one system to serve multiple businesses with completely different conversation flows, capabilities, and branding - all controlled by a simple toggle switch on the client side.
+## 🔧 Troubleshooting
+
+### Business Not Loading
+- Check `businessId` in WebSocket URL
+- Verify business config files exist
+- Check server logs for validation errors
+
+### Wrong AI Behavior
+- Confirm correct `prompt_rules.json` is loaded
+- Check business ID mapping in logs
+- Verify tenant context is set correctly
+
+### Missing Features
+- Check `features` section in `config.json`
+- Verify tool configuration in `defineTools()`
+- Confirm business-specific capabilities
+
+The system provides complete business isolation while maintaining a unified codebase and infrastructure.
