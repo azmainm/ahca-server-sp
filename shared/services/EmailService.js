@@ -388,7 +388,7 @@ Guidelines:
       const emailData = {
         from: fromEmail,
         to: [userInfo.email],
-        subject: 'Your Conversation Summary',
+        subject: 'New Customer Inquiry',
         html: htmlContent,
         text: textContent,
         reply_to: replyToEmail
@@ -450,7 +450,7 @@ Guidelines:
       const message = {
         html: htmlContent,
         text: textContent,
-        subject: 'Your Conversation Summary',
+        subject: 'New Customer Inquiry',
         from_email: fromEmail,
         from_name: fromName,
         to: [
@@ -537,7 +537,7 @@ Guidelines:
         this.emailConfig.fromName : 
         'SherpaPrompt';
 
-      const subject = customSubject || 'Your Conversation Summary';
+      const subject = customSubject || 'New Customer Inquiry';
 
       console.log('📧 [EmailService] Sending email via Mailchimp Marketing API...');
       
@@ -734,7 +734,7 @@ Guidelines:
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Your ${companyName} Conversation Summary</title>
+    <title>New Customer Inquiry - ${companyName}</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background-color: #2c5530; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
@@ -750,13 +750,13 @@ Guidelines:
 <body>
     <div class="header">
         <div class="logo">${companyEmoji} ${companyName}</div>
-        <p>Your Conversation Summary</p>
+        <p>New Customer Inquiry</p>
     </div>
     
     <div class="content">
-        <h2>Hello ${userName}!</h2>
+        <h2>New Customer Inquiry</h2>
         
-        <p>Thank you for contacting ${companyName}. Here's a summary of our conversation:</p>
+        <p><strong>${userName}</strong> contacted ${companyName} and left an inquiry. Please reach out to them soon. Details below:</p>
         
         <div class="summary-section">
             <h3>📋 Conversation Overview</h3>
@@ -797,9 +797,9 @@ Guidelines:
       `.trim();
 
       const textContent = `
-Hello ${userName}!
+NEW CUSTOMER INQUIRY
 
-Thank you for contacting ${companyName}. Here's a summary of our conversation:
+${userName} contacted ${companyName} and left an inquiry. Please reach out to them soon. Details below:
 
 CONVERSATION OVERVIEW:
 ${summaryData.summary}
