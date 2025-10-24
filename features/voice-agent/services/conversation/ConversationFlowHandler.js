@@ -671,7 +671,7 @@ Does this look good, or would you like to change anything else?`;
         // Create user info with fixed email for Superior Fencing
         const fixedUserInfo = {
           name: (session.userInfo && session.userInfo.name) || 'Superior Fencing Customer',
-          email: 'azmainmorshed03@gmail.com',
+          email: 'azmain@sherpaprompt.com', // change this to Superior Fencing's email
           collected: true
         };
         
