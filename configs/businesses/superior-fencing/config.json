@@ -56,6 +56,12 @@
     }
   },
   
+  "promptConfig": {
+    "agentName": "Mason",
+    "agentPersonality": "professional, helpful, and efficient",
+    "greeting": "Hi there, I'm Mason, Superior Fence & Construction's virtual assistant. If this is an emergency or time-sensitive, please press # now to reach our on-call team. Parts of this call may be recorded so we can better understand your needs and improve our service. Could I start with your name?"
+  },
+  
   "agent": {
     "name": "Mason",
     "role": "Virtual Assistant",

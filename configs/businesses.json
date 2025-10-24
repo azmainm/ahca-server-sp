@@ -1,7 +1,6 @@
 {
   "phoneToBusinessMap": {
     "+15555551234": "sherpaprompt",
-    "+15555555678": "acme-corp",
     "+15035501817": "superior-fencing"
   },
   "sharedNumbers": {

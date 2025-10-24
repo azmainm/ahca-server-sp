@@ -31,8 +31,8 @@
     "moment-timezone": "^0.6.0",
     "multer": "^2.0.2",
     "resend": "^6.1.2",
+    "twilio": "^4.23.0",
     "ws": "^8.18.3",
-    "twilio": "^4.21.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
