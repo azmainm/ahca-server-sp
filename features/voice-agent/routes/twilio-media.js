@@ -31,7 +31,6 @@ function setupTwilioMediaWebSocket(wss) {
     }
     
     let streamSid = null;
-    let commitTimer = null;
 
     ws.on('message', async (raw) => {
       let msg;
@@ -51,8 +50,6 @@ function setupTwilioMediaWebSocket(wss) {
           console.log(`🏢 [TwilioWS] Set tenant context: ${callSid} -> ${businessId}`);
           
           await bridge.start(callSid, ws, streamSid);
-          // periodic commit to lower latency
-          commitTimer = setInterval(() => bridge.commit(callSid), 600);
           break;
         case 'media':
           // media payload size can be logged if needed
@@ -60,7 +57,6 @@ function setupTwilioMediaWebSocket(wss) {
           break;
         case 'stop':
           console.log('⏹️ [TwilioWS] stop event');
-          clearInterval(commitTimer);
           await bridge.stop(callSid);
           
           // Clean up tenant context
@@ -74,7 +70,6 @@ function setupTwilioMediaWebSocket(wss) {
 
     ws.on('close', async () => {
       console.log('🔌 [TwilioWS] WS closed');
-      clearInterval(commitTimer);
       await bridge.stop(callSid);
       
       // Clean up tenant context on close
