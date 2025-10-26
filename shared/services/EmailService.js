@@ -8,24 +8,112 @@ const fetch = require('node-fetch');
 const { Resend } = require('resend');
 
 class EmailService {
-  constructor() {
+  constructor(emailConfig = null) {
     this.client = null;
     this.resend = null;
     this.initialized = false;
     this.resendInitialized = false;
+    this.emailConfig = emailConfig;
+    
+    // Log configuration
+    if (emailConfig) {
+      console.log(`🏢 [EmailService] Configured for business with provider: ${emailConfig.provider}`);
+      console.log(`   📧 From Email: ${emailConfig.fromEmail}`);
+    } else {
+      console.log('⚠️ [EmailService] No email config provided, will use environment variables');
+    }
+    
     this.init();
+  }
+
+  /**
+   * Create a new EmailService instance for a specific business
+   * @param {Object} emailConfig - Email configuration from business config
+   * @returns {EmailService} New instance configured for the business
+   */
+  static createForBusiness(emailConfig) {
+    if (!emailConfig) {
+      throw new Error('Email configuration is required');
+    }
+    
+    const requiredFields = ['provider', 'fromEmail', 'fromName'];
+    for (const field of requiredFields) {
+      if (!emailConfig[field]) {
+        throw new Error(`Missing required email config field: ${field}`);
+      }
+    }
+    
+    if (emailConfig.provider === 'resend' && !emailConfig.apiKey) {
+      throw new Error('Resend provider requires apiKey in email config');
+    }
+    
+    if (emailConfig.provider === 'mailchimp' && !emailConfig.apiKey) {
+      throw new Error('Mailchimp provider requires apiKey in email config');
+    }
+    
+    return new EmailService(emailConfig);
   }
 
   /**
    * Initialize email clients (Resend and Mailchimp)
    */
   init() {
+    if (this.emailConfig) {
+      // Use business-specific configuration
+      this.initWithBusinessConfig();
+    } else {
+      // Fallback to environment variables (backward compatibility)
+      this.initWithEnvironmentVariables();
+    }
+  }
+
+  /**
+   * Initialize with business-specific configuration
+   */
+  initWithBusinessConfig() {
+    const config = this.emailConfig;
+    
+    if (config.provider === 'resend') {
+      try {
+        this.resend = new Resend(config.apiKey);
+        this.resendInitialized = true;
+        console.log(`✅ [EmailService] Resend client initialized for business with API key: ${config.apiKey.substring(0, 8)}...`);
+      } catch (error) {
+        console.error('❌ [EmailService] Failed to initialize Resend client with business config:', error);
+      }
+    } else if (config.provider === 'mailchimp') {
+      // Check if it's a Marketing API key (contains datacenter suffix like -us12)
+      if (config.apiKey && config.apiKey.includes('-us')) {
+        // Initialize for Marketing API
+        this.mailchimpMarketingApiKey = config.apiKey;
+        this.mailchimpServerPrefix = config.apiKey.split('-')[1]; // Extract server prefix
+        this.mailchimpMarketingInitialized = true;
+        console.log(`✅ [EmailService] Mailchimp Marketing API initialized for business with server: ${this.mailchimpServerPrefix}`);
+      } else {
+        // Try Transactional API
+        try {
+          this.client = mailchimp(config.apiKey);
+          this.initialized = true;
+          console.log(`✅ [EmailService] Mailchimp Transactional client initialized for business with API key: ${config.apiKey.substring(0, 8)}...`);
+        } catch (error) {
+          console.error('❌ [EmailService] Failed to initialize Mailchimp Transactional client with business config:', error);
+        }
+      }
+    } else {
+      console.warn(`⚠️ [EmailService] Unsupported email provider: ${config.provider}`);
+    }
+  }
+
+  /**
+   * Initialize with environment variables (backward compatibility)
+   */
+  initWithEnvironmentVariables() {
     // Initialize Resend (primary)
     try {
       if (process.env.RESEND_API_KEY) {
         this.resend = new Resend(process.env.RESEND_API_KEY);
         this.resendInitialized = true;
-        console.log('✅ [EmailService] Resend client initialized successfully');
+        console.log('✅ [EmailService] Resend client initialized successfully (legacy mode)');
       } else {
         console.warn('⚠️ [EmailService] RESEND_API_KEY not found in environment variables');
       }
@@ -36,9 +124,20 @@ class EmailService {
     // Initialize Mailchimp (fallback)
     try {
       if (process.env.MAILCHIMP_API_KEY) {
-        this.client = mailchimp(process.env.MAILCHIMP_API_KEY);
-        this.initialized = true;
-        console.log('✅ [EmailService] Mailchimp client initialized successfully');
+        // Check if it's a Marketing API key (contains datacenter suffix like -us12)
+        if (process.env.MAILCHIMP_API_KEY.includes('-us')) {
+          // Initialize for Marketing API
+          this.mailchimpMarketingApiKey = process.env.MAILCHIMP_API_KEY;
+          this.mailchimpServerPrefix = process.env.MAILCHIMP_SERVER_PREFIX || process.env.MAILCHIMP_API_KEY.split('-')[1];
+          this.mailchimpAudienceId = process.env.MAILCHIMP_AUDIENCE_ID;
+          this.mailchimpMarketingInitialized = true;
+          console.log('✅ [EmailService] Mailchimp Marketing API initialized successfully (legacy mode)');
+        } else {
+          // Try Transactional API
+          this.client = mailchimp(process.env.MAILCHIMP_API_KEY);
+          this.initialized = true;
+          console.log('✅ [EmailService] Mailchimp Transactional client initialized successfully (legacy mode)');
+        }
       } else {
         console.warn('⚠️ [EmailService] MAILCHIMP_API_KEY not found in environment variables');
       }
@@ -51,7 +150,7 @@ class EmailService {
    * Check if email service is ready
    */
   isReady() {
-    return this.resendInitialized || (this.initialized && this.client);
+    return this.mailchimpMarketingInitialized;
   }
 
   /**
@@ -277,13 +376,22 @@ Guidelines:
     try {
       const userName = userInfo.name || 'Valued Customer';
       
+      // Use business-specific email configuration if available
+      const fromEmail = this.emailConfig ? 
+        `${this.emailConfig.fromName} <${this.emailConfig.fromEmail}>` : 
+        'SherpaPrompt <onboarding@resend.dev>';
+      
+      const replyToEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'onboarding@resend.dev';
+      
       const emailData = {
-        from: 'SherpaPrompt <onboarding@resend.dev>',
+        from: fromEmail,
         to: [userInfo.email],
-        subject: 'Your SherpaPrompt Conversation Summary',
+        subject: 'New Customer Inquiry',
         html: htmlContent,
         text: textContent,
-        reply_to: 'onboarding@resend.dev'
+        reply_to: replyToEmail
       };
 
       console.log('📧 [EmailService] Sending email via Resend...');
@@ -326,12 +434,25 @@ Guidelines:
     try {
       const userName = userInfo.name || 'Valued Customer';
 
+      // Use business-specific email configuration if available
+      const fromEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'noreply@sherpaprompt.com';
+      
+      const fromName = this.emailConfig ? 
+        this.emailConfig.fromName : 
+        'SherpaPrompt';
+      
+      const replyToEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'info@sherpaprompt.com';
+
       const message = {
         html: htmlContent,
         text: textContent,
-        subject: 'Your SherpaPrompt Conversation Summary',
-        from_email: 'noreply@sherpaprompt.com',
-        from_name: 'SherpaPrompt',
+        subject: 'New Customer Inquiry',
+        from_email: fromEmail,
+        from_name: fromName,
         to: [
           {
             email: userInfo.email,
@@ -340,7 +461,7 @@ Guidelines:
           }
         ],
         headers: {
-          'Reply-To': 'info@sherpaprompt.com'
+          'Reply-To': replyToEmail
         },
         important: false,
         track_opens: true,
@@ -392,13 +513,197 @@ Guidelines:
   }
 
   /**
+   * Send email via Mailchimp Marketing API (for lead notifications)
+   * @param {Object} userInfo - User information
+   * @param {string} htmlContent - HTML email content
+   * @param {string} textContent - Plain text email content
+   * @param {string} customSubject - Custom subject line (optional)
+   * @returns {Promise<Object>} Result of email sending
+   */
+  async sendViaMailchimpMarketing(userInfo, htmlContent, textContent, customSubject = null) {
+    try {
+      if (!this.mailchimpMarketingInitialized) {
+        return { success: false, error: 'Mailchimp Marketing API not initialized' };
+      }
+
+      const userName = userInfo.name || 'Valued Customer';
+      
+      // Use business-specific email configuration if available
+      const fromEmail = this.emailConfig ? 
+        this.emailConfig.fromEmail : 
+        'noreply@sherpaprompt.com';
+      
+      const fromName = this.emailConfig ? 
+        this.emailConfig.fromName : 
+        'SherpaPrompt';
+
+      const subject = customSubject || 'New Customer Inquiry';
+
+      console.log('📧 [EmailService] Sending email via Mailchimp Marketing API...');
+      
+      // Step 1: First check if the email exists in the audience, if not add it
+      const audienceId = this.mailchimpAudienceId || process.env.MAILCHIMP_AUDIENCE_ID;
+      
+      if (!audienceId) {
+        return { success: false, error: 'Mailchimp audience ID not configured' };
+      }
+
+      // Check if member exists
+      const memberHash = require('crypto').createHash('md5').update(userInfo.email.toLowerCase()).digest('hex');
+      
+      try {
+        // Try to get the member
+        const memberResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/lists/${audienceId}/members/${memberHash}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!memberResponse.ok && memberResponse.status === 404) {
+          // Member doesn't exist, add them
+          console.log('📧 [EmailService] Adding new member to audience...');
+          const addMemberResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/lists/${audienceId}/members`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email_address: userInfo.email,
+              status: 'subscribed',
+              merge_fields: {
+                FNAME: userName.split(' ')[0] || '',
+                LNAME: userName.split(' ').slice(1).join(' ') || ''
+              }
+            })
+          });
+
+          if (!addMemberResponse.ok) {
+            const error = await addMemberResponse.json();
+            console.error('❌ [EmailService] Failed to add member:', error);
+            return { success: false, error: `Failed to add member: ${error.detail}` };
+          }
+          console.log('✅ [EmailService] Member added to audience');
+        }
+      } catch (error) {
+        console.error('❌ [EmailService] Error checking/adding member:', error);
+        return { success: false, error: `Member management failed: ${error.message}` };
+      }
+
+      // Step 2: Create a campaign
+      const campaignData = {
+        type: 'regular',
+        recipients: {
+          list_id: audienceId,
+          segment_opts: {
+            match: 'any',
+            conditions: [{
+              condition_type: 'EmailAddress',
+              field: 'EMAIL',
+              op: 'is',
+              value: userInfo.email
+            }]
+          }
+        },
+        settings: {
+          subject_line: subject,
+          from_name: fromName,
+          reply_to: fromEmail,
+          title: `Lead Notification - ${Date.now()}`
+        }
+      };
+
+      console.log('📧 [EmailService] Creating campaign...');
+      const campaignResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/campaigns`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(campaignData)
+      });
+
+      if (!campaignResponse.ok) {
+        const error = await campaignResponse.json();
+        console.error('❌ [EmailService] Failed to create campaign:', error);
+        return { success: false, error: `Campaign creation failed: ${error.detail}` };
+      }
+
+      const campaign = await campaignResponse.json();
+      console.log('✅ [EmailService] Campaign created:', campaign.id);
+
+      // Step 3: Set campaign content
+      const contentData = {
+        html: htmlContent,
+        plain_text: textContent
+      };
+
+      const contentResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/campaigns/${campaign.id}/content`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(contentData)
+      });
+
+      if (!contentResponse.ok) {
+        const error = await contentResponse.json();
+        console.error('❌ [EmailService] Failed to set campaign content:', error);
+        return { success: false, error: `Content setting failed: ${error.detail}` };
+      }
+
+      console.log('✅ [EmailService] Campaign content set');
+
+      // Step 4: Send the campaign
+      const sendResponse = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/campaigns/${campaign.id}/actions/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!sendResponse.ok) {
+        const error = await sendResponse.json();
+        console.error('❌ [EmailService] Failed to send campaign:', error);
+        return { success: false, error: `Campaign sending failed: ${error.detail}` };
+      }
+
+      console.log('✅ [EmailService] Campaign sent successfully!');
+      console.log('📧 [EmailService] Email sent to:', userInfo.email);
+      console.log('📧 [EmailService] Subject:', subject);
+
+      return {
+        success: true,
+        messageId: campaign.id,
+        status: 'sent',
+        email: userInfo.email,
+        provider: 'mailchimp-marketing',
+        campaignId: campaign.id,
+        note: 'Email sent via Mailchimp Marketing API campaign'
+      };
+
+    } catch (error) {
+      console.error('❌ [EmailService] Error sending via Mailchimp Marketing:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send via Mailchimp Marketing' 
+      };
+    }
+  }
+
+  /**
    * Send conversation summary email to user
    * @param {Object} userInfo - User information (name, email)
    * @param {Array} conversationHistory - Conversation messages
    * @param {Object} appointmentDetails - Appointment information (optional)
+   * @param {string} businessName - Business name for email template (optional)
    * @returns {Promise<Object>} Result of email sending
    */
-  async sendConversationSummary(userInfo, conversationHistory, appointmentDetails = null) {
+  async sendConversationSummary(userInfo, conversationHistory, appointmentDetails = null, businessName = null) {
     if (!this.isReady()) {
       console.error('❌ [EmailService] Email service not initialized');
       return { success: false, error: 'Email service not available' };
@@ -421,13 +726,15 @@ Guidelines:
       // Create email content
       const userName = userInfo.name || 'Valued Customer';
       const summaryBullets = summaryData.keyPoints.map(point => `<li>${point}</li>`).join('\n');
+      const companyName = businessName || 'SherpaPrompt';
+      const companyEmoji = businessName === 'Superior Fence & Construction' ? '🏗️' : '🤖';
 
       const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Your SherpaPrompt Conversation Summary</title>
+    <title>New Customer Inquiry - ${companyName}</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background-color: #2c5530; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
@@ -442,14 +749,14 @@ Guidelines:
 </head>
 <body>
     <div class="header">
-        <div class="logo">🤖 SherpaPrompt</div>
-        <p>Your Conversation Summary</p>
+        <div class="logo">${companyEmoji} ${companyName}</div>
+        <p>New Customer Inquiry</p>
     </div>
     
     <div class="content">
-        <h2>Hello ${userName}!</h2>
+        <h2>New Customer Inquiry</h2>
         
-        <p>Thank you for contacting SherpaPrompt. Here's a summary of our conversation:</p>
+        <p><strong>${userName}</strong> contacted ${companyName} and left an inquiry. Please reach out to them soon. Details below:</p>
         
         <div class="summary-section">
             <h3>📋 Conversation Overview</h3>
@@ -478,19 +785,11 @@ Guidelines:
         </div>
         ` : ''}
         
-        <p>If you have any additional questions or need further assistance, please don't hesitate to contact us:</p>
         
-        <ul>
-            <li><strong>Website:</strong> sherpaprompt.com</li>
-            <li><strong>Email:</strong> info@sherpaprompt.com</li>
-            <li><strong>Hours:</strong> Monday - Friday, 12:00 PM - 4:00 PM</li>
-        </ul>
-        
-        <p>We appreciate your interest in our automation services and look forward to helping you transform your workflows!</p>
     </div>
     
     <div class="footer">
-        <p>This email was sent from SherpaPrompt's AI Assistant.<br>
+        <p>This email was sent from ${companyName}'s AI Assistant.<br>
         If you have any concerns about this email, please contact us directly.</p>
     </div>
 </body>
@@ -498,9 +797,9 @@ Guidelines:
       `.trim();
 
       const textContent = `
-Hello ${userName}!
+NEW CUSTOMER INQUIRY
 
-Thank you for contacting SherpaPrompt. Here's a summary of our conversation:
+${userName} contacted ${companyName} and left an inquiry. Please reach out to them soon. Details below:
 
 CONVERSATION OVERVIEW:
 ${summaryData.summary}
@@ -533,33 +832,25 @@ NEXT STEPS:
 ${summaryData.nextSteps}
 ` : ''}
 
-If you have any additional questions, please contact us:
-• Website: sherpaprompt.com
-• Email: info@sherpaprompt.com
-• Hours: Monday - Friday, 12:00 PM - 4:00 PM
+
 
 We appreciate your interest in our automation services!
 
 Best regards,
-SherpaPrompt
+${companyName}
       `.trim();
 
-      // Try Resend first (primary)
-      if (this.resendInitialized) {
-        console.log('📧 [EmailService] Using Resend as primary email provider');
-        const resendResult = await this.sendViaResend(userInfo, htmlContent, textContent);
-        if (resendResult.success) {
-          return resendResult;
-        } else {
-          console.warn('⚠️ [EmailService] Resend failed, trying Mailchimp fallback:', resendResult.error);
-        }
+      // Use Mailchimp Marketing API as the only email provider
+      if (this.mailchimpMarketingInitialized) {
+        console.log('📧 [EmailService] Using Mailchimp Marketing API');
+        return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
       }
 
-      // Fallback to Mailchimp if Resend fails or is not available
-      if (this.initialized && this.client) {
-        console.log('📧 [EmailService] Using Mailchimp as fallback email provider');
-        return await this.sendViaMailchimp(userInfo, htmlContent, textContent);
-      }
+      // Note: Resend is disabled - keeping code for future use but not using it
+      // if (this.resendInitialized) {
+      //   console.log('📧 [EmailService] Using Resend (disabled)');
+      //   return await this.sendViaResend(userInfo, htmlContent, textContent);
+      // }
 
       // No email providers available
       console.error('❌ [EmailService] No email providers available');
@@ -585,7 +876,8 @@ SherpaPrompt
 
     const results = {
       resend: { available: false, working: false },
-      mailchimp: { available: false, working: false }
+      mailchimp: { available: false, working: false },
+      mailchimpMarketing: { available: false, working: false }
     };
 
     // Test Resend
@@ -601,22 +893,48 @@ SherpaPrompt
       }
     }
 
-    // Test Mailchimp
+    // Test Mailchimp Transactional
     if (this.initialized && this.client) {
       results.mailchimp.available = true;
       try {
         const response = await this.client.users.ping();
-        console.log('✅ [EmailService] Mailchimp connection test successful');
+        console.log('✅ [EmailService] Mailchimp Transactional connection test successful');
         results.mailchimp.working = true;
         results.mailchimp.ping = response.PING || 'PONG';
       } catch (error) {
-        console.error('❌ [EmailService] Mailchimp connection test failed:', error);
+        console.error('❌ [EmailService] Mailchimp Transactional connection test failed:', error);
         results.mailchimp.error = error.message;
       }
     }
 
-    const hasWorkingProvider = results.resend.working || results.mailchimp.working;
-    const primaryProvider = results.resend.working ? 'Resend' : (results.mailchimp.working ? 'Mailchimp' : 'None');
+    // Test Mailchimp Marketing API
+    if (this.mailchimpMarketingInitialized) {
+      results.mailchimpMarketing.available = true;
+      try {
+        const response = await fetch(`https://${this.mailchimpServerPrefix}.api.mailchimp.com/3.0/ping`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.mailchimpMarketingApiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ [EmailService] Mailchimp Marketing API connection test successful');
+          results.mailchimpMarketing.working = true;
+          results.mailchimpMarketing.ping = data.health_status || 'PONG';
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error('❌ [EmailService] Mailchimp Marketing API connection test failed:', error);
+        results.mailchimpMarketing.error = error.message;
+      }
+    }
+
+    const hasWorkingProvider = results.mailchimpMarketing.working;
+    const primaryProvider = results.mailchimpMarketing.working ? 'Mailchimp Marketing' : 'None';
 
     return { 
       success: hasWorkingProvider, 

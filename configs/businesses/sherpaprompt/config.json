@@ -1,0 +1,56 @@
+{
+  "businessId": "sherpaprompt",
+  "businessName": "SherpaPrompt",
+  "phoneNumber": "+19713511965",
+  "database": {
+    "collectionName": "knowledge_base_sherpaprompt",
+    "vectorIndexName": "vector_index_sherpaprompt"
+  },
+  "calendar": {
+    "provider": "google",
+    "google": {
+      "serviceAccountEmail": "${BUSINESS_SHERPAPROMPT_GOOGLE_EMAIL}",
+      "privateKey": "${BUSINESS_SHERPAPROMPT_GOOGLE_KEY}",
+      "calendarId": "${BUSINESS_SHERPAPROMPT_CALENDAR_ID}",
+      "projectId": "${BUSINESS_SHERPAPROMPT_PROJECT_ID}"
+    },
+    "microsoft": null,
+    "timezone": "America/Denver",
+    "businessHours": {
+      "start": "12:00",
+      "end": "16:00",
+      "daysOfWeek": [1, 2, 3, 4, 5]
+    }
+  },
+  "email": {
+    "provider": "resend",
+    "apiKey": "${BUSINESS_SHERPAPROMPT_EMAIL_API_KEY}",
+    "fromEmail": "scout@sherpaprompt.com",
+    "fromName": "SherpaPrompt Support"
+  },
+  "companyInfo": {
+    "name": "SherpaPrompt",
+    "tagline": "Conversations into Outcomes",
+    "established": "2018",
+    "phone": "5035501817",
+    "email": "doug@sherpaprompt.com",
+    "website": "www.sherpaprompt.com",
+    "address": "1234 Automation Way, San Francisco, CA 94105",
+    "service_areas": ["Global", "Remote", "Cloud-based"],
+    "hours": {
+      "monday_friday": "7:00 AM - 6:00 PM",
+      "saturday": "8:00 AM - 4:00 PM",
+      "sunday": "Closed",
+      "support": "24/7 technical support available"
+    }
+  },
+  "promptConfig": {
+    "agentName": "Scout",
+    "agentPersonality": "friendly and professional",
+    "greeting": "Hi there, I'm Scout, SherpaPrompt's virtual assistant. Parts of this call may be recorded so we can better understand your needs and improve our service. Who am I speaking with?"
+  },
+  "knowledgeBasePath": "/data/businesses/sherpaprompt/knowledge/",
+  "version": "1.0",
+  "createdAt": "2024-10-22T00:00:00.000Z",
+  "lastUpdated": "2024-10-22T00:00:00.000Z"
+}

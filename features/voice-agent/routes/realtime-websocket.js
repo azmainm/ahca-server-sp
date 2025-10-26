@@ -3,21 +3,25 @@
  * Sets up WebSocket connections for OpenAI Realtime API integration
  */
 
-const { RealtimeWebSocketService } = require('../services/RealtimeWebSocketService');
-const { ConversationFlowHandler } = require('../services/ConversationFlowHandler');
-const { ConversationStateManager } = require('../services/ConversationStateManager');
-const { UserInfoCollector } = require('../services/UserInfoCollector');
-const { AppointmentFlowManager } = require('../services/AppointmentFlowManager');
-const { DateTimeParser } = require('../services/DateTimeParser');
-const { IntentClassifier } = require('../services/IntentClassifier');
-const { ResponseGenerator } = require('../services/ResponseGenerator');
-const { OpenAIService } = require('../services/OpenAIService');
+const {
+  RealtimeWebSocketService,
+  ConversationFlowHandler,
+  ConversationStateManager,
+  UserInfoCollector,
+  AppointmentFlowManager,
+  DateTimeParser,
+  IntentClassifier,
+  ResponseGenerator,
+  OpenAIService
+} = require('../services');
 const { EmbeddingService } = require('../../../shared/services/EmbeddingService');
 const { SherpaPromptRAG } = require('../../../shared/services/SherpaPromptRAG');
 const { GoogleCalendarService } = require('../../../shared/services/GoogleCalendarService');
 const { MicrosoftCalendarService } = require('../../../shared/services/MicrosoftCalendarService');
 const { CompanyInfoService } = require('../../../shared/services/CompanyInfoService');
 const { EmailService } = require('../../../shared/services/EmailService');
+const { BusinessConfigService } = require('../../../shared/services/BusinessConfigService');
+const { TenantContextManager } = require('../../../shared/services/TenantContextManager');
 
 // Initialize services
 const openAIService = new OpenAIService();
@@ -27,6 +31,8 @@ const googleCalendarService = new GoogleCalendarService();
 const microsoftCalendarService = new MicrosoftCalendarService();
 const companyInfoService = new CompanyInfoService();
 const emailService = new EmailService();
+const businessConfigService = new BusinessConfigService();
+const tenantContextManager = new TenantContextManager();
 
 // Initialize domain services
 const stateManager = new ConversationStateManager();
@@ -121,7 +127,9 @@ const conversationFlowHandler = new ConversationFlowHandler({
   companyInfoService,
   sherpaPromptRAG,
   embeddingService,
-  emailService
+  emailService,
+  businessConfigService,
+  tenantContextManager
 });
 
 conversationFlowHandler.setHelpers(getCalendarService, extractSearchTerms);
@@ -130,7 +138,9 @@ conversationFlowHandler.setHelpers(getCalendarService, extractSearchTerms);
 const realtimeWSService = new RealtimeWebSocketService(
   conversationFlowHandler,
   openAIService,
-  stateManager
+  stateManager,
+  businessConfigService,
+  tenantContextManager
 );
 
 /**
@@ -142,19 +152,45 @@ function setupRealtimeWebSocket(wss) {
   wss.on('connection', async (ws, req) => {
     console.log('🔗 [RealtimeWS] Client connected from:', req.socket.remoteAddress);
 
+    // Extract business ID from URL parameters
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const businessId = url.searchParams.get('businessId') || 'sherpaprompt';
+    console.log('🏢 [RealtimeWS] Business ID:', businessId);
+
     // Generate session ID
-    const sessionId = `realtime-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const sessionId = `realtime-${businessId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     console.log('📝 [RealtimeWS] Session ID:', sessionId);
 
     try {
+      // Initialize business config service if needed
+      if (!businessConfigService.isInitialized()) {
+        await businessConfigService.initialize();
+      }
+
+      // Store business context for this session
+      tenantContextManager.setTenantContext(sessionId, businessId);
+      
+      // Get business configuration
+      const businessConfig = businessConfigService.getBusinessConfig(businessId);
+      if (!businessConfig) {
+        console.error(`❌ [RealtimeWS] Business config not found for: ${businessId}`);
+        ws.close(1008, 'Business configuration not found');
+        return;
+      }
+
+      console.log(`✅ [RealtimeWS] Loaded config for business: ${businessId} (${businessConfig.businessName})`);
+
       // Create Realtime API session
       await realtimeWSService.createSession(ws, sessionId);
       
-      // Send session ready message to client
+      // Send session ready message to client with business info
       ws.send(JSON.stringify({
         type: 'session_ready',
         sessionId: sessionId,
-        message: 'Connected to SherpaPrompt AI Assistant'
+        businessId: businessId,
+        businessName: businessConfig.businessName,
+        agentName: businessConfig.promptConfig?.agentName || businessConfig.agent?.name || 'AI Assistant',
+        message: `Connected to ${businessConfig.businessName} AI Assistant`
       }));
 
     } catch (error) {
@@ -166,6 +202,12 @@ function setupRealtimeWebSocket(wss) {
       }));
       ws.close();
     }
+
+    // Handle WebSocket close
+    ws.on('close', () => {
+      console.log('🔌 [RealtimeWS] Client disconnected');
+      // Note: Tenant context cleanup moved to closeSession method to ensure email sending works
+    });
   });
 
   wss.on('error', (error) => {

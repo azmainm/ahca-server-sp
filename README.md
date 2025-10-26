@@ -21,9 +21,61 @@ The SherpaPrompt Voice Agent System is a comprehensive AI-powered voice automati
   - *"Got it — scheduling now"* - Appointment requests
   - *"One moment"* - Quick processing acknowledgment
 
+## 🏢 Multi-Tenant Architecture
+
+The system supports **multiple businesses** sharing the same infrastructure with complete isolation:
+
+### **Current Businesses**
+- **SherpaPrompt**: Full-featured automation platform (RAG, appointments, demos)
+- **Superior Fence & Construction**: Lead collection and inquiry management
+
+### **Business Isolation Features**
+- **Dedicated Configurations**: Each business has isolated config files and AI prompts
+- **Dynamic Agent Selection**: Client-side toggle or phone-based routing
+- **Business-Specific AI Behavior**: Custom personalities, greetings, and conversation flows
+- **Feature Flags**: Enable/disable RAG, appointments, email summaries per business
+- **Isolated Email Systems**: Business-appropriate templates and recipient addresses
+- **Phone Number Routing**: Automatic business identification via Twilio numbers
+
+### **Business Identification Flow**
+```
+Client Toggle → WebSocket URL → TenantContextManager → BusinessConfigService → AI Agent → Business Flow
+```
+
+1. **Client Selection**: User toggles between businesses in the UI
+2. **WebSocket Connection**: `businessId` passed in URL (`?businessId=superior-fencing`)
+3. **Server Processing**: Business context stored and configurations loaded
+4. **AI Activation**: Business-specific prompts, tools, and behavior activated
+5. **Flow Execution**: Conversation follows business-specific rules and email delivery
+
+### **Configuration Structure**
+```
+/configs/
+├── businesses.json          # Phone → Business ID mapping
+├── businesses/
+│   ├── sherpaprompt/        # SherpaPrompt configuration
+│   │   ├── config.json      # Technical settings
+│   │   └── prompt_rules.json # AI behavior
+│   └── superior-fencing/    # Superior Fencing configuration
+│       ├── config.json      # Technical settings  
+│       └── prompt_rules.json # AI behavior
+```
+
+For more details, see:
+- [Multi-Tenant Architecture Guide](docs/MULTI_TENANT_ARCHITECTURE.md)
+- [Business Onboarding Guide](docs/BUSINESS_ONBOARDING_GUIDE.md)  
+- [Business Switching Guide](docs/BUSINESS_SWITCHING_GUIDE.md)
+
+### Data Isolation
+
+- **MongoDB Collections:** `knowledge_base_sherpaprompt`, `knowledge_base_acme_corp`, etc.
+- **Vector Indexes:** `vector_index_sherpaprompt`, `vector_index_acme_corp`, etc.
+- **Configuration Files:** `/configs/businesses/{businessId}/config.json`
+- **Environment Variables:** `BUSINESS_{BUSINESSID}_*` prefixed credentials
+
 ## Architecture
 
-This system follows OpenAI's **Realtime API Architecture** with integrated VAD:
+This system follows OpenAI's **Realtime API Architecture** with integrated VAD and multi-tenant support:
 
 ```
 Audio Input → Realtime VAD → STT (Whisper) → GPT-5-nano → TTS → Audio Output
@@ -47,8 +99,11 @@ For comprehensive system documentation including architecture, data flows, API e
 
 **[📖 SherpaPrompt Voice Agent System Documentation](./docs/SHERPAPROMPT_VOICE_AGENT_SYSTEM.md)**
 
-This document covers:
+**[🏢 Multi-Tenant Business Onboarding Guide](./docs/MULTI_TENANT_ONBOARDING.md)**
+
+This documentation covers:
 - Complete system architecture and component interactions
+- Multi-tenant setup and business onboarding procedures
 - Detailed API documentation and data flows
 - RAG system implementation and knowledge base structure
 - Calendar integration and email service configuration
@@ -89,7 +144,7 @@ npm run dev
 
 ### VAD Integration Architecture
 
-#### RealtimeVADService.js
+#### RealtimeVADService (`features/voice-agent/services/realtime/RealtimeVADService.js`)
 Manages WebSocket connections to OpenAI Realtime API for automatic voice activity detection:
 
 ```javascript
@@ -135,15 +190,30 @@ The voice processing pipeline has been refactored into a modular, maintainable a
 - **Service Layer**: 8 specialized service classes with single responsibilities  
 - **Orchestration**: Central ConversationFlowHandler coordinating all services
 
-**📋 Service Classes:**
+**📋 Service Classes (Organized by Category):**
+
+**Conversation Services** (`services/conversation/`):
+- `ConversationFlowHandler` - Central orchestrator
 - `ConversationStateManager` - Session state management
 - `UserInfoCollector` - Name/email collection logic
+
+**Integration Services** (`services/integrations/`):
 - `AppointmentFlowManager` - Complete appointment booking flow
+- `EmergencyCallHandler` - Emergency call detection and routing
+
+**Utility Services** (`services/utils/`):
 - `IntentClassifier` - User intent classification
 - `DateTimeParser` - Date/time parsing utilities
 - `ResponseGenerator` - Natural language response generation
 - `OpenAIService` - OpenAI API wrapper with retry logic
-- `ConversationFlowHandler` - Central orchestrator
+
+**Real-time Services** (`services/realtime/`):
+- `RealtimeVADService` - Voice Activity Detection
+- `RealtimeWebSocketService` - OpenAI Realtime API integration
+- `TwilioBridgeService` - Twilio Media Stream bridge
+
+**Business Services** (`services/business/`):
+- `SuperiorFencingHandler` - Superior Fencing specialized handler
 
 📖 **For detailed architecture documentation, see [docs/VOICE_AGENT_ARCHITECTURE.md](docs/VOICE_AGENT_ARCHITECTURE.md)**
 
@@ -181,14 +251,14 @@ const sessions = new Map();
 
 #### 3. Semantic RAG Implementation
 
-**EmbeddingService (`services/EmbeddingService.js`)**
+**EmbeddingService (`shared/services/EmbeddingService.js`)**
 - Manages OpenAI embeddings (text-embedding-3-small)
 - **Semantic chunking** using sliding window approach with embedding comparison
 - Handles MongoDB Atlas Vector Search integration
 - Provides similarity search functionality
 - Creates semantically coherent chunks based on meaning changes
 
-**FencingRAG (`services/FencingRAG.js`)**
+**SherpaPromptRAG (`shared/services/SherpaPromptRAG.js`)**
 - LangChain-based RAG implementation
 - Uses GPT-4 for response generation
 - Formats context from semantically chunked knowledge base

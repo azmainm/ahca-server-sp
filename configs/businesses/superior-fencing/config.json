@@ -1,0 +1,80 @@
+{
+  "businessId": "superior-fencing",
+  "businessName": "Superior Fence & Construction",
+  "phoneNumber": "+15035484387",
+  "description": "Superior Fence & Construction - Professional fencing and construction services",
+  
+  "features": {
+    "ragEnabled": false,
+    "appointmentBookingEnabled": false,
+    "emergencyCallHandling": true,
+    "basicInfoCollection": true
+  },
+  
+  "database": {
+    "collectionName": "superior_fencing_knowledge_base",
+    "vectorIndexName": "superior_fencing_vector_index",
+    "note": "RAG is disabled but collection/index names reserved for future use"
+  },
+  
+  "calendar": {
+    "provider": "disabled",
+    "note": "Calendar integration disabled - no appointment booking for now"
+  },
+  
+  "email": {
+    "provider": "mailchimp",
+    "apiKey": "${MAILCHIMP_API_KEY}",
+    "fromEmail": "doug@sherpaprompt.com",
+    "fromName": "Superior Fence & Construction",
+    "note": "Using same Mailchimp as SherpaPrompt, will be changed to Superior Fencing email later"
+  },
+  
+  "companyInfo": {
+    "name": "Superior Fence & Construction",
+    "phone": "+15035501817",
+    "email": "doug@sherpaprompt.com",
+    "website": "www.superiorfencing.com",
+    "address": "Portland, OR",
+    "services": [
+      "New fence installation",
+      "Fence repair and maintenance", 
+      "Gate installation and repair",
+      "Commercial fencing",
+      "Residential fencing",
+      "Emergency fence services"
+    ],
+    "hours": {
+      "monday_friday": "7:00 AM - 6:00 PM",
+      "saturday": "8:00 AM - 4:00 PM", 
+      "sunday": "Emergency calls only",
+      "emergency": "24/7 emergency service available"
+    },
+    "emergencyContact": {
+      "available": true,
+      "instructions": "Press # for emergency or time-sensitive issues"
+    }
+  },
+  
+  "promptConfig": {
+    "agentName": "Mason",
+    "agentPersonality": "professional, helpful, and efficient",
+    "greeting": "Hi there, I'm Mason, Superior Fence & Construction's virtual assistant. If this is an emergency or time-sensitive, please press # now to reach our on-call team. Parts of this call may be recorded so we can better understand your needs and improve our service. We’re currently closed, but I can take a few quick details so our team can follow up first thing in the morning. Could I start with your name?"
+  },
+  
+  "agent": {
+    "name": "Mason",
+    "role": "Virtual Assistant",
+    "personality": "Professional, helpful, and efficient",
+    "primaryFunction": "Information collection and emergency routing"
+  },
+  
+  "twilio": {
+    "note": "Currently using SherpaPrompt's Twilio number (+15035501817). Twilio developers need to set up dedicated number for Superior Fencing when ready.",
+    "emergencyHandling": {
+      "enabled": true,
+      "trigger": "user presses # or mentions emergency",
+      "action": "Route to emergency handler function"
+    }
+  }
+}

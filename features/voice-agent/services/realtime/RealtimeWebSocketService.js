@@ -8,7 +8,7 @@ const WebSocket = require('ws');
 const EventEmitter = require('events');
 
 class RealtimeWebSocketService extends EventEmitter {
-  constructor(conversationFlowHandler, openAIService, stateManager) {
+  constructor(conversationFlowHandler, openAIService, stateManager, businessConfigService = null, tenantContextManager = null) {
     super();
     this.apiKey = process.env.OPENAI_API_KEY_CALL_AGENT;
     
@@ -20,17 +20,71 @@ class RealtimeWebSocketService extends EventEmitter {
     this.conversationFlowHandler = conversationFlowHandler;
     this.openAIService = openAIService;
     this.stateManager = stateManager;
+    this.businessConfigService = businessConfigService;
+    this.tenantContextManager = tenantContextManager;
     
     // Active sessions: sessionId -> { clientWs, openaiWs, state }
     this.sessions = new Map();
     
-    // System prompt for the AI agent (externalized)
+    // Default system prompt (fallback)
     try {
       const prompts = require('../../../configs/prompt_rules.json');
-      this.SYSTEM_PROMPT = prompts.realtimeSystem.full;
+      this.DEFAULT_SYSTEM_PROMPT = prompts.realtimeSystem.full;
     } catch (e) {
-      this.SYSTEM_PROMPT = 'You are SherpaPrompt\'s voice assistant.';
+      this.DEFAULT_SYSTEM_PROMPT = 'You are SherpaPrompt\'s voice assistant.';
     }
+  }
+
+  /**
+   * Get business-specific system prompt
+   */
+  getSystemPrompt(sessionId) {
+    try {
+      // Get business ID from session
+      if (this.tenantContextManager && this.businessConfigService) {
+        const businessId = this.tenantContextManager.getBusinessId(sessionId);
+        console.log(`🔍 [RealtimeWS] Getting system prompt for business: ${businessId}`);
+        
+        if (businessId) {
+          const businessConfig = this.businessConfigService.getBusinessConfig(businessId);
+          if (businessConfig) {
+            // Try to load business-specific prompt rules
+            const fs = require('fs');
+            const path = require('path');
+                   const promptPath = path.join(__dirname, `../../../../configs/businesses/${businessId}/prompt_rules.json`);
+            
+            console.log(`🔍 [RealtimeWS] Looking for prompt file at: ${promptPath}`);
+            
+            if (fs.existsSync(promptPath)) {
+              const businessPrompts = JSON.parse(fs.readFileSync(promptPath, 'utf8'));
+              console.log(`🔍 [RealtimeWS] Loaded prompt file, checking realtimeSystem.full...`);
+              
+              if (businessPrompts.realtimeSystem?.full) {
+                console.log(`✅ [RealtimeWS] Using business-specific prompt for: ${businessId}`);
+                console.log(`📝 [RealtimeWS] Prompt preview: ${businessPrompts.realtimeSystem.full.substring(0, 100)}...`);
+                return businessPrompts.realtimeSystem.full;
+              } else {
+                console.warn(`⚠️ [RealtimeWS] No realtimeSystem.full found in prompt file for: ${businessId}`);
+              }
+            } else {
+              console.warn(`⚠️ [RealtimeWS] Prompt file not found: ${promptPath}`);
+            }
+          } else {
+            console.warn(`⚠️ [RealtimeWS] No business config found for: ${businessId}`);
+          }
+        } else {
+          console.warn(`⚠️ [RealtimeWS] No business ID found for session: ${sessionId}`);
+        }
+      } else {
+        console.warn(`⚠️ [RealtimeWS] Missing tenantContextManager or businessConfigService`);
+      }
+    } catch (error) {
+      console.warn('⚠️ [RealtimeWS] Failed to load business-specific prompt, using default:', error.message);
+    }
+    
+    // Fallback to default prompt
+    console.log('📝 [RealtimeWS] Using default system prompt');
+    return this.DEFAULT_SYSTEM_PROMPT;
   }
 
   /**
@@ -126,7 +180,7 @@ class RealtimeWebSocketService extends EventEmitter {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
-        instructions: this.SYSTEM_PROMPT,
+        instructions: this.getSystemPrompt(sessionData.sessionId),
         voice: 'echo',
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
@@ -141,7 +195,7 @@ class RealtimeWebSocketService extends EventEmitter {
           create_response: true,  // Enable automatic response creation (semantic VAD)
           interrupt_response: true  // Allow interruptions
         },
-        tools: this.defineTools(),
+        tools: this.defineTools(sessionData.sessionId),
         tool_choice: 'auto',
         temperature: 0.8
       }
@@ -195,7 +249,55 @@ class RealtimeWebSocketService extends EventEmitter {
   /**
    * Define function tools for the Realtime API
    */
-  defineTools() {
+  defineTools(sessionId) {
+    // Get business-specific configuration
+    let businessId = null;
+    let businessConfig = null;
+    
+    try {
+      if (this.tenantContextManager && this.businessConfigService) {
+        businessId = this.tenantContextManager.getBusinessId(sessionId);
+        if (businessId) {
+          businessConfig = this.businessConfigService.getBusinessConfig(businessId);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ [RealtimeWS] Error getting business config for tools:', error.message);
+    }
+    
+    console.log(`🔧 [RealtimeWS] Defining tools for business: ${businessId}`);
+    
+    // Superior Fencing has limited tools (no RAG, no appointment booking)
+    if (businessId === 'superior-fencing') {
+      console.log(`🔧 [RealtimeWS] Using Superior Fencing tools (basic info collection only)`);
+      return [
+        {
+          type: 'function',
+          name: 'update_user_info',
+          description: 'Update customer information (name, phone, reason for call). Call this when customer provides their name, phone number, or reason for calling.',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Customer name'
+              },
+              phone: {
+                type: 'string', 
+                description: 'Customer phone number'
+              },
+              reason: {
+                type: 'string',
+                description: 'Reason for calling (e.g., fence repair, new installation, emergency)'
+              }
+            }
+          }
+        }
+      ];
+    }
+    
+    // SherpaPrompt gets full tools (RAG + appointment booking)
+    console.log(`🔧 [RealtimeWS] Using SherpaPrompt tools (full feature set)`);
     return [
       {
         type: 'function',
@@ -1045,11 +1147,15 @@ class RealtimeWebSocketService extends EventEmitter {
       const session = this.stateManager.getSession(sessionId);
       
       // Send conversation summary email
-      if (session && session.userInfo && session.userInfo.collected) {
+      // Only send if user info was collected or if it's Superior Fencing (fixed email)
+      const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
+      if (session && (session.userInfo?.collected || businessId === 'superior-fencing')) {
         await this.conversationFlowHandler.sendConversationSummary(sessionId, session)
           .catch(error => {
             console.error('❌ [Email] Failed to send summary:', error);
           });
+      } else {
+        console.log('📧 [Email] Skipping email - no user info collected for session:', sessionId);
       }
       
       // Close OpenAI connection
@@ -1062,6 +1168,12 @@ class RealtimeWebSocketService extends EventEmitter {
       
       // Cleanup conversation state
       this.stateManager.deleteSession(sessionId);
+      
+      // Clean up tenant context (moved here to ensure email sending works)
+      if (this.tenantContextManager) {
+        this.tenantContextManager.removeTenantContext(sessionId);
+        console.log(`🗑️ [RealtimeWS] Cleaned up tenant context for session: ${sessionId}`);
+      }
       
       console.log('✅ [RealtimeWS] Session closed:', sessionId);
     }

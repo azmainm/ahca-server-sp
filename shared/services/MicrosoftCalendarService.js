@@ -3,14 +3,42 @@ const axios = require('axios');
 const moment = require('moment-timezone');
 
 /**
- * Microsoft Calendar Service for creating appointments using Microsoft Graph API
+ * Multi-Tenant Microsoft Calendar Service for creating appointments using Microsoft Graph API
  */
 class MicrosoftCalendarService {
-  constructor() {
+  constructor(calendarConfig = null) {
     this.msalInstance = null;
     this.accessToken = null;
     this.tokenExpiry = null;
     this.initialized = false;
+    this.calendarConfig = calendarConfig;
+    
+    // Log configuration
+    if (calendarConfig) {
+      console.log(`🏢 [MicrosoftCalendarService] Configured for business with shared mailbox: ${calendarConfig.sharedMailboxEmail}`);
+    } else {
+      console.log('⚠️ [MicrosoftCalendarService] No calendar config provided, will use environment variables');
+    }
+  }
+
+  /**
+   * Create a new MicrosoftCalendarService instance for a specific business
+   * @param {Object} calendarConfig - Calendar configuration from business config
+   * @returns {MicrosoftCalendarService} New instance configured for the business
+   */
+  static createForBusiness(calendarConfig) {
+    if (!calendarConfig) {
+      throw new Error('Calendar configuration is required');
+    }
+    
+    const requiredFields = ['clientId', 'clientSecret', 'tenantId', 'sharedMailboxEmail'];
+    for (const field of requiredFields) {
+      if (!calendarConfig[field]) {
+        throw new Error(`Missing required calendar config field: ${field}`);
+      }
+    }
+    
+    return new MicrosoftCalendarService(calendarConfig);
   }
 
   /**
@@ -18,24 +46,45 @@ class MicrosoftCalendarService {
    */
   async initialize() {
     try {
-      // Check required environment variables
-      if (!process.env.AZURE_CLIENT_ID || !process.env.AZURE_CLIENT_SECRET || !process.env.AZURE_TENANT_ID) {
-        throw new Error('Missing Microsoft Calendar environment variables');
+      let clientConfig;
+      let sharedMailboxEmail;
+      
+      if (this.calendarConfig) {
+        // Use business-specific configuration
+        clientConfig = {
+          auth: {
+            clientId: this.calendarConfig.clientId,
+            clientSecret: this.calendarConfig.clientSecret,
+            authority: `https://login.microsoftonline.com/${this.calendarConfig.tenantId}`
+          }
+        };
+        sharedMailboxEmail = this.calendarConfig.sharedMailboxEmail;
+        
+        console.log(`🏢 [MicrosoftCalendarService] Initializing with business config for mailbox: ${sharedMailboxEmail}`);
+      } else {
+        // Fallback to environment variables (backward compatibility)
+        if (!process.env.AZURE_CLIENT_ID || !process.env.AZURE_CLIENT_SECRET || !process.env.AZURE_TENANT_ID) {
+          throw new Error('Missing Microsoft Calendar environment variables');
+        }
+        
+        clientConfig = {
+          auth: {
+            clientId: process.env.AZURE_CLIENT_ID,
+            clientSecret: process.env.AZURE_CLIENT_SECRET,
+            authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`
+          }
+        };
+        sharedMailboxEmail = process.env.SHARED_MAILBOX_EMAIL || 'call_agent@sherpaprompt.com';
+        
+        console.log('⚠️ [MicrosoftCalendarService] Using environment variables (legacy mode)');
       }
 
       // Create MSAL instance for client credentials flow
-      const clientConfig = {
-        auth: {
-          clientId: process.env.AZURE_CLIENT_ID,
-          clientSecret: process.env.AZURE_CLIENT_SECRET,
-          authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`
-        }
-      };
-
       this.msalInstance = new ConfidentialClientApplication(clientConfig);
+      this.sharedMailboxEmail = sharedMailboxEmail; // Store for use in methods
       this.initialized = true;
       
-      console.log('✅ Microsoft Calendar service initialized');
+      console.log(`✅ Microsoft Calendar service initialized for mailbox: ${sharedMailboxEmail}`);
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize Microsoft Calendar service:', error);
@@ -102,8 +151,8 @@ class MicrosoftCalendarService {
 
       console.log('🔍 Checking Microsoft Calendar availability:', { date, startTime, endTime, startDateTime, endDateTime });
 
-      // Get shared mailbox email from environment
-      const sharedMailbox = process.env.SHARED_MAILBOX_EMAIL || 'call_agent@sheraprompt.com';
+      // Use configured shared mailbox email
+      const sharedMailbox = this.sharedMailboxEmail;
 
       // Get existing events in the time range using Microsoft Graph API
       const response = await axios.get(
@@ -196,7 +245,7 @@ class MicrosoftCalendarService {
       const dayEndDateTime = moment.tz(`${date} ${businessEnd}`, 'YYYY-MM-DD HH:mm', 'America/Denver').toISOString();
 
       const accessToken = await this.getAccessToken();
-      const sharedMailbox = process.env.SHARED_MAILBOX_EMAIL || 'call_agent@sherpaprompt.com';
+      const sharedMailbox = this.sharedMailboxEmail;
 
       console.log('🔍 Fetching all Microsoft Calendar events for business hours:', { 
         date, 
@@ -331,8 +380,8 @@ class MicrosoftCalendarService {
         appointmentDetails.duration || 30
       );
 
-      // Get shared mailbox email from environment
-      const sharedMailbox = process.env.SHARED_MAILBOX_EMAIL || 'call_agent@sheraprompt.com';
+      // Use configured shared mailbox email
+      const sharedMailbox = this.sharedMailboxEmail;
 
       // Create event object for Microsoft Graph API
       const event = {

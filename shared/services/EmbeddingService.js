@@ -5,10 +5,10 @@ const { MongoClient } = require('mongodb');
 const crypto = require('crypto');
 
 /**
- * Embedding Service for generating, storing, and retrieving embeddings
+ * Multi-Tenant Embedding Service for generating, storing, and retrieving embeddings
  */
 class EmbeddingService {
-  constructor() {
+  constructor(businessConfig = null) {
     this.embeddings = new OpenAIEmbeddings({
       model: "text-embedding-3-small",
       apiKey: process.env.OPENAI_API_KEY_CALL_AGENT,
@@ -33,11 +33,65 @@ class EmbeddingService {
     this.client = null;
     this.db = null;
     
-    // Configuration
+    // Multi-tenant configuration
+    this.businessConfig = businessConfig;
     this.MONGODB_URI = process.env.MONGODB_URI;
     this.DATABASE_NAME = "ah-call-service";
-    this.EMBEDDINGS_COLLECTION = "knowledge_base";
-    this.VECTOR_INDEX_NAME = "vector_index";
+    
+    // Use business-specific collection and index names if provided
+    if (businessConfig?.database) {
+      this.EMBEDDINGS_COLLECTION = businessConfig.database.collectionName;
+      this.VECTOR_INDEX_NAME = businessConfig.database.vectorIndexName;
+      console.log(`🏢 [EmbeddingService] Configured for business: ${businessConfig.businessId}`);
+      console.log(`   📊 Collection: ${this.EMBEDDINGS_COLLECTION}`);
+      console.log(`   🔍 Vector Index: ${this.VECTOR_INDEX_NAME}`);
+    } else {
+      // Fallback to default (backward compatibility)
+      this.EMBEDDINGS_COLLECTION = "knowledge_base";
+      this.VECTOR_INDEX_NAME = "vector_index";
+      console.log('⚠️ [EmbeddingService] No business config provided, using default collection');
+    }
+  }
+
+  /**
+   * Create a new EmbeddingService instance for a specific business
+   * @param {Object} businessConfig - Business configuration object
+   * @returns {EmbeddingService} New instance configured for the business
+   */
+  static createForBusiness(businessConfig) {
+    if (!businessConfig) {
+      throw new Error('Business configuration is required');
+    }
+    
+    if (!businessConfig.database?.collectionName || !businessConfig.database?.vectorIndexName) {
+      throw new Error('Business config must include database.collectionName and database.vectorIndexName');
+    }
+    
+    return new EmbeddingService(businessConfig);
+  }
+
+  /**
+   * Get the business ID this service is configured for
+   * @returns {string|null} Business ID or null if using default config
+   */
+  getBusinessId() {
+    return this.businessConfig?.businessId || null;
+  }
+
+  /**
+   * Get the collection name this service uses
+   * @returns {string} Collection name
+   */
+  getCollectionName() {
+    return this.EMBEDDINGS_COLLECTION;
+  }
+
+  /**
+   * Get the vector index name this service uses
+   * @returns {string} Vector index name
+   */
+  getVectorIndexName() {
+    return this.VECTOR_INDEX_NAME;
   }
 
   /**

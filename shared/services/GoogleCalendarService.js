@@ -2,12 +2,40 @@ const { google } = require('googleapis');
 const moment = require('moment-timezone');
 
 /**
- * Google Calendar Service for creating appointments
+ * Multi-Tenant Google Calendar Service for creating appointments
  */
 class GoogleCalendarService {
-  constructor() {
+  constructor(calendarConfig = null) {
     this.calendar = null;
     this.initialized = false;
+    this.calendarConfig = calendarConfig;
+    
+    // Log configuration
+    if (calendarConfig) {
+      console.log(`🏢 [GoogleCalendarService] Configured for business with calendar ID: ${calendarConfig.calendarId}`);
+    } else {
+      console.log('⚠️ [GoogleCalendarService] No calendar config provided, will use environment variables');
+    }
+  }
+
+  /**
+   * Create a new GoogleCalendarService instance for a specific business
+   * @param {Object} calendarConfig - Calendar configuration from business config
+   * @returns {GoogleCalendarService} New instance configured for the business
+   */
+  static createForBusiness(calendarConfig) {
+    if (!calendarConfig) {
+      throw new Error('Calendar configuration is required');
+    }
+    
+    const requiredFields = ['serviceAccountEmail', 'privateKey', 'calendarId', 'projectId'];
+    for (const field of requiredFields) {
+      if (!calendarConfig[field]) {
+        throw new Error(`Missing required calendar config field: ${field}`);
+      }
+    }
+    
+    return new GoogleCalendarService(calendarConfig);
   }
 
   /**
@@ -15,26 +43,47 @@ class GoogleCalendarService {
    */
   async initialize() {
     try {
-      // Check required environment variables
-      if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY || !process.env.GOOGLE_CALENDAR_ID) {
-        throw new Error('Missing Google Calendar environment variables');
+      let credentials;
+      let calendarId;
+      
+      if (this.calendarConfig) {
+        // Use business-specific configuration
+        credentials = {
+          client_email: this.calendarConfig.serviceAccountEmail,
+          private_key: this.calendarConfig.privateKey.replace(/\\n/g, '\n'),
+          project_id: this.calendarConfig.projectId,
+        };
+        calendarId = this.calendarConfig.calendarId;
+        
+        console.log(`🏢 [GoogleCalendarService] Initializing with business config for calendar: ${calendarId}`);
+      } else {
+        // Fallback to environment variables (backward compatibility)
+        if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY || !process.env.GOOGLE_CALENDAR_ID) {
+          throw new Error('Missing Google Calendar environment variables');
+        }
+        
+        credentials = {
+          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+          private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          project_id: process.env.GOOGLE_PROJECT_ID,
+        };
+        calendarId = process.env.GOOGLE_CALENDAR_ID;
+        
+        console.log('⚠️ [GoogleCalendarService] Using environment variables (legacy mode)');
       }
 
       // Create JWT auth
       const auth = new google.auth.GoogleAuth({
-        credentials: {
-          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-          project_id: process.env.GOOGLE_PROJECT_ID,
-        },
+        credentials,
         scopes: ['https://www.googleapis.com/auth/calendar'],
       });
 
       // Initialize calendar API
       this.calendar = google.calendar({ version: 'v3', auth });
+      this.calendarId = calendarId; // Store for use in methods
       this.initialized = true;
       
-      console.log('✅ Google Calendar service initialized');
+      console.log(`✅ Google Calendar service initialized for calendar: ${calendarId}`);
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize Google Calendar service:', error);
@@ -63,7 +112,7 @@ class GoogleCalendarService {
 
       // Get existing events in the time range
       const events = await this.calendar.events.list({
-        calendarId: process.env.GOOGLE_CALENDAR_ID,
+        calendarId: this.calendarId,
         timeMin: startDateTime,
         timeMax: endDateTime,
         singleEvents: true,
@@ -277,7 +326,7 @@ class GoogleCalendarService {
 
       // Create the event (without sending invitations due to service account limitations)
       const response = await this.calendar.events.insert({
-        calendarId: process.env.GOOGLE_CALENDAR_ID,
+        calendarId: this.calendarId,
         resource: event,
       });
 

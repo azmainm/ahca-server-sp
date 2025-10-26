@@ -1,26 +1,53 @@
 /**
- * Company Information Service with hardcoded fallback data
- * Ensures company info is always available even if knowledge base fails
+ * Multi-Tenant Company Information Service
+ * Loads company info from business configuration instead of hardcoded data
  */
 class CompanyInfoService {
-  constructor() {
-    // Hardcoded company information as fallback
-    this.fallbackCompanyInfo = {
-      name: "SherpaPrompt",
-      tagline: "Conversations into Outcomes",
-      established: "2018",
-      phone: "5035501817",
-      email: "doug@sherpaprompt.com",
-      website: "www.sherpaprompt.com",
-      address: "1234 Automation Way, San Francisco, CA 94105",
-      service_areas: ["Global", "Remote", "Cloud-based"],
-      hours: {
-        monday_friday: "7:00 AM - 6:00 PM",
-        saturday: "8:00 AM - 4:00 PM",
-        sunday: "Closed",
-        support: "24/7 technical support available"
+  constructor(companyInfo = null) {
+    // Use business-specific company information if provided
+    if (companyInfo) {
+      this.companyInfo = companyInfo;
+      console.log(`🏢 [CompanyInfoService] Configured for business: ${companyInfo.name}`);
+    } else {
+      // Fallback to default SherpaPrompt info (backward compatibility)
+      this.companyInfo = {
+        name: "SherpaPrompt",
+        tagline: "Conversations into Outcomes",
+        established: "2018",
+        phone: "5035501817",
+        email: "doug@sherpaprompt.com",
+        website: "www.sherpaprompt.com",
+        address: "1234 Automation Way, San Francisco, CA 94105",
+        service_areas: ["Global", "Remote", "Cloud-based"],
+        hours: {
+          monday_friday: "7:00 AM - 6:00 PM",
+          saturday: "8:00 AM - 4:00 PM",
+          sunday: "Closed",
+          support: "24/7 technical support available"
+        }
+      };
+      console.log('⚠️ [CompanyInfoService] No company info provided, using default SherpaPrompt info');
+    }
+  }
+
+  /**
+   * Create a new CompanyInfoService instance for a specific business
+   * @param {Object} companyInfo - Company information from business config
+   * @returns {CompanyInfoService} New instance configured for the business
+   */
+  static createForBusiness(companyInfo) {
+    if (!companyInfo) {
+      throw new Error('Company information is required');
+    }
+    
+    const requiredFields = ['name', 'phone', 'email'];
+    for (const field of requiredFields) {
+      if (!companyInfo[field]) {
+        throw new Error(`Missing required company info field: ${field}`);
       }
-    };
+    }
+    
+    return new CompanyInfoService(companyInfo);
   }
 
   /**
@@ -34,46 +61,46 @@ class CompanyInfoService {
     try {
       // Phone/contact information
       if (this.isPhoneQuery(queryLower)) {
-        return `You can reach us at ${this.fallbackCompanyInfo.phone}. We're available ${this.fallbackCompanyInfo.hours.monday_friday} Monday through Friday, and ${this.fallbackCompanyInfo.hours.saturday} on Saturday. We also provide ${this.fallbackCompanyInfo.hours.support}.`;
+        return `You can reach us at ${this.companyInfo.phone}. We're available ${this.companyInfo.hours.monday_friday} Monday through Friday, and ${this.companyInfo.hours.saturday} on Saturday. We also provide ${this.companyInfo.hours.support}.`;
       }
 
       // Email information
       if (this.isEmailQuery(queryLower)) {
-        return `Our email address is ${this.fallbackCompanyInfo.email}. You can also call us at ${this.fallbackCompanyInfo.phone} for immediate assistance.`;
+        return `Our email address is ${this.companyInfo.email}. You can also call us at ${this.companyInfo.phone} for immediate assistance.`;
       }
 
       // Address/location information
       if (this.isAddressQuery(queryLower)) {
-        return `We're located at ${this.fallbackCompanyInfo.address}. We serve the ${this.fallbackCompanyInfo.service_areas.join(', ')} areas.`;
+        return `We're located at ${this.companyInfo.address}. We serve the ${this.companyInfo.service_areas.join(', ')} areas.`;
       }
 
       // Service areas
       if (this.isServiceAreaQuery(queryLower)) {
-        return `We proudly serve ${this.fallbackCompanyInfo.service_areas.join(', ')}. Call us at ${this.fallbackCompanyInfo.phone} to confirm we service your specific area.`;
+        return `We proudly serve ${this.companyInfo.service_areas.join(', ')}. Call us at ${this.companyInfo.phone} to confirm we service your specific area.`;
       }
 
       // Business hours
       if (this.isHoursQuery(queryLower)) {
-        return `Our business hours are: Monday-Friday ${this.fallbackCompanyInfo.hours.monday_friday}, Saturday ${this.fallbackCompanyInfo.hours.saturday}, and we're ${this.fallbackCompanyInfo.hours.sunday} on Sunday. We also offer ${this.fallbackCompanyInfo.hours.support}.`;
+        return `Our business hours are: Monday-Friday ${this.companyInfo.hours.monday_friday}, Saturday ${this.companyInfo.hours.saturday}, and we're ${this.companyInfo.hours.sunday} on Sunday. We also offer ${this.companyInfo.hours.support}.`;
       }
 
       // Website information
       if (this.isWebsiteQuery(queryLower)) {
-        return `You can visit our website at ${this.fallbackCompanyInfo.website} for more information, or call us directly at ${this.fallbackCompanyInfo.phone}.`;
+        return `You can visit our website at ${this.companyInfo.website} for more information, or call us directly at ${this.companyInfo.phone}.`;
       }
 
       // Company name/general info
       if (this.isCompanyNameQuery(queryLower)) {
-        return `We are ${this.fallbackCompanyInfo.name}, ${this.fallbackCompanyInfo.tagline}. Established in ${this.fallbackCompanyInfo.established}, we serve the Denver metro area. You can reach us at ${this.fallbackCompanyInfo.phone}.`;
+        return `We are ${this.companyInfo.name}, ${this.companyInfo.tagline}. Established in ${this.companyInfo.established}, we serve the Denver metro area. You can reach us at ${this.companyInfo.phone}.`;
       }
 
       // General company information
       if (this.isGeneralInfoQuery(queryLower)) {
-        return `${this.fallbackCompanyInfo.name} - ${this.fallbackCompanyInfo.tagline}. We've been serving the Denver area since ${this.fallbackCompanyInfo.established}. Contact us at ${this.fallbackCompanyInfo.phone} or ${this.fallbackCompanyInfo.email}. Our office is located at ${this.fallbackCompanyInfo.address}.`;
+        return `${this.companyInfo.name} - ${this.companyInfo.tagline}. We've been serving the Denver area since ${this.companyInfo.established}. Contact us at ${this.companyInfo.phone} or ${this.companyInfo.email}. Our office is located at ${this.companyInfo.address}.`;
       }
 
       // Default: provide contact information
-      return `For all inquiries, you can reach ${this.fallbackCompanyInfo.name} at ${this.fallbackCompanyInfo.phone} or email us at ${this.fallbackCompanyInfo.email}. We're here to help with all your automation needs!`;
+      return `For all inquiries, you can reach ${this.companyInfo.name} at ${this.companyInfo.phone} or email us at ${this.companyInfo.email}. We're here to help with all your automation needs!`;
 
     } catch (error) {
       console.error('Error getting company info:', error);
@@ -150,7 +177,31 @@ class CompanyInfoService {
    * Get raw company data (for use by other services)
    */
   getRawCompanyData() {
-    return { ...this.fallbackCompanyInfo };
+    return { ...this.companyInfo };
+  }
+
+  /**
+   * Get the business name
+   * @returns {string} Business name
+   */
+  getBusinessName() {
+    return this.companyInfo.name;
+  }
+
+  /**
+   * Get the business phone number
+   * @returns {string} Phone number
+   */
+  getPhoneNumber() {
+    return this.companyInfo.phone;
+  }
+
+  /**
+   * Get the business email
+   * @returns {string} Email address
+   */
+  getEmailAddress() {
+    return this.companyInfo.email;
   }
 
   /**

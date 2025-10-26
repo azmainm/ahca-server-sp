@@ -12,8 +12,18 @@ class TwilioBridgeService {
     this.callSidToSession = new Map();
   }
 
-  async start(callSid, twilioWs, streamSid) {
+  async start(callSid, twilioWs, streamSid, businessId) {
     const sessionId = `twilio-${callSid}`;
+
+    // Ensure the Realtime service sees the correct tenant for this exact session
+    if (businessId && this.realtimeWSService && this.realtimeWSService.tenantContextManager) {
+      try {
+        this.realtimeWSService.tenantContextManager.setTenantContext(sessionId, businessId);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('⚠️ [TwilioBridge] Failed to set tenant context:', e.message);
+      }
+    }
 
     const stubClient = {
       readyState: WebSocket.OPEN,
