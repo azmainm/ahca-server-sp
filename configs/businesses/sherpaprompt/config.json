@@ -1,7 +1,7 @@
 {
   "businessId": "sherpaprompt",
   "businessName": "SherpaPrompt",
-  "phoneNumber": "+15555551234",
+  "phoneNumber": "+19713511965",
   "database": {
     "collectionName": "knowledge_base_sherpaprompt",
     "vectorIndexName": "vector_index_sherpaprompt"

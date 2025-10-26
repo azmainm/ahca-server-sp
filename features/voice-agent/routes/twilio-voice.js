@@ -69,25 +69,26 @@ router.post('/voice', async (req, res) => {
     console.log(`✅ [TwilioVoice] Call routed to business: ${businessId} (${businessConfig.businessName})`);
 
     // Build WebSocket URL with business context
-    const publicBaseUrl = process.env.PUBLIC_BASE_URL;
-    const scheme = 'wss'; // Twilio requires secure websockets
-    const host = publicBaseUrl ? publicBaseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '') : req.get('host');
+    // Prefer forwarded host when behind proxies (ngrok/load balancer)
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const rawHost = (forwardedHost ? forwardedHost.split(',')[0] : req.get('host')) || '';
+    const host = rawHost.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    // Determine scheme from forwarded proto; Twilio requires secure websockets
+    const protoHeader = (req.headers['x-forwarded-proto'] || req.protocol || '').toString();
+    const proto = protoHeader.split(',')[0].trim().toLowerCase();
+    const scheme = proto === 'https' ? 'wss' : 'wss';
 
     const streamUrl = `${scheme}://${host}/twilio-media`;
-    const streamParams = new URLSearchParams({
-      callSid,
-      from,
-      to,
-      businessId // Pass business ID to WebSocket handler
-    });
 
     const twiml = new twilio.twiml.VoiceResponse();
     const connect = twiml.connect();
-    const stream = connect.stream({
-      url: `${streamUrl}?${streamParams.toString()}`
-    });
+    const stream = connect.stream({ url: streamUrl });
+    // Send business context via Twilio Stream Parameters (available on 'start' event)
+    stream.parameter({ name: 'businessId', value: businessId });
+    stream.parameter({ name: 'from', value: from });
+    stream.parameter({ name: 'to', value: to });
 
-    console.log(`🔗 [TwilioVoice] WebSocket URL: ${streamUrl}?${streamParams.toString()}`);
+    console.log(`🔗 [TwilioVoice] WebSocket URL: ${streamUrl} (parameters sent via TwiML <Parameter>)`);
 
     res.type('text/xml');
     return res.send(twiml.toString());

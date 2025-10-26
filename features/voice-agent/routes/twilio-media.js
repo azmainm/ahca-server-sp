@@ -15,20 +15,13 @@ function setupTwilioMediaWebSocket(wss) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     console.log('🔗 [TwilioWS] Incoming Twilio Media WS connection from', req.socket.remoteAddress);
     
-    // Extract connection parameters
-    let callSid = url.searchParams.get('callSid');
-    const businessId = url.searchParams.get('businessId');
-    const from = url.searchParams.get('from');
-    const to = url.searchParams.get('to');
-    
-    console.log('📋 [TwilioWS] Connection params:', { callSid, businessId, from, to });
-    
-    // Validate business ID
-    if (!businessId) {
-      console.error('❌ [TwilioWS] No businessId in WebSocket connection, closing');
-      ws.close(1008, 'Missing business ID');
-      return;
-    }
+    // Twilio Media Streams does not forward URL query params; read from 'start' event
+    let callSid = null;
+    let businessId = null;
+    let from = null;
+    let to = null;
+
+    console.log('📋 [TwilioWS] Waiting for start event to obtain params');
     
     let streamSid = null;
 
@@ -42,14 +35,38 @@ function setupTwilioMediaWebSocket(wss) {
           break;
         case 'start':
           streamSid = msg.start?.streamSid;
-          callSid = callSid || msg.start?.callSid || `call-${Date.now()}`;
-          console.log('🎬 [TwilioWS] start event', { callSid, streamSid, businessId });
-          
+          callSid = msg.start?.callSid || callSid || `call-${Date.now()}`;
+          // Extract custom parameters sent via TwiML <Parameter>
+          try {
+            const cp = msg.start?.customParameters;
+            if (cp && typeof cp === 'object' && !Array.isArray(cp)) {
+              // Twilio commonly sends an object map
+              businessId = cp.businessId || businessId;
+              from = cp.from || from;
+              to = cp.to || to;
+            } else if (Array.isArray(cp)) {
+              // Fallback: array of { name, value }
+              const map = new Map(cp.map(p => [p.name, p.value]));
+              businessId = map.get('businessId') || businessId;
+              from = map.get('from') || from;
+              to = map.get('to') || to;
+            }
+          } catch (_) {}
+
+          console.log('🎬 [TwilioWS] start event', { callSid, streamSid, businessId, from, to });
+
+          // Validate business ID received via start.customParameters
+          if (!businessId) {
+            console.error('❌ [TwilioWS] No businessId provided in start.customParameters, closing');
+            ws.close(1008, 'Missing business ID');
+            return;
+          }
+
           // Store business context for this session
           tenantContextManager.setTenantContext(callSid, businessId);
           console.log(`🏢 [TwilioWS] Set tenant context: ${callSid} -> ${businessId}`);
-          
-          await bridge.start(callSid, ws, streamSid);
+
+          await bridge.start(callSid, ws, streamSid, businessId);
           break;
         case 'media':
           // media payload size can be logged if needed
