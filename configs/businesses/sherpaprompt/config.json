@@ -28,11 +28,15 @@
     "fromEmail": "scout@sherpaprompt.com",
     "fromName": "SherpaPrompt Support"
   },
+  "sms": {
+    "enabled": true,
+    "adminNumbers": ["+15174492949"]
+  },
   "companyInfo": {
     "name": "SherpaPrompt",
     "tagline": "Conversations into Outcomes",
     "established": "2018",
-    "phone": "5035501817",
+    "phone": "+15174492949",
     "email": "doug@sherpaprompt.com",
     "website": "www.sherpaprompt.com",
     "address": "1234 Automation Way, San Francisco, CA 94105",

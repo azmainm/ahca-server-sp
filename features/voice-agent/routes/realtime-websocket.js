@@ -20,6 +20,7 @@ const { GoogleCalendarService } = require('../../../shared/services/GoogleCalend
 const { MicrosoftCalendarService } = require('../../../shared/services/MicrosoftCalendarService');
 const { CompanyInfoService } = require('../../../shared/services/CompanyInfoService');
 const { EmailService } = require('../../../shared/services/EmailService');
+const { SmsService } = require('../../../shared/services/SmsService');
 const { BusinessConfigService } = require('../../../shared/services/BusinessConfigService');
 const { TenantContextManager } = require('../../../shared/services/TenantContextManager');
 
@@ -31,6 +32,7 @@ const googleCalendarService = new GoogleCalendarService();
 const microsoftCalendarService = new MicrosoftCalendarService();
 const companyInfoService = new CompanyInfoService();
 const emailService = new EmailService();
+const smsService = new SmsService();
 const businessConfigService = new BusinessConfigService();
 const tenantContextManager = new TenantContextManager();
 
@@ -140,7 +142,8 @@ const realtimeWSService = new RealtimeWebSocketService(
   openAIService,
   stateManager,
   businessConfigService,
-  tenantContextManager
+  tenantContextManager,
+  smsService
 );
 
 /**

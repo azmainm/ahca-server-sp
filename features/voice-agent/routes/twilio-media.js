@@ -66,7 +66,7 @@ function setupTwilioMediaWebSocket(wss) {
           tenantContextManager.setTenantContext(callSid, businessId);
           console.log(`🏢 [TwilioWS] Set tenant context: ${callSid} -> ${businessId}`);
 
-          await bridge.start(callSid, ws, streamSid, businessId);
+          await bridge.start(callSid, ws, streamSid, businessId, from, to);
           break;
         case 'media':
           // media payload size can be logged if needed

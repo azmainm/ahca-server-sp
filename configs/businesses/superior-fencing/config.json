@@ -29,7 +29,10 @@
     "fromName": "Superior Fence & Construction",
     "note": "Using same Mailchimp as SherpaPrompt, will be changed to Superior Fencing email later"
   },
-  
+  "sms": {
+    "enabled": true,
+    "adminNumbers": ["+15174492949"]
+  },
   "companyInfo": {
     "name": "Superior Fence & Construction",
     "phone": "+15035501817",

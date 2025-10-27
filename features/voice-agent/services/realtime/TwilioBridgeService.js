@@ -12,7 +12,7 @@ class TwilioBridgeService {
     this.callSidToSession = new Map();
   }
 
-  async start(callSid, twilioWs, streamSid, businessId) {
+  async start(callSid, twilioWs, streamSid, businessId, fromPhone = null, toPhone = null) {
     const sessionId = `twilio-${callSid}`;
 
     // Ensure the Realtime service sees the correct tenant for this exact session
@@ -38,6 +38,19 @@ class TwilioBridgeService {
     };
 
     await this.realtimeWSService.createSession(stubClient, sessionId);
+
+    // Persist caller/callee phone numbers into session user info for later SMS
+    try {
+      if (fromPhone && this.realtimeWSService && this.realtimeWSService.stateManager) {
+        this.realtimeWSService.stateManager.updateUserInfo(sessionId, { phone: fromPhone });
+      }
+      if (toPhone && this.realtimeWSService && this.realtimeWSService.stateManager) {
+        this.realtimeWSService.stateManager.updateSession(sessionId, { businessLine: toPhone });
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('⚠️ [TwilioBridge] Failed to persist phone metadata:', e.message);
+    }
     this.callSidToSession.set(callSid, {
       sessionId,
       streamSid,

@@ -8,7 +8,7 @@ const WebSocket = require('ws');
 const EventEmitter = require('events');
 
 class RealtimeWebSocketService extends EventEmitter {
-  constructor(conversationFlowHandler, openAIService, stateManager, businessConfigService = null, tenantContextManager = null) {
+  constructor(conversationFlowHandler, openAIService, stateManager, businessConfigService = null, tenantContextManager = null, smsService = null) {
     super();
     this.apiKey = process.env.OPENAI_API_KEY_CALL_AGENT;
     
@@ -22,6 +22,7 @@ class RealtimeWebSocketService extends EventEmitter {
     this.stateManager = stateManager;
     this.businessConfigService = businessConfigService;
     this.tenantContextManager = tenantContextManager;
+    this.smsService = smsService;
     
     // Active sessions: sessionId -> { clientWs, openaiWs, state }
     this.sessions = new Map();
@@ -94,6 +95,16 @@ class RealtimeWebSocketService extends EventEmitter {
     try {
       console.log('🎯 [RealtimeWS] Creating new session:', sessionId);
       
+      // Ensure business configuration service is initialized (Twilio path may bypass route init)
+      try {
+        if (this.businessConfigService && !this.businessConfigService.isInitialized()) {
+          console.log('🏢 [RealtimeWS] Initializing BusinessConfigService (lazy)');
+          await this.businessConfigService.initialize();
+        }
+      } catch (e) {
+        console.warn('⚠️ [RealtimeWS] Failed to ensure BusinessConfigService initialization:', e.message);
+      }
+
       // Create conversation session in state manager
       this.stateManager.getSession(sessionId);
       
@@ -1156,6 +1167,94 @@ class RealtimeWebSocketService extends EventEmitter {
           });
       } else {
         console.log('📧 [Email] Skipping email - no user info collected for session:', sessionId);
+      }
+
+      // Send conversation summary SMS (caller + admins)
+      try {
+        if (this.smsService && this.smsService.isReady()) {
+          // Build business context
+          const bizId = businessId;
+          let businessName = 'SherpaPrompt';
+          let smsConfig = null;
+          try {
+            if (this.businessConfigService && bizId) {
+              const bizConfig = this.businessConfigService.getBusinessConfig(bizId);
+              businessName = bizConfig?.businessName || businessName;
+              smsConfig = bizConfig?.sms || null;
+            }
+          } catch (e) {
+            console.warn('⚠️ [SMS] Failed to load business config for SMS:', e.message);
+          }
+
+          // Only proceed if we have meaningful conversation
+          const hasConversation = session?.conversationHistory && session.conversationHistory.length >= 2;
+          if (!hasConversation) {
+            console.log('📱 [SMS] Skipping SMS - insufficient conversation history');
+          } else {
+            const emailService = this.conversationFlowHandler.emailService || null;
+            const appointmentDetails = session.lastAppointment || null;
+            const fromNumberForSms = session?.businessLine || process.env.TWILIO_FROM_NUMBER || undefined;
+            const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID || undefined;
+
+            // 1) Send to caller if we have a phone number
+            const callerPhone = session?.userInfo?.phone;
+            if (callerPhone) {
+              try {
+                const result = await this.smsService.sendConversationSummary({
+                  to: callerPhone,
+                  userInfo: session.userInfo,
+                  conversationHistory: session.conversationHistory,
+                  appointmentDetails,
+                  businessName,
+                  emailService,
+                  fromNumber: fromNumberForSms,
+                  messagingServiceSid
+                });
+                if (result.success) {
+                  console.log('✅ [SMS] Summary sent to caller:', callerPhone);
+                } else {
+                  console.warn('⚠️ [SMS] Failed to send to caller:', result.error);
+                }
+              } catch (e) {
+                console.warn('⚠️ [SMS] Error sending to caller:', e.message);
+              }
+            } else {
+              console.log('📱 [SMS] No caller phone available; skipping caller SMS');
+            }
+
+            // 2) Send to admins
+            const adminNumbers = (smsConfig && Array.isArray(smsConfig.adminNumbers)) ? smsConfig.adminNumbers : [];
+            if (adminNumbers.length > 0) {
+              for (const admin of adminNumbers) {
+                try {
+                  const result = await this.smsService.sendConversationSummary({
+                    to: admin,
+                    userInfo: session.userInfo,
+                    conversationHistory: session.conversationHistory,
+                    appointmentDetails,
+                    businessName,
+                    emailService,
+                    fromNumber: fromNumberForSms,
+                    messagingServiceSid
+                  });
+                  if (result.success) {
+                    console.log('✅ [SMS] Summary sent to admin:', admin);
+                  } else {
+                    console.warn('⚠️ [SMS] Failed to send to admin', admin, ':', result.error);
+                  }
+                } catch (e) {
+                  console.warn('⚠️ [SMS] Error sending to admin', admin, ':', e.message);
+                }
+              }
+            } else {
+              console.log('📱 [SMS] No adminNumbers configured; skipping admin SMS');
+            }
+          }
+        } else {
+          console.log('📱 [SMS] SMS service not ready; skipping SMS');
+        }
+      } catch (e) {
+        console.warn('⚠️ [SMS] Unexpected SMS error:', e.message);
       }
       
       // Close OpenAI connection
