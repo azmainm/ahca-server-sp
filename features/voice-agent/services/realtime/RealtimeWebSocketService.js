@@ -210,9 +210,9 @@ class RealtimeWebSocketService extends EventEmitter {
         },
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.3, // Lowered from 0.5 for faster detection
-          prefix_padding_ms: 100, // Lowered from 300
-          silence_duration_ms: 700,
+          threshold: 0.3,
+          prefix_padding_ms: 100,
+          silence_duration_ms: 1000,
           create_response: true,  // Enable automatic response creation (semantic VAD)
           interrupt_response: true  // Allow interruptions
         },
