@@ -1070,8 +1070,8 @@ class RealtimeWebSocketService extends EventEmitter {
    */
   async handleUserInfo(sessionId, args) {
     try {
-      const { name, email } = args;
-      console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email });
+      const { name, email, phone, reason, urgency } = args;
+      console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email, phone, reason, urgency });
       console.log('👤 [UserInfo] Session ID:', sessionId);
       
       const sess = this.stateManager.getSession(sessionId);
@@ -1082,6 +1082,21 @@ class RealtimeWebSocketService extends EventEmitter {
       if (name) {
         console.log('👤 [UserInfo] Setting name:', name);
         updates.name = name;
+      }
+      
+      if (phone) {
+        console.log('👤 [UserInfo] Setting phone:', phone);
+        updates.phone = phone;
+      }
+      
+      if (reason) {
+        console.log('👤 [UserInfo] Setting reason:', reason);
+        updates.reason = reason;
+      }
+      
+      if (urgency) {
+        console.log('👤 [UserInfo] Setting urgency:', urgency);
+        updates.urgency = urgency;
       }
       
       if (email) {
