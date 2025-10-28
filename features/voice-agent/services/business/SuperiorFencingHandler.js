@@ -16,6 +16,7 @@ class SuperiorFencingHandler {
       COLLECTING_PHONE: 'collecting_phone',
       COLLECTING_REASON: 'collecting_reason',
       COLLECTING_URGENCY: 'collecting_urgency',
+      FINAL_CONFIRMATION: 'final_confirmation',
       COMPLETED: 'completed'
     };
     
@@ -66,6 +67,14 @@ class SuperiorFencingHandler {
     const session = this.getSession(sessionId);
     
     console.log(`🏢 [SuperiorFencing] Processing: "${text}" in state: ${session.state}`);
+    
+    // Check for information changes only after initial collection is complete
+    if (session.state === this.states.FINAL_CONFIRMATION) {
+      const changeResult = await this.handleInformationChanges(text, session);
+      if (changeResult.handled) {
+        return changeResult;
+      }
+    }
     
     let response;
     let isComplete = false;
@@ -129,12 +138,28 @@ class SuperiorFencingHandler {
 
       case this.states.COLLECTING_URGENCY:
         session.collectedInfo.urgency = this.extractUrgency(text);
-        response = "Perfect, I'll make sure your message goes straight to the right person on our team. Thanks for contacting Superior Fence & Construction — we appreciate your call.";
-        session.state = this.states.COMPLETED;
-        isComplete = true;
-        
-        // Send email summary
-        await this.sendLeadEmail(sessionId, session);
+        response = this.generateFinalConfirmation(session.collectedInfo);
+        session.state = this.states.FINAL_CONFIRMATION;
+        break;
+
+      case this.states.FINAL_CONFIRMATION:
+        if (this.isConfirmation(text)) {
+          response = "Perfect, I'll make sure your message goes straight to the right person on our team. Thanks for contacting Superior Fence & Construction — we appreciate your call.";
+          session.state = this.states.COMPLETED;
+          isComplete = true;
+          
+          // Send email summary
+          await this.sendLeadEmail(sessionId, session);
+        } else {
+          // User wants to make changes - handle them
+          const changeResult = await this.handleInformationChanges(text, session);
+          if (changeResult.handled) {
+            return changeResult;
+          } else {
+            // If no specific change detected, ask what they'd like to change
+            response = "What would you like to change? You can update your name, phone number, or the reason for your call.";
+          }
+        }
         break;
 
       case this.states.COMPLETED:
@@ -423,6 +448,123 @@ Call Details
     } catch (error) {
       console.error(`❌ [SuperiorFencing] Error sending lead email for session: ${sessionId}`, error);
     }
+  }
+
+  /**
+   * Handle information changes during conversation
+   * @param {string} text - User input
+   * @param {Object} session - Session data
+   * @returns {Promise<Object>} Change handling result
+   */
+  async handleInformationChanges(text, session) {
+    const textLower = text.toLowerCase().trim();
+    
+    // Detect name changes
+    const nameChangePatterns = [
+      /(?:my name is|call me|name should be|change.*name.*to|actually.*name.*is|update.*name.*to)\s+(.+)/i,
+      /(?:actually|wait|sorry).*(?:it's|its)\s+(.+)/i
+    ];
+    
+    // Detect phone changes
+    const phoneChangePatterns = [
+      /(?:my number is|phone.*is|number.*should be|change.*number.*to|actually.*number.*is|update.*number.*to)\s*(.+)/i,
+      /(?:actually|wait|sorry).*(\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})/i
+    ];
+    
+    // Detect reason changes
+    const reasonChangePatterns = [
+      /(?:actually|change.*reason|reason.*is|it's.*for|update.*reason.*to)\s+(.+)/i,
+      /(?:actually|wait|sorry).*(?:i need|i want|looking for)\s+(.+)/i
+    ];
+    
+    let changeDetected = false;
+    let response = '';
+    
+    // Check for name changes
+    for (const pattern of nameChangePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const nameResult = this.extractName(match[1]);
+        if (nameResult.name && nameResult.name !== session.collectedInfo.name) {
+          session.collectedInfo.name = nameResult.name;
+          response = `Okay, I've updated your name to ${nameResult.name}.`;
+          changeDetected = true;
+          break;
+        }
+      }
+    }
+    
+    // Check for phone changes
+    if (!changeDetected) {
+      for (const pattern of phoneChangePatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          const phoneResult = this.extractPhone(match[1]);
+          if (phoneResult.phone && phoneResult.phone !== session.collectedInfo.phone) {
+            session.collectedInfo.phone = phoneResult.phone;
+            response = `Okay, I've updated your phone number to ${phoneResult.phone}.`;
+            changeDetected = true;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Check for reason changes
+    if (!changeDetected) {
+      for (const pattern of reasonChangePatterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          const newReason = match[1].trim();
+          if (newReason.length > 3) {
+            session.collectedInfo.rawReason = newReason;
+            try {
+              session.collectedInfo.reason = await this.processReasonWithAI(newReason);
+            } catch (error) {
+              session.collectedInfo.reason = newReason;
+            }
+            response = `Okay, I've updated your reason to ${session.collectedInfo.reason}.`;
+            changeDetected = true;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (changeDetected) {
+      // If we're in final confirmation, show updated details
+      if (session.state === this.states.FINAL_CONFIRMATION) {
+        response += ` ${this.generateFinalConfirmation(session.collectedInfo)}`;
+      }
+      
+      return {
+        handled: true,
+        success: true,
+        response: response,
+        sessionId: session.sessionId,
+        isComplete: false,
+        collectedInfo: session.collectedInfo,
+        currentState: session.state
+      };
+    }
+    
+    return { handled: false };
+  }
+
+  /**
+   * Generate final confirmation message with all collected information
+   * @param {Object} collectedInfo - All collected customer information
+   * @returns {string} Final confirmation message
+   */
+  generateFinalConfirmation(collectedInfo) {
+    return `Great! Let me confirm your details:
+
+• Name: ${collectedInfo.name}
+• Phone: ${collectedInfo.phone}
+• Reason: ${collectedInfo.reason}
+• Urgency: ${collectedInfo.urgency}
+
+Does this look correct, or would you like to change anything?`;
   }
 
   /**
