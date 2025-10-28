@@ -37,7 +37,7 @@ class TwilioBridgeService {
       close: () => {}
     };
 
-    await this.realtimeWSService.createSession(stubClient, sessionId);
+    await this.realtimeWSService.createSession(stubClient, sessionId, { twilioCallSid: callSid });
 
     // Persist caller/callee phone numbers into session user info for later SMS
     try {
@@ -55,7 +55,9 @@ class TwilioBridgeService {
       sessionId,
       streamSid,
       twilioWs,
-      outMuLawRemainder: Buffer.alloc(0)
+      outMuLawRemainder: Buffer.alloc(0),
+      outputBuffer: [], // Buffer for outbound audio
+      isFlushing: false, // Prevent multiple flush loops
     });
     return sessionId;
   }
@@ -65,6 +67,18 @@ class TwilioBridgeService {
     if (entry) {
       await this.realtimeWSService.closeSession(entry.sessionId);
       this.callSidToSession.delete(callSid);
+    }
+  }
+
+  /**
+   * Instantly clear any buffered outbound audio for a session.
+   * This is the core of the barge-in mechanism.
+   */
+  clearOutputBuffer(callSid) {
+    const entry = this.callSidToSession.get(callSid);
+    if (entry) {
+      // console.log(`[TwilioBridge] Clearing output buffer for ${callSid}. Was ${entry.outputBuffer.length} items.`);
+      entry.outputBuffer = [];
     }
   }
 
@@ -129,7 +143,7 @@ class TwilioBridgeService {
         const totalFrames = Math.floor(combined.length / FRAME_SIZE);
         const remainderBytes = combined.length % FRAME_SIZE;
 
-        if (totalFrames > 0 && twilioWs && twilioWs.readyState === WebSocket.OPEN) {
+        if (totalFrames > 0) {
           for (let i = 0; i < totalFrames; i++) {
             const frame = combined.subarray(i * FRAME_SIZE, (i + 1) * FRAME_SIZE);
             const payload = frame.toString('base64');
@@ -138,17 +152,59 @@ class TwilioBridgeService {
               streamSid: streamSid,
               media: { payload }
             };
-            twilioWs.send(JSON.stringify(out));
+            // Add to buffer instead of sending directly
+            entry.outputBuffer.push(out);
           }
         }
 
         // 5) store remainder
         entry.outMuLawRemainder = remainderBytes > 0 ? combined.subarray(combined.length - remainderBytes) : Buffer.alloc(0);
+        
+        // 6) Start the flushing mechanism if not already running
+        if (!entry.isFlushing) {
+          this.flushOutputBuffer(callSid);
+        }
+
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('⚠️ [TwilioBridge] Outbound audio handling error:', e.message);
       }
     }
+  }
+
+  /**
+   * Periodically sends buffered audio to Twilio.
+   * This creates a small, interruptible jitter buffer.
+   */
+  flushOutputBuffer(callSid) {
+    const entry = this.callSidToSession.get(callSid);
+    if (!entry || entry.isFlushing) return;
+
+    entry.isFlushing = true;
+
+    const intervalId = setInterval(() => {
+      const session = this.callSidToSession.get(callSid);
+      
+      // Stop if session ended or WebSocket closed
+      if (!session || session.twilioWs.readyState !== WebSocket.OPEN) {
+        if (session) session.isFlushing = false;
+        clearInterval(intervalId);
+        return;
+      }
+      
+      // Send one chunk from the buffer
+      if (session.outputBuffer.length > 0) {
+        const msg = session.outputBuffer.shift();
+        try {
+          session.twilioWs.send(JSON.stringify(msg));
+        } catch(e) {
+          console.warn('⚠️ [TwilioBridge] Error sending to Twilio WS:', e.message);
+          session.isFlushing = false;
+          clearInterval(intervalId);
+        }
+      }
+      
+    }, 20); // Send audio every 20ms, matching Twilio's frame rate
   }
 
   // =========================

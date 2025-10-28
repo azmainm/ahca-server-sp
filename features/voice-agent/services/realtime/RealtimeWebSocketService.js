@@ -23,6 +23,7 @@ class RealtimeWebSocketService extends EventEmitter {
     this.businessConfigService = businessConfigService;
     this.tenantContextManager = tenantContextManager;
     this.smsService = smsService;
+    this.bridgeService = null; // To be injected post-instantiation
     
     // Active sessions: sessionId -> { clientWs, openaiWs, state }
     this.sessions = new Map();
@@ -34,6 +35,14 @@ class RealtimeWebSocketService extends EventEmitter {
     } catch (e) {
       this.DEFAULT_SYSTEM_PROMPT = 'You are SherpaPrompt\'s voice assistant.';
     }
+  }
+
+  /**
+   * Inject the TwilioBridgeService to avoid circular dependencies.
+   * @param {TwilioBridgeService} bridgeService
+   */
+  setBridgeService(bridgeService) {
+    this.bridgeService = bridgeService;
   }
 
   /**
@@ -91,7 +100,7 @@ class RealtimeWebSocketService extends EventEmitter {
   /**
    * Create a new Realtime API session
    */
-  async createSession(clientWs, sessionId) {
+  async createSession(clientWs, sessionId, metadata = {}) {
     try {
       console.log('🎯 [RealtimeWS] Creating new session:', sessionId);
       
@@ -124,6 +133,7 @@ class RealtimeWebSocketService extends EventEmitter {
         sessionId,
         clientWs,
         openaiWs,
+        twilioCallSid: metadata.twilioCallSid || null, // Store Twilio CallSid for bridge communication
         isConnected: false,
         isResponding: false,  // Track if AI is currently responding
         activeResponseId: null,  // Track active response ID for cancellation
@@ -200,8 +210,8 @@ class RealtimeWebSocketService extends EventEmitter {
         },
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
+          threshold: 0.3, // Lowered from 0.5 for faster detection
+          prefix_padding_ms: 100, // Lowered from 300
           silence_duration_ms: 700,
           create_response: true,  // Enable automatic response creation (semantic VAD)
           interrupt_response: true  // Allow interruptions
@@ -495,8 +505,15 @@ class RealtimeWebSocketService extends EventEmitter {
 
       case 'input_audio_buffer.speech_started':
         console.log('🎤 [RealtimeWS] Speech started:', sessionId);
+
+        // --- BARGE-IN LOGIC ---
+        // 1. Instantly clear any buffered AI audio in the bridge to prevent it from reaching Twilio
+        if (this.bridgeService && sessionData.twilioCallSid) {
+          console.log(`[RealtimeWS] Clearing output buffer on bridge for call SID: ${sessionData.twilioCallSid}`);
+          this.bridgeService.clearOutputBuffer(sessionData.twilioCallSid);
+        }
         
-        // Cancel any ongoing AI response (user is interrupting)
+        // 2. Cancel any ongoing AI response (user is interrupting)
         // Only send cancel if we have an active response (not just finished)
         if (sessionData.isResponding && sessionData.activeResponseId) {
           console.log('🛑 [RealtimeWS] User interrupted - canceling AI response:', sessionData.activeResponseId);
@@ -511,7 +528,7 @@ class RealtimeWebSocketService extends EventEmitter {
           sessionData.activeResponseId = null;
         }
 
-        // Suppress any in-flight audio chunks arriving after interruption
+        // 3. Suppress any in-flight audio chunks arriving after interruption
         sessionData.suppressAudio = true;
         
         this.sendToClient(sessionData, {

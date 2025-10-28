@@ -11,6 +11,9 @@ const tenantContextManager = new TenantContextManager();
 function setupTwilioMediaWebSocket(wss) {
   bridge = new TwilioBridgeService(realtimeWSService);
 
+  // Inject bridge into the realtime service to complete the interruption circuit
+  realtimeWSService.setBridgeService(bridge);
+
   wss.on('connection', (ws, req) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     console.log('🔗 [TwilioWS] Incoming Twilio Media WS connection from', req.socket.remoteAddress);
