@@ -301,7 +301,8 @@ router.post('/process', async (req, res) => {
       
       const superiorFencingHandler = new SuperiorFencingHandler(
         businessServices.emailService,
-        businessServices.companyInfoService
+        businessServices.companyInfoService,
+        openAIService
       );
       
       result = await superiorFencingHandler.processConversation(text, sessionId);

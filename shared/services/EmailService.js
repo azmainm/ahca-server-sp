@@ -733,9 +733,39 @@ Guidelines:
       if (businessName === 'Superior Fence & Construction') {
         // Extract basic info from conversation history for Superior Fencing
         const customerName = userName !== 'Valued Customer' ? userName : 'Customer';
-        const customerPhone = this.extractPhoneFromHistory(conversationHistory) || 'Not provided';
-        const customerReason = this.extractReasonFromHistory(conversationHistory) || 'General inquiry';
-        const customerUrgency = this.extractUrgencyFromHistory(conversationHistory) || 'call back asap';
+        
+        // Try multiple methods to get phone number
+        let customerPhone = 'Not provided';
+        
+        // Method 1: Check if phone is in userInfo (from function calls)
+        if (userInfo && userInfo.phone) {
+          customerPhone = userInfo.phone;
+        } else {
+          // Method 2: Extract from conversation history
+          customerPhone = this.extractPhoneFromHistory(conversationHistory) || 'Not provided';
+        }
+        
+        // Try multiple methods to get reason
+        let customerReason = 'General inquiry';
+        
+        // Method 1: Check if reason is in userInfo (from function calls)  
+        if (userInfo && userInfo.reason) {
+          customerReason = userInfo.reason;
+        } else {
+          // Method 2: Extract from conversation history
+          customerReason = this.extractReasonFromHistory(conversationHistory) || 'General inquiry';
+        }
+        
+        // Try multiple methods to get urgency
+        let customerUrgency = 'call back asap';
+        
+        // Method 1: Check if urgency is in userInfo (from function calls)
+        if (userInfo && userInfo.urgency) {
+          customerUrgency = userInfo.urgency;
+        } else {
+          // Method 2: Extract from conversation history
+          customerUrgency = this.extractUrgencyFromHistory(conversationHistory) || 'call back asap';
+        }
 
         const htmlContent = `
 <!DOCTYPE html>

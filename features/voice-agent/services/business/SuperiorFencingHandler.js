@@ -3,9 +3,10 @@
  * Specialized handler for Superior Fencing's simple information collection script
  */
 class SuperiorFencingHandler {
-  constructor(emailService, companyInfoService) {
+  constructor(emailService, companyInfoService, openAIService = null) {
     this.emailService = emailService;
     this.companyInfoService = companyInfoService;
+    this.openAIService = openAIService;
     
     // Superior Fencing conversation states
     this.states = {
@@ -33,6 +34,7 @@ class SuperiorFencingHandler {
         name: null,
         phone: null,
         reason: null,
+        rawReason: null,
         urgency: null
       },
       nameConfirmed: false,
@@ -109,7 +111,18 @@ class SuperiorFencingHandler {
         break;
 
       case this.states.COLLECTING_REASON:
-        session.collectedInfo.reason = text.trim();
+        // Store the raw reason first
+        session.collectedInfo.rawReason = text.trim();
+        
+        // Process the reason with AI to create a clean summary
+        try {
+          session.collectedInfo.reason = await this.processReasonWithAI(text.trim());
+        } catch (error) {
+          console.error('❌ [SuperiorFencing] AI reason processing failed:', error);
+          // Fallback to raw text if AI processing fails
+          session.collectedInfo.reason = text.trim();
+        }
+        
         response = "Got it. Would you like us to call you back on the next business day, or is there no rush and any day would be fine?";
         session.state = this.states.COLLECTING_URGENCY;
         break;
@@ -150,7 +163,7 @@ class SuperiorFencingHandler {
    */
   getGreeting() {
     return "Hi there, I'm Mason, Superior Fence & Construction's virtual assistant. " +
-           "If this is an emergency or time-sensitive, please press # now to reach our on-call team. " +
+           "If this is an emergency or time-sensitive, please press the pound key now to reach our on-call team. " +
            "Parts of this call may be recorded so we can better understand your needs and improve our service. " +
            "We're currently closed, but I can take a few quick details so our team can follow up first thing in the morning. " +
            "Could I start with your name?";
@@ -268,6 +281,70 @@ class SuperiorFencingHandler {
     
     // Default to ASAP if ambiguous (better to be responsive)
     return 'call back asap';
+  }
+
+  /**
+   * Process reason with AI to create a clean, professional summary
+   * @param {string} rawReason - Raw user input for reason
+   * @returns {Promise<string>} Processed reason summary
+   */
+  async processReasonWithAI(rawReason) {
+    // If no OpenAI service available, return raw reason
+    if (!this.openAIService) {
+      console.log('⚠️ [SuperiorFencing] No OpenAI service available, using raw reason');
+      return rawReason;
+    }
+
+    // If reason is already short and clear, don't process it
+    if (rawReason.length <= 50 && rawReason.split(' ').length <= 8) {
+      console.log('🔄 [SuperiorFencing] Reason is already concise, skipping AI processing');
+      return rawReason;
+    }
+
+    try {
+      console.log('🤖 [SuperiorFencing] Processing reason with AI:', rawReason);
+      
+      const messages = [
+        {
+          role: 'system',
+          content: `You are helping Superior Fence & Construction understand customer inquiries. The customer called Superior Fence & Construction (a fencing company that provides fence installation, repair, maintenance, gates, and estimates) and gave this reason for their call.
+
+Please summarize their reason into a clear, professional, concise summary (maximum 10 words) that captures the main service they need.
+
+Examples:
+- Long input: "Well, I have this old wooden fence that's falling apart and some posts are rotting and I think I need someone to fix it or maybe replace the whole thing" 
+- Summary: "Fence repair/replacement needed"
+
+- Long input: "I'm looking to get a quote for installing a new fence around my backyard, probably vinyl or wood, not sure yet"
+- Summary: "New fence installation estimate"
+
+- Long input: "My gate won't close properly and it's been sagging for months"
+- Summary: "Gate repair needed"
+
+Focus on the main service needed. Keep it professional and brief.`
+        },
+        {
+          role: 'user',
+          content: `Customer's reason: "${rawReason}"`
+        }
+      ];
+
+      const processedReason = await this.openAIService.callOpenAI(messages, 'gpt-5-nano', 2, {
+        max_output_tokens: 50,
+        reasoning: { effort: 'minimal' }
+      });
+
+      // Clean up the response (remove quotes, extra whitespace)
+      const cleanedReason = processedReason.trim().replace(/^["']|["']$/g, '');
+      
+      console.log('✅ [SuperiorFencing] AI processed reason:', cleanedReason);
+      return cleanedReason;
+
+    } catch (error) {
+      console.error('❌ [SuperiorFencing] AI reason processing failed:', error);
+      // Fallback to raw reason if AI fails
+      return rawReason;
+    }
   }
 
   /**

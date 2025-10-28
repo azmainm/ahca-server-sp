@@ -295,7 +295,7 @@ class RealtimeWebSocketService extends EventEmitter {
         {
           type: 'function',
           name: 'update_user_info',
-          description: 'Update customer information (name, phone, reason for call). Call this when customer provides their name, phone number, or reason for calling.',
+          description: 'Update customer information (name, phone, reason for call, urgency). Call this when customer provides their name, phone number, reason for calling, or urgency preference.',
           parameters: {
             type: 'object',
             properties: {
@@ -310,6 +310,10 @@ class RealtimeWebSocketService extends EventEmitter {
               reason: {
                 type: 'string',
                 description: 'Reason for calling (e.g., fence repair, new installation, emergency)'
+              },
+              urgency: {
+                type: 'string',
+                description: 'Callback urgency preference: "call back asap" for urgent/next business day, or "call anytime" for no rush'
               }
             }
           }

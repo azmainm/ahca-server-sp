@@ -149,7 +149,7 @@ if (SuperiorFencingHandler.shouldHandle(businessServices.businessId)) {
 ### Greeting
 ```
 "Hi there, I'm Mason, Superior Fence & Construction's virtual assistant.
-If this is an emergency or time-sensitive, please press # now to reach our on-call team.
+If this is an emergency or time-sensitive, please press the pound key now to reach our on-call team.
 Parts of this call may be recorded so we can better understand your needs and improve our service.
 We're currently closed, but I can take a few quick details so our team can follow up first thing in the morning.
 Could I start with your name?"
