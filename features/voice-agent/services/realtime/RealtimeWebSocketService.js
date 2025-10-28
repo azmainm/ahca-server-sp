@@ -188,11 +188,9 @@ class RealtimeWebSocketService extends EventEmitter {
           model: 'whisper-1'
         },
         turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 700,
-          create_response: true,  // Enable automatic response creation (semantic VAD)
+          type: 'semantic_vad',
+          eagerness: 'medium',  // Options: 'low', 'medium', 'high', 'auto'
+          create_response: true,  // Enable automatic response creation
           interrupt_response: true  // Allow interruptions
         },
         tools: this.defineTools(sessionData.sessionId),

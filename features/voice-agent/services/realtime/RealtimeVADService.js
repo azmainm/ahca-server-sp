@@ -1,6 +1,6 @@
 /**
  * RealtimeVADService - OpenAI Realtime API Voice Activity Detection
- * Uses OpenAI's WebSocket Realtime API for server-side VAD with turn detection
+ * Uses OpenAI's WebSocket Realtime API for semantic VAD with intelligent turn detection
  * Keeps existing STT-TTS pipeline intact
  */
 
@@ -26,13 +26,11 @@ class RealtimeVADService extends EventEmitter {
     // Store response audio to send back to client
     this.responseAudioQueue = new Map(); // sessionId -> audio data
     
-    // VAD Configuration - ONLY Server VAD (simpler and more reliable)
+    // VAD Configuration - Semantic VAD (more intelligent and responsive)
     this.VAD_CONFIG = {
-      // Server VAD settings - automatically chunks audio based on silence
-      server_vad: {
-        threshold: 0.5,                    // Voice activation threshold (0-1)
-        prefix_padding_ms: 300,            // Audio before speech detection
-        silence_duration_ms: 1500,         // Silence duration to end turn (1.5s for faster response)
+      // Semantic VAD settings - uses semantic understanding for speech endpoint detection
+      semantic_vad: {
+        eagerness: 'medium',               // Eagerness level: 'low', 'medium', 'high', 'auto'
         create_response: false,            // Don't auto-create responses (we handle this)
         interrupt_response: true           // Allow interruptions
       },
@@ -54,7 +52,7 @@ class RealtimeVADService extends EventEmitter {
    * @returns {Promise<Object>} Session info
    */
   async startVADSession(sessionId) {
-    const vadMode = 'server_vad'; // Always use server VAD - simpler and more reliable
+    const vadMode = 'semantic_vad'; // Use semantic VAD for intelligent speech endpoint detection
     console.log('🎯 [RealtimeVAD] Starting Realtime API VAD session:', sessionId, 'Mode:', vadMode);
     
     try {
@@ -92,9 +90,9 @@ class RealtimeVADService extends EventEmitter {
       
       return {
         sessionId,
-        vadMode: 'server_vad',
+        vadMode: 'semantic_vad',
         status: 'connected',
-        config: this.VAD_CONFIG.server_vad
+        config: this.VAD_CONFIG.semantic_vad
       };
 
     } catch (error) {
@@ -240,7 +238,7 @@ class RealtimeVADService extends EventEmitter {
    * @param {Object} vadSession - VAD session object
    */
   async configureVADSession(vadSession) {
-    const vadMode = 'server_vad'; // Always use server VAD
+    const vadMode = 'semantic_vad'; // Use semantic VAD for intelligent endpoint detection
     const { ws } = vadSession;
     
     const sessionConfig = {
@@ -253,8 +251,8 @@ class RealtimeVADService extends EventEmitter {
         output_audio_format: this.VAD_CONFIG.audio.output_audio_format,
         input_audio_transcription: this.VAD_CONFIG.audio.input_audio_transcription,
         turn_detection: {
-          type: 'server_vad',
-          ...this.VAD_CONFIG.server_vad
+          type: 'semantic_vad',
+          ...this.VAD_CONFIG.semantic_vad
         },
         tool_choice: 'none',
         temperature: 0.6
@@ -371,7 +369,7 @@ class RealtimeVADService extends EventEmitter {
     return {
       exists: true,
       isConnected: vadSession.isConnected,
-      vadMode: 'server_vad',
+      vadMode: 'semantic_vad',
       hasSpeech: vadSession.currentSpeech !== null,
       speechDuration: vadSession.currentSpeech ? 
         Date.now() - vadSession.currentSpeech.startTime : 0,
