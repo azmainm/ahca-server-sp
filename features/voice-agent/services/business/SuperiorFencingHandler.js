@@ -14,6 +14,7 @@ class SuperiorFencingHandler {
       CONFIRMING_NAME: 'confirming_name',
       COLLECTING_PHONE: 'collecting_phone',
       COLLECTING_REASON: 'collecting_reason',
+      COLLECTING_URGENCY: 'collecting_urgency',
       COMPLETED: 'completed'
     };
     
@@ -31,7 +32,8 @@ class SuperiorFencingHandler {
       collectedInfo: {
         name: null,
         phone: null,
-        reason: null
+        reason: null,
+        urgency: null
       },
       nameConfirmed: false,
       startTime: new Date().toISOString()
@@ -108,6 +110,12 @@ class SuperiorFencingHandler {
 
       case this.states.COLLECTING_REASON:
         session.collectedInfo.reason = text.trim();
+        response = "Got it. Would you like us to call you back on the next business day, or is there no rush and any day would be fine?";
+        session.state = this.states.COLLECTING_URGENCY;
+        break;
+
+      case this.states.COLLECTING_URGENCY:
+        session.collectedInfo.urgency = this.extractUrgency(text);
         response = "Perfect, I'll make sure your message goes straight to the right person on our team. Thanks for contacting Superior Fence & Construction — we appreciate your call.";
         session.state = this.states.COMPLETED;
         isComplete = true;
@@ -237,35 +245,96 @@ class SuperiorFencingHandler {
   }
 
   /**
+   * Extract urgency preference from user input
+   * @param {string} text - User input
+   * @returns {string} Urgency level
+   */
+  extractUrgency(text) {
+    const cleanText = text.toLowerCase().trim();
+    
+    // Check for urgent/ASAP indicators
+    const urgentWords = ['next business day', 'tomorrow', 'asap', 'as soon as possible', 'urgent', 'soon', 'quickly', 'rush'];
+    const noRushWords = ['no rush', 'any day', 'anytime', 'whenever', 'no hurry', 'flexible', 'not urgent'];
+    
+    // Check for no rush indicators first
+    if (noRushWords.some(word => cleanText.includes(word))) {
+      return 'call anytime';
+    }
+    
+    // Check for urgent indicators
+    if (urgentWords.some(word => cleanText.includes(word))) {
+      return 'call back asap';
+    }
+    
+    // Default to ASAP if ambiguous (better to be responsive)
+    return 'call back asap';
+  }
+
+  /**
    * Send lead email to the team
    * @param {string} sessionId - Session identifier
    * @param {Object} session - Session data
    */
   async sendLeadEmail(sessionId, session) {
     try {
-      const { name, phone, reason } = session.collectedInfo;
-      const callTime = new Date(session.startTime).toLocaleString();
-      const duration = Math.round((new Date() - new Date(session.startTime)) / 1000 / 60); // minutes
+      const { name, phone, reason, urgency } = session.collectedInfo;
       
       const subject = `New Lead from Superior Fence & Construction - ${name}`;
-      const emailBody = `New customer inquiry received:
+      
+      // Create simplified HTML email template
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Superior Fence & Construction</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #2c5530; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
+        .logo { font-size: 24px; font-weight: bold; }
+        ul { padding-left: 20px; }
+        li { margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🏗️ Superior Fence & Construction</div>
+    </div>
+    
+    <div class="content">
+        <h2>New Customer Inquiry</h2>
+        
+        <h3>Call Details</h3>
+        <ul>
+            <li><strong>Name:</strong> ${name}</li>
+            <li><strong>Phone:</strong> ${phone}</li>
+            <li><strong>Reason:</strong> ${reason}</li>
+            <li><strong>Urgency:</strong> ${urgency}</li>
+        </ul>
+    </div>
+</body>
+</html>
+      `.trim();
 
-Name: ${name}
-Phone: ${phone}
-Reason for call: ${reason}
-Call time: ${callTime}
-Call duration: ${duration} minutes
-Session ID: ${sessionId}
+      // Create simplified text version
+      const textContent = `
+Superior Fence & Construction
 
-Please follow up with this customer.
+New Customer Inquiry
 
----
-This lead was collected by Mason, Superior Fence & Construction's virtual assistant.`;
+Call Details
+• Name: ${name}
+• Phone: ${phone}
+• Reason: ${reason}
+• Urgency: ${urgency}
+      `.trim();
 
       const emailResult = await this.emailService.sendEmail(
         'doug@sherpaprompt.com', // TODO: Change to Superior Fencing's email when ready
         subject,
-        emailBody
+        textContent,
+        htmlContent
       );
 
       if (emailResult.success) {

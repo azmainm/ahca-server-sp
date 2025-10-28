@@ -729,6 +729,71 @@ Guidelines:
       const companyName = businessName || 'SherpaPrompt';
       const companyEmoji = businessName === 'Superior Fence & Construction' ? '🏗️' : '🤖';
 
+      // Special simplified template for Superior Fencing
+      if (businessName === 'Superior Fence & Construction') {
+        // Extract basic info from conversation history for Superior Fencing
+        const customerName = userName !== 'Valued Customer' ? userName : 'Customer';
+        const customerPhone = this.extractPhoneFromHistory(conversationHistory) || 'Not provided';
+        const customerReason = this.extractReasonFromHistory(conversationHistory) || 'General inquiry';
+        const customerUrgency = this.extractUrgencyFromHistory(conversationHistory) || 'call back asap';
+
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Superior Fence & Construction</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #2c5530; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background-color: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
+        .logo { font-size: 24px; font-weight: bold; }
+        ul { padding-left: 20px; }
+        li { margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🏗️ Superior Fence & Construction</div>
+    </div>
+    
+    <div class="content">
+        <h2>New Customer Inquiry</h2>
+        
+        <h3>Call Details</h3>
+        <ul>
+            <li><strong>Name:</strong> ${customerName}</li>
+            <li><strong>Phone:</strong> ${customerPhone}</li>
+            <li><strong>Reason:</strong> ${customerReason}</li>
+            <li><strong>Urgency:</strong> ${customerUrgency}</li>
+        </ul>
+    </div>
+</body>
+</html>
+        `.trim();
+
+        const textContent = `
+Superior Fence & Construction
+
+New Customer Inquiry
+
+Call Details
+• Name: ${customerName}
+• Phone: ${customerPhone}
+• Reason: ${customerReason}
+• Urgency: ${customerUrgency}
+        `.trim();
+
+        // Use Mailchimp Marketing API for Superior Fencing
+        if (this.mailchimpMarketingInitialized) {
+          console.log('📧 [EmailService] Using Mailchimp Marketing API for Superior Fencing');
+          return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
+        }
+
+        console.error('❌ [EmailService] No email providers available for Superior Fencing');
+        return { success: false, error: 'No email providers available' };
+      }
+
       const htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -863,6 +928,88 @@ ${companyName}
         error: error.message || 'Failed to send email' 
       };
     }
+  }
+
+  /**
+   * Extract phone number from conversation history for Superior Fencing
+   * @param {Array} conversationHistory - Conversation messages
+   * @returns {string|null} Phone number if found
+   */
+  extractPhoneFromHistory(conversationHistory) {
+    if (!conversationHistory || !Array.isArray(conversationHistory)) return null;
+    
+    for (const message of conversationHistory) {
+      if (message.role === 'user' && message.content) {
+        // Look for phone number patterns
+        const phoneRegex = /(\+?1?[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/;
+        const match = message.content.match(phoneRegex);
+        if (match) {
+          return `(${match[2]}) ${match[3]}-${match[4]}`;
+        }
+        
+        // Try to extract just digits
+        const digits = message.content.replace(/\D/g, '');
+        if (digits.length === 10) {
+          return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+        }
+        if (digits.length === 11 && digits.startsWith('1')) {
+          return `(${digits.slice(1,4)}) ${digits.slice(4,7)}-${digits.slice(7)}`;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Extract reason from conversation history for Superior Fencing
+   * @param {Array} conversationHistory - Conversation messages
+   * @returns {string|null} Reason if found
+   */
+  extractReasonFromHistory(conversationHistory) {
+    if (!conversationHistory || !Array.isArray(conversationHistory)) return null;
+    
+    // Look for user responses after reason-related questions
+    for (let i = 0; i < conversationHistory.length - 1; i++) {
+      const message = conversationHistory[i];
+      const nextMessage = conversationHistory[i + 1];
+      
+      if (message.role === 'assistant' && message.content && 
+          message.content.toLowerCase().includes('reason for your call') &&
+          nextMessage && nextMessage.role === 'user') {
+        return nextMessage.content.trim();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Extract urgency from conversation history for Superior Fencing
+   * @param {Array} conversationHistory - Conversation messages
+   * @returns {string} Urgency level
+   */
+  extractUrgencyFromHistory(conversationHistory) {
+    if (!conversationHistory || !Array.isArray(conversationHistory)) return 'call back asap';
+    
+    // Look for user responses after urgency-related questions
+    for (let i = 0; i < conversationHistory.length - 1; i++) {
+      const message = conversationHistory[i];
+      const nextMessage = conversationHistory[i + 1];
+      
+      if (message.role === 'assistant' && message.content && 
+          (message.content.toLowerCase().includes('next business day') || 
+           message.content.toLowerCase().includes('no rush')) &&
+          nextMessage && nextMessage.role === 'user') {
+        
+        const userResponse = nextMessage.content.toLowerCase().trim();
+        const noRushWords = ['no rush', 'any day', 'anytime', 'whenever', 'no hurry', 'flexible', 'not urgent'];
+        
+        if (noRushWords.some(word => userResponse.includes(word))) {
+          return 'call anytime';
+        }
+        return 'call back asap';
+      }
+    }
+    return 'call back asap';
   }
 
   /**
