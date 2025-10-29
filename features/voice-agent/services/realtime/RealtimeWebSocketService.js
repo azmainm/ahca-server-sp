@@ -212,7 +212,7 @@ class RealtimeWebSocketService extends EventEmitter {
           type: 'server_vad',
           threshold: 0.3,
           prefix_padding_ms: 100,
-          silence_duration_ms: 1000,
+          silence_duration_ms: 700,
           create_response: true,  // Enable automatic response creation (semantic VAD)
           interrupt_response: true  // Allow interruptions
         },

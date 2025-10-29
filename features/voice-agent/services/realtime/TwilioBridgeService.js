@@ -1,4 +1,7 @@
 const WebSocket = require('ws');
+const EventEmitter = require('events');
+const { performance } = require('perf_hooks');
+const { create, ConverterType } = require('@alexanderolsen/libsamplerate-js');
 
 /**
  * TwilioBridgeService (Simplified)
@@ -25,19 +28,25 @@ class TwilioBridgeService {
       }
     }
 
-    const stubClient = {
-      readyState: WebSocket.OPEN,
-      send: (jsonStr) => {
+    // This is a mocked WebSocket-like object that pipes messages to the bridge's onAgentMessage
+    const mockWs = {
+      readyState: 1, // Pretend it's always open
+      send: async (msg) => {
         try {
-          const msg = JSON.parse(jsonStr);
-          this.onAgentMessage(callSid, streamSid, twilioWs, msg);
-        } catch (_) {}
+          await this.onAgentMessage(callSid, streamSid, twilioWs, JSON.parse(msg));
+        } catch (e) {
+          console.error('❌ [TwilioBridge] Error parsing agent message:', e);
+        }
       },
       on: () => {},
       close: () => {}
     };
 
-    await this.realtimeWSService.createSession(stubClient, sessionId, { twilioCallSid: callSid });
+    await this.realtimeWSService.createSession(
+      mockWs,
+      `twilio-${callSid}`,
+      { twilioCallSid: callSid }
+    );
 
     // Persist caller/callee phone numbers into session user info for later SMS
     try {
@@ -86,7 +95,7 @@ class TwilioBridgeService {
   // =========================
   // Inbound: Twilio -> OpenAI
   // =========================
-  handleTwilioMedia(callSid, payloadBase64) {
+  async handleTwilioMedia(callSid, payloadBase64) {
     const entry = this.callSidToSession.get(callSid);
     if (!entry || !payloadBase64) return;
 
@@ -97,8 +106,8 @@ class TwilioBridgeService {
       // 2) μ-law decode -> Int16Array (PCM16 8k)
       const pcm8k = this.decodeMuLawToPCM16(muLawBuf);
 
-      // 3) upsample 8k -> 24k (x3)
-      const pcm24k = this.upsample8kTo24k(pcm8k);
+      // 3) Upsample 8k -> 24k using high-quality resampler
+      const pcm24k = await this.resamplePcm(pcm8k, 8000, 24000);
 
       // 4) Int16 -> base64
       const pcm24kBase64 = this.int16ToBase64(pcm24k);
@@ -119,93 +128,143 @@ class TwilioBridgeService {
     }
   }
 
-  // =========================
-  // Outbound: OpenAI -> Twilio
-  // =========================
-  onAgentMessage(callSid, streamSid, twilioWs, msg) {
-    if (!msg) return;
-    if (msg.type === 'audio' && msg.delta) {
-      const entry = this.callSidToSession.get(callSid);
-      if (!entry) return;
+  /**
+   * Resample PCM audio data using libsamplerate.js
+   * @param {Int16Array} pcmData - Input PCM data
+   * @param {number} inputRate - Input sample rate
+   * @param {number} outputRate - Output sample rate
+   * @returns {Promise<Int16Array>} Resampled PCM data
+   */
+  async resamplePcm(pcmData, inputRate, outputRate) {
+    let src = null;
+    try {
+      // libsamplerate.js expects Float32Array data between -1.0 and 1.0
+      const float32Data = new Float32Array(pcmData.length);
+      for (let i = 0; i < pcmData.length; i++) {
+        float32Data[i] = pcmData[i] / 32768;
+      }
 
-      try {
-        // 1) base64 PCM16 24k -> Int16Array
-        const pcm24k = this.base64ToInt16(msg.delta);
+      src = await create(1, inputRate, outputRate, {
+        converterType: ConverterType.SRC_SINC_BEST_QUALITY
+      });
+      
+      const resampledData = src.simple(float32Data);
 
-        // 2) downsample 24k -> 8k
-        const pcm8k = this.downsample24kTo8k(pcm24k);
-
-        // 3) encode PCM16 -> μ-law bytes
-        const muLawBuf = this.encodePCM16ToMuLaw(pcm8k);
-
-        // 4) prepend any remainder and chunk into 160-byte frames (20ms @ 8kHz)
-        const combined = Buffer.concat([entry.outMuLawRemainder, muLawBuf]);
-        const FRAME_SIZE = 160; // bytes
-        const totalFrames = Math.floor(combined.length / FRAME_SIZE);
-        const remainderBytes = combined.length % FRAME_SIZE;
-
-        if (totalFrames > 0) {
-          for (let i = 0; i < totalFrames; i++) {
-            const frame = combined.subarray(i * FRAME_SIZE, (i + 1) * FRAME_SIZE);
-            const payload = frame.toString('base64');
-            const out = {
-              event: 'media',
-              streamSid: streamSid,
-              media: { payload }
-            };
-            // Add to buffer instead of sending directly
-            entry.outputBuffer.push(out);
-          }
-        }
-
-        // 5) store remainder
-        entry.outMuLawRemainder = remainderBytes > 0 ? combined.subarray(combined.length - remainderBytes) : Buffer.alloc(0);
-        
-        // 6) Start the flushing mechanism if not already running
-        if (!entry.isFlushing) {
-          this.flushOutputBuffer(callSid);
-        }
-
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('⚠️ [TwilioBridge] Outbound audio handling error:', e.message);
+      // Convert back to Int16Array
+      const int16Data = new Int16Array(resampledData.length);
+      for (let i = 0; i < resampledData.length; i++) {
+        int16Data[i] = Math.max(-32768, Math.min(32767, Math.floor(resampledData[i] * 32768)));
+      }
+      
+      return int16Data;
+    } catch (e) {
+      console.error('❌ [TwilioBridge] Resampling error:', e.message);
+      // Fallback to original data to avoid crashing the stream
+      return pcmData;
+    } finally {
+      if (src) {
+        src.destroy();
       }
     }
   }
 
+  // =========================
+  // Outbound: OpenAI -> Twilio
+  // =========================
+  async onAgentMessage(callSid, streamSid, twilioWs, msg) {
+    if (!msg) return;
+
+    switch (msg.type) {
+      case 'audio':
+        if (msg.delta) {
+          try {
+            const pcm24k = this.base64ToInt16(msg.delta);
+
+            // Downsample using high-quality resampler
+            const pcm8k = await this.resamplePcm(pcm24k, 24000, 8000);
+
+            // Encode
+            const muLaw = this.encodePCM16ToMuLaw(pcm8k);
+
+            // Buffer and send
+            const entry = this.callSidToSession.get(callSid);
+            if (!entry) return;
+
+            // 4) prepend any remainder and chunk into 160-byte frames (20ms @ 8kHz)
+            const combined = Buffer.concat([entry.outMuLawRemainder, muLaw]);
+            const FRAME_SIZE = 160; // bytes
+            const totalFrames = Math.floor(combined.length / FRAME_SIZE);
+            const remainderBytes = combined.length % FRAME_SIZE;
+
+            if (totalFrames > 0) {
+              for (let i = 0; i < totalFrames; i++) {
+                const frame = combined.subarray(i * FRAME_SIZE, (i + 1) * FRAME_SIZE);
+                const payload = frame.toString('base64');
+                const out = {
+                  event: 'media',
+                  streamSid: streamSid,
+                  media: { payload }
+                };
+                // Add to buffer instead of sending directly
+                entry.outputBuffer.push(out);
+              }
+            }
+
+            // 5) store remainder
+            entry.outMuLawRemainder = remainderBytes > 0 ? combined.subarray(combined.length - remainderBytes) : Buffer.alloc(0);
+            
+            // 6) Start the flushing mechanism if not already running
+            if (!entry.isFlushing) {
+              this.flushOutputBuffer(callSid);
+            }
+
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('⚠️ [TwilioBridge] Outbound audio handling error:', e.message);
+          }
+        }
+        break;
+      default:
+        // Handle other message types if necessary
+        break;
+    }
+  }
+
   /**
-   * Periodically sends buffered audio to Twilio.
-   * This creates a small, interruptible jitter buffer.
+   * Flushes the outbound audio buffer to Twilio at a consistent pace
+   * @param {string} callSid - The call SID
    */
-  flushOutputBuffer(callSid) {
+  async flushOutputBuffer(callSid) {
     const entry = this.callSidToSession.get(callSid);
-    if (!entry || entry.isFlushing) return;
+    if (!entry || !entry.twilioWs || entry.twilioWs.readyState !== 1) {
+      if (entry) entry.isFlushing = false;
+      return;
+    }
 
     entry.isFlushing = true;
+    const flushInterval = 100; // ms - send audio in larger, less frequent chunks
 
-    const intervalId = setInterval(() => {
-      const session = this.callSidToSession.get(callSid);
-      
-      // Stop if session ended or WebSocket closed
-      if (!session || session.twilioWs.readyState !== WebSocket.OPEN) {
-        if (session) session.isFlushing = false;
-        clearInterval(intervalId);
-        return;
-      }
-      
-      // Send one chunk from the buffer
-      if (session.outputBuffer.length > 0) {
-        const msg = session.outputBuffer.shift();
-        try {
-          session.twilioWs.send(JSON.stringify(msg));
-        } catch(e) {
-          console.warn('⚠️ [TwilioBridge] Error sending to Twilio WS:', e.message);
-          session.isFlushing = false;
-          clearInterval(intervalId);
+    while (this.callSidToSession.has(callSid)) {
+      const startTime = performance.now();
+      const chunksToSend = Math.ceil(flushInterval / 20); // 20ms per chunk
+
+      if (entry.outputBuffer.length > 0) {
+        const batch = entry.outputBuffer.splice(0, chunksToSend);
+        for (const out of batch) {
+          if (entry.twilioWs.readyState === 1) {
+            entry.twilioWs.send(JSON.stringify(out));
+          }
         }
       }
-      
-    }, 20); // Send audio every 20ms, matching Twilio's frame rate
+
+      const endTime = performance.now();
+      const elapsedTime = endTime - startTime;
+      const delay = Math.max(0, flushInterval - elapsedTime);
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    entry.isFlushing = false;
   }
 
   // =========================
@@ -260,15 +319,21 @@ class TwilioBridgeService {
     return uVal;
   }
 
+  /**
+   * Upsample 8kHz PCM to 24kHz by duplicating samples
+   * @param {Int16Array} pcm8k - 8kHz PCM data
+   * @returns {Int16Array} 24kHz PCM data
+   * @deprecated Replaced by resamplePcm with libsamplerate.js
+   */
   upsample8kTo24k(pcm8k) {
-    const out = new Int16Array(pcm8k.length * 3);
+    const pcm24k = new Int16Array(pcm8k.length * 3);
     for (let i = 0, j = 0; i < pcm8k.length; i++) {
       const v = pcm8k[i];
-      out[j++] = v;
-      out[j++] = v;
-      out[j++] = v;
+      pcm24k[j++] = v;
+      pcm24k[j++] = v;
+      pcm24k[j++] = v;
     }
-    return out;
+    return pcm24k;
   }
 
   downsample24kTo8k(pcm24k) {
@@ -287,9 +352,15 @@ class TwilioBridgeService {
     return out;
   }
 
-  int16ToBase64(int16) {
-    const buf = Buffer.from(int16.buffer, int16.byteOffset, int16.byteLength);
-    return buf.toString('base64');
+  /**
+   * Encodes Int16 PCM audio data into a base64 string.
+   * This is used to prepare audio for transmission over WebSocket.
+   * @param {Int16Array} pcm16Array - The PCM data to encode.
+   * @returns {string} The base64-encoded audio data.
+   */
+  int16ToBase64(pcm16Array) {
+    const pcm16Bytes = new Uint8Array(pcm16Array.buffer);
+    return Buffer.from(pcm16Bytes).toString('base64');
   }
 
   base64ToInt16(b64) {
