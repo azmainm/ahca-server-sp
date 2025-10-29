@@ -13,6 +13,26 @@ class EmergencyCallHandler {
       'right away',
       'immediately'
     ];
+    
+    // Initialize Twilio client for call redirection
+    this.twilioClient = null;
+    this.initializeTwilioClient();
+  }
+
+  /**
+   * Initialize Twilio client for REST API calls
+   */
+  initializeTwilioClient() {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    
+    if (accountSid && authToken) {
+      const twilio = require('twilio');
+      this.twilioClient = twilio(accountSid, authToken);
+      console.log('✅ [EmergencyHandler] Twilio client initialized');
+    } else {
+      console.warn('⚠️ [EmergencyHandler] Twilio credentials not found - call transfer will not work');
+    }
   }
 
   /**
@@ -49,17 +69,15 @@ class EmergencyCallHandler {
    * @param {string} businessId - The business ID
    * @param {string} sessionId - The session ID
    * @param {string} userInput - The user's input that triggered emergency
+   * @param {string} callSid - Twilio Call SID (optional, for call redirection)
+   * @param {Object} businessConfig - Business configuration (optional)
    * @returns {Object} Emergency response object
    */
-  handleEmergencyCall(businessId, sessionId, userInput) {
+  handleEmergencyCall(businessId, sessionId, userInput, callSid = null, businessConfig = null, baseUrl = null) {
     console.log(`🚨 [EmergencyHandler] Processing emergency call for business: ${businessId}, session: ${sessionId}`);
     
     // Log the emergency trigger for debugging
     console.log(`🚨 [EmergencyHandler] Emergency trigger: "${userInput}"`);
-    
-    // TODO: Twilio developers need to implement actual call routing here
-    // This should transfer the call to the business's emergency line
-    // For now, we return a response indicating the call will be routed
     
     const response = {
       success: true,
@@ -69,24 +87,82 @@ class EmergencyCallHandler {
       businessId: businessId,
       sessionId: sessionId,
       timestamp: new Date().toISOString(),
-      
-      // Instructions for Twilio developers
-      twilioInstructions: {
-        note: "TWILIO DEVELOPERS: Implement actual call transfer here",
-        steps: [
-          "1. Use Twilio's <Dial> verb to transfer the call",
-          "2. Route to business-specific emergency number",
-          "3. Implement fallback if emergency line is busy",
-          "4. Log emergency call for tracking"
-        ],
-        example: "Use TwiML: <Dial>+1234567890</Dial> to transfer call"
-      }
+      shouldTransferCall: true,
+      callSid: callSid
     };
     
     // Log emergency call for tracking
     this.logEmergencyCall(businessId, sessionId, userInput);
     
+    // If we have a callSid and Twilio client, attempt to redirect the call
+    if (callSid && this.twilioClient) {
+      this.redirectCallToEmergency(callSid, businessId, businessConfig, baseUrl)
+        .then(success => {
+          if (success) {
+            console.log(`✅ [EmergencyHandler] Call ${callSid} successfully redirected to emergency`);
+          } else {
+            console.error(`❌ [EmergencyHandler] Failed to redirect call ${callSid}`);
+          }
+        })
+        .catch(error => {
+          console.error(`❌ [EmergencyHandler] Error redirecting call ${callSid}:`, error);
+        });
+    } else {
+      if (!callSid) {
+        console.warn('⚠️ [EmergencyHandler] No callSid provided - cannot redirect call');
+      }
+      if (!this.twilioClient) {
+        console.warn('⚠️ [EmergencyHandler] Twilio client not initialized - cannot redirect call');
+      }
+    }
+    
     return response;
+  }
+
+  /**
+   * Redirect an active call to emergency contact using Twilio REST API
+   * @param {string} callSid - Twilio Call SID
+   * @param {string} businessId - Business ID
+   * @param {Object} businessConfig - Business configuration
+   * @param {string} baseUrl - Base URL for the server (from request headers)
+   * @returns {Promise<boolean>} True if redirect was successful
+   */
+  async redirectCallToEmergency(callSid, businessId, businessConfig, baseUrl = null) {
+    try {
+      if (!this.twilioClient) {
+        console.error('❌ [EmergencyHandler] Cannot redirect - Twilio client not initialized');
+        return false;
+      }
+
+      // Check if emergency phone is configured
+      const emergencyPhone = businessConfig?.companyInfo?.emergencyContact?.phone;
+      if (!emergencyPhone) {
+        console.error(`❌ [EmergencyHandler] No emergency phone configured for business: ${businessId}`);
+        return false;
+      }
+
+      console.log(`🚨 [EmergencyHandler] Redirecting call ${callSid} to emergency transfer endpoint`);
+
+      // Get the base URL for the transfer endpoint
+      // Priority: passed baseUrl > env vars > fallback (should never use fallback in production)
+      const finalBaseUrl = baseUrl || process.env.BASE_URL || process.env.NGROK_URL || 'https://fallback-error.com';
+      const transferUrl = `${finalBaseUrl}/twilio/voice/transfer-emergency?businessId=${businessId}`;
+
+      console.log(`🔗 [EmergencyHandler] Using transfer URL: ${transferUrl}`);
+
+      // Update the call to redirect to our emergency transfer endpoint
+      await this.twilioClient.calls(callSid).update({
+        url: transferUrl,
+        method: 'POST'
+      });
+
+      console.log(`✅ [EmergencyHandler] Call ${callSid} redirected to: ${transferUrl}`);
+      return true;
+
+    } catch (error) {
+      console.error(`❌ [EmergencyHandler] Error redirecting call ${callSid}:`, error.message);
+      return false;
+    }
   }
 
   /**

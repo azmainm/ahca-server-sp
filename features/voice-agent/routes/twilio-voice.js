@@ -7,6 +7,79 @@ const { BusinessConfigService } = require('../../../shared/services/BusinessConf
 const businessConfigService = new BusinessConfigService();
 
 /**
+ * POST /twilio/voice/transfer-emergency
+ * Emergency call transfer endpoint - returns TwiML to transfer call to emergency contact
+ */
+router.post('/voice/transfer-emergency', async (req, res) => {
+  try {
+    const businessId = req.body.businessId || req.query.businessId;
+    const callSid = req.body.CallSid || req.body.callSid;
+    
+    console.log(`🚨 [TwilioVoice] Emergency transfer request for business: ${businessId}, call: ${callSid}`);
+
+    if (!businessId) {
+      console.error('❌ [TwilioVoice] No businessId provided for emergency transfer');
+      const twiml = new twilio.twiml.VoiceResponse();
+      twiml.say('Sorry, unable to process emergency transfer. Please hang up and dial emergency services directly.');
+      twiml.hangup();
+      res.type('text/xml');
+      return res.send(twiml.toString());
+    }
+
+    // Initialize business config service if needed
+    if (!businessConfigService.isInitialized()) {
+      await businessConfigService.initialize();
+    }
+
+    // Get business configuration
+    const businessConfig = businessConfigService.getBusinessConfig(businessId);
+    if (!businessConfig) {
+      console.error(`❌ [TwilioVoice] Business config not found for emergency transfer: ${businessId}`);
+      const twiml = new twilio.twiml.VoiceResponse();
+      twiml.say('Sorry, unable to process emergency transfer. Please hang up and dial emergency services directly.');
+      twiml.hangup();
+      res.type('text/xml');
+      return res.send(twiml.toString());
+    }
+
+    // Get emergency contact number
+    const emergencyPhone = businessConfig.companyInfo?.emergencyContact?.phone;
+    if (!emergencyPhone) {
+      console.error(`❌ [TwilioVoice] No emergency phone configured for business: ${businessId}`);
+      const twiml = new twilio.twiml.VoiceResponse();
+      twiml.say('Sorry, no emergency contact is configured. Please hang up and call back during business hours.');
+      twiml.hangup();
+      res.type('text/xml');
+      return res.send(twiml.toString());
+    }
+
+    console.log(`✅ [TwilioVoice] Transferring call to emergency number: ${emergencyPhone}`);
+
+    // Create TwiML to transfer the call
+    const twiml = new twilio.twiml.VoiceResponse();
+    twiml.say('Connecting you with our on-call team now. Please hold.');
+    twiml.dial({
+      callerId: businessConfig.phoneNumber || businessConfig.companyInfo?.phone
+    }, emergencyPhone);
+    
+    // If dial fails, provide fallback
+    twiml.say('Sorry, we were unable to connect you. Please hang up and call our emergency line directly.');
+    twiml.hangup();
+
+    res.type('text/xml');
+    return res.send(twiml.toString());
+
+  } catch (err) {
+    console.error('❌ [TwilioVoice] Error in emergency transfer:', err);
+    const twiml = new twilio.twiml.VoiceResponse();
+    twiml.say('Sorry, we encountered an error. Please hang up and try again.');
+    twiml.hangup();
+    res.type('text/xml');
+    return res.send(twiml.toString());
+  }
+});
+
+/**
  * POST /twilio/voice
  * Multi-tenant Twilio Voice webhook that returns TwiML to start a bidirectional Media Stream
  * Identifies business from phone number and passes businessId to WebSocket
@@ -82,7 +155,18 @@ router.post('/voice', async (req, res) => {
 
     const twiml = new twilio.twiml.VoiceResponse();
     const connect = twiml.connect();
-    const stream = connect.stream({ url: streamUrl });
+    
+    // Configure stream with optional DTMF detection based on business config
+    const streamOptions = { url: streamUrl };
+    
+    // Enable DTMF input detection only if business has emergency handling enabled
+    if (businessConfig.features?.emergencyCallHandling === true) {
+      streamOptions.dtmfInputs = true;
+      console.log(`🔢 [TwilioVoice] DTMF input enabled for business: ${businessId}`);
+    }
+    
+    const stream = connect.stream(streamOptions);
+    
     // Send business context via Twilio Stream Parameters (available on 'start' event)
     stream.parameter({ name: 'businessId', value: businessId });
     stream.parameter({ name: 'from', value: from });

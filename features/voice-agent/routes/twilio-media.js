@@ -18,6 +18,16 @@ function setupTwilioMediaWebSocket(wss) {
     const url = new URL(req.url, `http://${req.headers.host}`);
     console.log('🔗 [TwilioWS] Incoming Twilio Media WS connection from', req.socket.remoteAddress);
     
+    // Calculate base URL for emergency transfers (same logic as twilio-voice.js)
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const rawHost = (forwardedHost ? forwardedHost.split(',')[0] : req.headers.host) || '';
+    const host = rawHost.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const protoHeader = (req.headers['x-forwarded-proto'] || 'https').toString();
+    const proto = protoHeader.split(',')[0].trim().toLowerCase();
+    const scheme = proto === 'https' ? 'https' : 'https'; // Always use https for Twilio
+    const baseUrl = `${scheme}://${host}`;
+    console.log('🔗 [TwilioWS] Base URL for emergency transfers:', baseUrl);
+    
     // Twilio Media Streams does not forward URL query params; read from 'start' event
     let callSid = null;
     let businessId = null;
@@ -69,11 +79,26 @@ function setupTwilioMediaWebSocket(wss) {
           tenantContextManager.setTenantContext(callSid, businessId);
           console.log(`🏢 [TwilioWS] Set tenant context: ${callSid} -> ${businessId}`);
 
-          await bridge.start(callSid, ws, streamSid, businessId, from, to);
+          await bridge.start(callSid, ws, streamSid, businessId, from, to, baseUrl);
           break;
         case 'media':
           // media payload size can be logged if needed
           bridge.handleTwilioMedia(callSid, msg.media?.payload || '');
+          break;
+        case 'dtmf':
+          // Handle DTMF input (e.g., # key press for emergency)
+          // This event only fires for businesses with emergencyCallHandling enabled
+          console.log('📞 [TwilioWS] DTMF event received:', msg.dtmf);
+          if (msg.dtmf && msg.dtmf.digit) {
+            const digit = msg.dtmf.digit;
+            console.log(`🔢 [TwilioWS] DTMF digit pressed: ${digit} for business: ${businessId}`);
+            
+            // Handle # key press for emergency (only for businesses with emergency handling enabled)
+            if (digit === '#' && businessId) {
+              console.log('🚨 [TwilioWS] Emergency # detected - triggering emergency handler');
+              await bridge.handleEmergencyDTMF(callSid, digit, businessId, baseUrl);
+            }
+          }
           break;
         case 'stop':
           console.log('⏹️ [TwilioWS] stop event');
@@ -84,6 +109,7 @@ function setupTwilioMediaWebSocket(wss) {
           console.log(`🗑️ [TwilioWS] Removed tenant context for: ${callSid}`);
           break;
         default:
+          console.log(`📋 [TwilioWS] Unhandled event: ${msg.event}`);
           break;
       }
     });

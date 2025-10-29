@@ -146,6 +146,9 @@ const realtimeWSService = new RealtimeWebSocketService(
   smsService
 );
 
+// Inject RealtimeWSService reference back into ConversationFlowHandler for emergency call handling
+conversationFlowHandler.setRealtimeWSService(realtimeWSService);
+
 /**
  * Set up WebSocket server
  */

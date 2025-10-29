@@ -1205,6 +1205,13 @@ class RealtimeWebSocketService extends EventEmitter {
         console.log('📧 [Email] Skipping email - no user info collected for session:', sessionId);
       }
 
+      // ============================================================================
+      // TEMPORARILY DISABLED: SMS Summary Feature
+      // Reason: Twilio is verifying business - SMS will be unavailable temporarily
+      // TO RE-ENABLE: Uncomment the entire block below once Twilio verification is complete
+      // ============================================================================
+      
+      /* DISABLED - UNCOMMENT WHEN READY TO RE-ENABLE SMS
       // Send conversation summary SMS (caller + admins)
       try {
         if (this.smsService && this.smsService.isReady()) {
@@ -1292,6 +1299,9 @@ class RealtimeWebSocketService extends EventEmitter {
       } catch (e) {
         console.warn('⚠️ [SMS] Unexpected SMS error:', e.message);
       }
+      END DISABLED SMS SECTION */
+      
+      console.log('📱 [SMS] SMS summaries temporarily disabled - awaiting Twilio verification');
       
       // Close OpenAI connection
       if (sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {

@@ -27,6 +27,9 @@ class ConversationFlowHandler {
     // Helper functions passed from route
     this.getCalendarService = null;
     this.extractSearchTerms = null;
+    
+    // Reference to RealtimeWebSocketService (for getting callSid)
+    this.realtimeWSService = null;
   }
 
   /**
@@ -37,6 +40,14 @@ class ConversationFlowHandler {
   setHelpers(getCalendarService, extractSearchTerms) {
     this.getCalendarService = getCalendarService;
     this.extractSearchTerms = extractSearchTerms;
+  }
+
+  /**
+   * Set reference to RealtimeWebSocketService (for emergency call handling)
+   * @param {Object} realtimeWSService - RealtimeWebSocketService instance
+   */
+  setRealtimeWSService(realtimeWSService) {
+    this.realtimeWSService = realtimeWSService;
   }
 
   /**
@@ -145,10 +156,34 @@ class ConversationFlowHandler {
         const businessConfig = this.companyInfoService.getRawCompanyData();
         
         if (this.emergencyHandler.isEmergencyHandlingEnabled(businessConfig)) {
+          // Get callSid and baseUrl from RealtimeWebSocketService if available
+          let callSid = null;
+          let baseUrl = null;
+          
+          if (this.realtimeWSService && this.realtimeWSService.sessions) {
+            const realtimeSession = this.realtimeWSService.sessions.get(sessionId);
+            if (realtimeSession && realtimeSession.twilioCallSid) {
+              callSid = realtimeSession.twilioCallSid;
+              console.log(`🚨 [ConversationFlowHandler] Found callSid: ${callSid} for session: ${sessionId}`);
+            }
+          }
+          
+          // Try to get baseUrl from bridge service (if available via TwilioBridge)
+          if (this.realtimeWSService && this.realtimeWSService.bridgeService && callSid) {
+            const bridgeEntry = this.realtimeWSService.bridgeService.callSidToSession.get(callSid);
+            if (bridgeEntry && bridgeEntry.baseUrl) {
+              baseUrl = bridgeEntry.baseUrl;
+              console.log(`🔗 [ConversationFlowHandler] Found baseUrl from bridge: ${baseUrl}`);
+            }
+          }
+          
           const emergencyResponse = this.emergencyHandler.handleEmergencyCall(
             businessConfig.businessId || 'unknown', 
             sessionId, 
-            text
+            text,
+            callSid,
+            businessConfig,
+            baseUrl
           );
           
           return {
@@ -157,6 +192,7 @@ class ConversationFlowHandler {
             sessionId,
             isEmergency: true,
             emergencyRouted: true,
+            shouldTransferCall: emergencyResponse.shouldTransferCall,
             userInfo: session.userInfo,
             conversationHistory: session.conversationHistory
           };
@@ -671,7 +707,7 @@ Does this look good, or would you like to change anything else?`;
         // Create user info with fixed email for Superior Fencing
         const fixedUserInfo = {
           name: (session.userInfo && session.userInfo.name) || 'Superior Fencing Customer',
-          email: 'azmain@sherpaprompt.com', // change this to Superior Fencing's email
+          email: 'doug@sherpaprompt.com', // change this to Superior Fencing's email
           phone: (session.userInfo && session.userInfo.phone) || null,
           reason: (session.userInfo && session.userInfo.reason) || null,
           urgency: (session.userInfo && session.userInfo.urgency) || null,

@@ -12,7 +12,7 @@ class TwilioBridgeService {
     this.callSidToSession = new Map();
   }
 
-  async start(callSid, twilioWs, streamSid, businessId, fromPhone = null, toPhone = null) {
+  async start(callSid, twilioWs, streamSid, businessId, fromPhone = null, toPhone = null, baseUrl = null) {
     const sessionId = `twilio-${callSid}`;
 
     // Ensure the Realtime service sees the correct tenant for this exact session
@@ -55,6 +55,7 @@ class TwilioBridgeService {
       sessionId,
       streamSid,
       twilioWs,
+      baseUrl: baseUrl || null, // Store base URL for emergency transfers
       outMuLawRemainder: Buffer.alloc(0),
       outputBuffer: [], // Buffer for outbound audio
       isFlushing: false, // Prevent multiple flush loops
@@ -294,6 +295,71 @@ class TwilioBridgeService {
   base64ToInt16(b64) {
     const buf = Buffer.from(b64, 'base64');
     return new Int16Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 2));
+  }
+
+  /**
+   * Handle DTMF input for emergency detection
+   * @param {string} callSid - Twilio Call SID
+   * @param {string} digit - DTMF digit pressed
+   * @param {string} businessId - Business ID (optional, for validation)
+   * @param {string} baseUrl - Base URL for redirect (optional)
+   */
+  async handleEmergencyDTMF(callSid, digit, businessId = null, baseUrl = null) {
+    const entry = this.callSidToSession.get(callSid);
+    if (!entry) {
+      console.error(`❌ [TwilioBridge] No session found for callSid: ${callSid}`);
+      return;
+    }
+
+    const sessionId = entry.sessionId;
+    console.log(`🚨 [TwilioBridge] Processing DTMF emergency for session: ${sessionId}, digit: ${digit}`);
+
+    try {
+      // Get conversation flow handler from realtime service
+      const conversationFlowHandler = this.realtimeWSService.conversationFlowHandler;
+      if (!conversationFlowHandler || !conversationFlowHandler.emergencyHandler) {
+        console.error('❌ [TwilioBridge] ConversationFlowHandler or EmergencyHandler not available');
+        return;
+      }
+
+      // Get business ID from tenant context (use provided one as fallback)
+      const sessionBusinessId = this.realtimeWSService.tenantContextManager?.getBusinessId(sessionId) || businessId || 'unknown';
+      console.log(`🏢 [TwilioBridge] Business ID for emergency: ${sessionBusinessId}`);
+
+      // Get business config
+      const businessConfig = this.realtimeWSService.businessConfigService?.getBusinessConfig(sessionBusinessId);
+      if (!businessConfig) {
+        console.error(`❌ [TwilioBridge] Business config not found for: ${sessionBusinessId}`);
+        return;
+      }
+
+      // Check if emergency handling is enabled for this business
+      if (!conversationFlowHandler.emergencyHandler.isEmergencyHandlingEnabled(businessConfig)) {
+        console.log(`⚠️ [TwilioBridge] Emergency handling not enabled for business: ${sessionBusinessId} - ignoring DTMF`);
+        return;
+      }
+
+      // Trigger emergency call transfer with baseUrl from session
+      console.log('🚨 [TwilioBridge] Triggering emergency call transfer');
+      const sessionBaseUrl = entry.baseUrl || baseUrl || null;
+      console.log(`🔗 [TwilioBridge] Using baseUrl for emergency transfer: ${sessionBaseUrl}`);
+      
+      const emergencyResponse = conversationFlowHandler.emergencyHandler.handleEmergencyCall(
+        sessionBusinessId,
+        sessionId,
+        `# (DTMF)`,
+        callSid,
+        businessConfig,
+        sessionBaseUrl
+      );
+
+      console.log('✅ [TwilioBridge] Emergency handler triggered:', emergencyResponse.message);
+
+      // Note: The call will be redirected by the Twilio REST API call in EmergencyCallHandler
+
+    } catch (error) {
+      console.error('❌ [TwilioBridge] Error handling emergency DTMF:', error);
+    }
   }
 }
 

@@ -55,7 +55,9 @@
     },
     "emergencyContact": {
       "available": true,
-      "instructions": "Press # for emergency or time-sensitive issues"
+      "phone": "+15035501817", 
+      "instructions": "Press # for emergency or time-sensitive issues",
+      "note": "TODO: Replace with actual Superior Fencing emergency contact number"
     }
   },
   
