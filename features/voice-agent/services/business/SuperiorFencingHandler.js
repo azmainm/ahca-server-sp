@@ -149,7 +149,7 @@ class SuperiorFencingHandler {
           isComplete = true;
           
           // Send email summary
-          await this.sendLeadEmail(sessionId, session);
+          // await this.sendLeadEmail(sessionId, session);
         } else {
           // User wants to make changes - handle them
           const changeResult = await this.handleInformationChanges(text, session);
