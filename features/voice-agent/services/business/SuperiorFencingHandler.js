@@ -11,10 +11,10 @@ class SuperiorFencingHandler {
     // Superior Fencing conversation states
     this.states = {
       GREETING: 'greeting',
+      COLLECTING_REASON: 'collecting_reason',
       COLLECTING_NAME: 'collecting_name',
       CONFIRMING_NAME: 'confirming_name',
       COLLECTING_PHONE: 'collecting_phone',
-      COLLECTING_REASON: 'collecting_reason',
       COLLECTING_URGENCY: 'collecting_urgency',
       FINAL_CONFIRMATION: 'final_confirmation',
       COMPLETED: 'completed'
@@ -82,6 +82,23 @@ class SuperiorFencingHandler {
     switch (session.state) {
       case this.states.GREETING:
         response = this.getGreeting();
+        session.state = this.states.COLLECTING_REASON;
+        break;
+
+      case this.states.COLLECTING_REASON:
+        // Store the raw reason first
+        session.collectedInfo.rawReason = text.trim();
+        
+        // Process the reason with AI to create a clean summary
+        try {
+          session.collectedInfo.reason = await this.processReasonWithAI(text.trim());
+        } catch (error) {
+          console.error('❌ [SuperiorFencing] AI reason processing failed:', error);
+          // Fallback to raw text if AI processing fails
+          session.collectedInfo.reason = text.trim();
+        }
+        
+        response = "Got it. Could I get your name?";
         session.state = this.states.COLLECTING_NAME;
         break;
 
@@ -112,28 +129,11 @@ class SuperiorFencingHandler {
         const phoneResult = this.extractPhone(text);
         if (phoneResult.phone) {
           session.collectedInfo.phone = phoneResult.phone;
-          response = `Got it — I have ${phoneResult.phone}. What's the main reason for your call — for example, a new fence project, a repair, or something else?`;
-          session.state = this.states.COLLECTING_REASON;
+          response = `Got it — I have ${phoneResult.phone}. Would you like us to call you back on the next business day, or is there no rush and any day would be fine?`;
+          session.state = this.states.COLLECTING_URGENCY;
         } else {
           response = "I didn't catch your phone number clearly. Could you please repeat your phone number?";
         }
-        break;
-
-      case this.states.COLLECTING_REASON:
-        // Store the raw reason first
-        session.collectedInfo.rawReason = text.trim();
-        
-        // Process the reason with AI to create a clean summary
-        try {
-          session.collectedInfo.reason = await this.processReasonWithAI(text.trim());
-        } catch (error) {
-          console.error('❌ [SuperiorFencing] AI reason processing failed:', error);
-          // Fallback to raw text if AI processing fails
-          session.collectedInfo.reason = text.trim();
-        }
-        
-        response = "Got it. Would you like us to call you back on the next business day, or is there no rush and any day would be fine?";
-        session.state = this.states.COLLECTING_URGENCY;
         break;
 
       case this.states.COLLECTING_URGENCY:
@@ -183,15 +183,33 @@ class SuperiorFencingHandler {
   }
 
   /**
-   * Get the greeting message
+   * Get the greeting message with time-based context
    * @returns {string} Greeting message
    */
   getGreeting() {
-    return "Hi there, I'm Mason, Superior Fence & Construction's virtual assistant. " +
-           "If this is an emergency or time-sensitive, please press the pound key now to reach our on-call team. " +
-           "Parts of this call may be recorded so we can better understand your needs and improve our service. " +
-           "We're currently closed, but I can take a few quick details so our team can follow up first thing in the morning. " +
-           "Could I start with your name?";
+    const timeOfDay = this.getTimeOfDay();
+    return `Thanks for calling Superior Fence and Construction, I'm Mason, the AI assistant, and this call may be recorded. What are you calling about ${timeOfDay}? If this is an emergency that will require an after hours visit to your location please press the pound key and I'll forward the call to our on call personnel.`;
+  }
+
+  /**
+   * Get time of day based on Oregon timezone
+   * @returns {string} Time period (morning/afternoon/evening/today)
+   */
+  getTimeOfDay() {
+    // Get current time in Oregon (Pacific Time)
+    const now = new Date();
+    const oregonTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+    const hour = oregonTime.getHours();
+    
+    if (hour >= 5 && hour < 12) {
+      return "this morning";
+    } else if (hour >= 12 && hour < 17) {
+      return "this afternoon";
+    } else if (hour >= 17 && hour < 22) {
+      return "this evening";
+    } else {
+      return "today";
+    }
   }
 
   /**
