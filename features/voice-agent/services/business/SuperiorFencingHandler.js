@@ -132,7 +132,7 @@ class SuperiorFencingHandler {
           response = `Got it — I have ${phoneResult.phone}. Would you like us to call you back on the next business day, or is there no rush and any day would be fine?`;
           session.state = this.states.COLLECTING_URGENCY;
         } else {
-          response = "I didn't catch your phone number clearly. Could you please repeat your phone number?";
+          response = "You've provided the phone number in a non-standard form. Could you please tell me your phone number again in a standard form?";
         }
         break;
 
