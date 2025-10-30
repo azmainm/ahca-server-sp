@@ -107,4 +107,17 @@ server.listen(PORT, () => {
   console.log(`AHCA Server running on port ${PORT}`);
   console.log(`WebSocket server ready at ws://localhost:${PORT}/realtime-ws`);
   console.log(`Twilio Media WS ready at ws://localhost:${PORT}/twilio-media`);
+  
+  // Memory monitoring (logs every 60 seconds)
+  setInterval(() => {
+    const used = process.memoryUsage();
+    const { setupTwilioMediaWebSocket } = require('./features/voice-agent/routes/twilio-media');
+    
+    console.log('📊 [Memory] Usage:', {
+      rss: `${Math.round(used.rss / 1024 / 1024)}MB`,
+      heapUsed: `${Math.round(used.heapUsed / 1024 / 1024)}MB`,
+      heapTotal: `${Math.round(used.heapTotal / 1024 / 1024)}MB`,
+      external: `${Math.round(used.external / 1024 / 1024)}MB`
+    });
+  }, 60000); // Every 60 seconds
 });
