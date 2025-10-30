@@ -156,14 +156,9 @@ router.post('/voice', async (req, res) => {
     const twiml = new twilio.twiml.VoiceResponse();
     const connect = twiml.connect();
     
-    // Configure stream with optional DTMF detection based on business config
+    // Configure stream - DTMF tones are automatically included in the audio stream
+    // and should be detected programmatically in the audio processing layer
     const streamOptions = { url: streamUrl };
-    
-    // Enable DTMF input detection only if business has emergency handling enabled
-    if (businessConfig.features?.emergencyCallHandling === true) {
-      streamOptions.dtmfInputs = true;
-      console.log(`🔢 [TwilioVoice] DTMF input enabled for business: ${businessId}`);
-    }
     
     const stream = connect.stream(streamOptions);
     
