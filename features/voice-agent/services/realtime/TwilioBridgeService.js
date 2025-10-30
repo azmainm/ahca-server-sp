@@ -145,7 +145,7 @@ class TwilioBridgeService {
       }
 
       src = await create(1, inputRate, outputRate, {
-        converterType: ConverterType.SRC_SINC_MEDIUM_QUALITY  // Reduced from BEST for lower memory usage
+        converterType: ConverterType.SRC_SINC_BEST_QUALITY
       });
       
       const resampledData = src.simple(float32Data);
@@ -197,9 +197,6 @@ class TwilioBridgeService {
             const remainderBytes = combined.length % FRAME_SIZE;
 
             if (totalFrames > 0) {
-              // Limit buffer size to prevent unbounded memory growth
-              const MAX_BUFFER_SIZE = 100; // ~2 seconds of audio at 20ms per chunk
-              
               for (let i = 0; i < totalFrames; i++) {
                 const frame = combined.subarray(i * FRAME_SIZE, (i + 1) * FRAME_SIZE);
                 const payload = frame.toString('base64');
@@ -208,16 +205,8 @@ class TwilioBridgeService {
                   streamSid: streamSid,
                   media: { payload }
                 };
-                
-                // Add to buffer with size limit
-                if (entry.outputBuffer.length < MAX_BUFFER_SIZE) {
-                  entry.outputBuffer.push(out);
-                } else {
-                  // Drop oldest chunk if buffer is full (prevents memory leak)
-                  entry.outputBuffer.shift();
-                  entry.outputBuffer.push(out);
-                  console.warn(`⚠️ [TwilioBridge] Output buffer full (${MAX_BUFFER_SIZE}), dropping oldest chunk`);
-                }
+                // Add to buffer instead of sending directly
+                entry.outputBuffer.push(out);
               }
             }
 
