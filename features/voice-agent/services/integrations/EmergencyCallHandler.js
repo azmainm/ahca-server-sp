@@ -4,14 +4,9 @@
  */
 class EmergencyCallHandler {
   constructor() {
+    // Only # key triggers emergency - removed keyword triggers to prevent false positives
     this.emergencyTriggers = [
-      '#',
-      'emergency',
-      'urgent',
-      'time-sensitive',
-      'asap',
-      'right away',
-      'immediately'
+      '#'
     ];
     
     // Initialize Twilio client for call redirection
@@ -45,22 +40,14 @@ class EmergencyCallHandler {
     
     const input = userInput.toLowerCase().trim();
     
-    // Check for # symbol (DTMF emergency trigger)
+    // ONLY trigger on # symbol (DTMF emergency trigger)
+    // Removed keyword detection to prevent false positives
     if (input.includes('#')) {
       console.log('🚨 [EmergencyHandler] Emergency detected: # pressed');
       return true;
     }
     
-    // Check for emergency keywords
-    const hasEmergencyKeyword = this.emergencyTriggers.some(trigger => 
-      input.includes(trigger.toLowerCase())
-    );
-    
-    if (hasEmergencyKeyword) {
-      console.log('🚨 [EmergencyHandler] Emergency detected: keyword found in input');
-      return true;
-    }
-    
+    // No keyword detection - only # key triggers emergency
     return false;
   }
 

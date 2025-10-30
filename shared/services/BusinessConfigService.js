@@ -19,7 +19,7 @@ class BusinessConfigService {
   }
 
   /**
-   * Initialize the service by loading all business configurations
+   * Initialize the service by loading phone mapping only (lazy load configs)
    */
   async initialize() {
     try {
@@ -28,16 +28,11 @@ class BusinessConfigService {
       // Load phone number to business ID mapping
       await this.loadPhoneMapping();
       
-      // Load all business configurations
-      await this.loadAllBusinessConfigs();
+      // Skip loading all configs - use lazy loading instead
+      console.log('📋 [BusinessConfigService] Using lazy loading for business configs');
       
       this.initialized = true;
-      console.log(`✅ [BusinessConfigService] Initialized with ${this.businessConfigs.size} businesses`);
-      
-      // Log loaded businesses for debugging
-      for (const [businessId, config] of this.businessConfigs.entries()) {
-        console.log(`   📋 Business: ${businessId} (${config.businessName}) - Phone: ${config.phoneNumber}`);
-      }
+      console.log(`✅ [BusinessConfigService] Initialized with lazy loading enabled`);
       
     } catch (error) {
       console.error('❌ [BusinessConfigService] Failed to initialize:', error);
@@ -313,7 +308,7 @@ class BusinessConfigService {
   }
 
   /**
-   * Get business configuration by business ID
+   * Get business configuration by business ID (with lazy loading)
    * @param {string} businessId - Business identifier
    * @returns {Object|null} Business configuration or null if not found
    */
@@ -322,7 +317,22 @@ class BusinessConfigService {
       throw new Error('BusinessConfigService not initialized');
     }
     
-    const config = this.businessConfigs.get(businessId);
+    // Check if already cached
+    let config = this.businessConfigs.get(businessId);
+    
+    if (!config) {
+      // Lazy load the config synchronously (will be async in practice)
+      try {
+        console.log(`🔄 [BusinessConfigService] Lazy loading config for: ${businessId}`);
+        // Note: This should be async but keeping minimal changes
+        // In practice, this will be called from async contexts
+        this.loadBusinessConfigSync(businessId);
+        config = this.businessConfigs.get(businessId);
+      } catch (error) {
+        console.error(`❌ [BusinessConfigService] Failed to lazy load ${businessId}:`, error);
+        return null;
+      }
+    }
     
     if (!config) {
       console.warn(`⚠️ [BusinessConfigService] No config found for business: ${businessId}`);
@@ -355,6 +365,35 @@ class BusinessConfigService {
   async reloadBusinessConfig(businessId) {
     console.log(`🔄 [BusinessConfigService] Reloading config for ${businessId}`);
     await this.loadBusinessConfig(businessId);
+  }
+
+  /**
+   * Load a business configuration synchronously (for lazy loading)
+   * @param {string} businessId - The business identifier
+   */
+  loadBusinessConfigSync(businessId) {
+    try {
+      const fs = require('fs');
+      const configPath = require('path').join(__dirname, `../../configs/businesses/${businessId}/config.json`);
+      
+      const configData = fs.readFileSync(configPath, 'utf8');
+      const config = JSON.parse(configData);
+      
+      // Validate configuration
+      this.validateBusinessConfig(config, businessId);
+      
+      // Resolve environment variables in config
+      const resolvedConfig = this.resolveEnvironmentVariables(config);
+      
+      // Cache the configuration
+      this.businessConfigs.set(businessId, resolvedConfig);
+      
+      console.log(`✅ [BusinessConfigService] Lazy loaded config for business: ${businessId}`);
+      
+    } catch (error) {
+      console.error(`❌ [BusinessConfigService] Error lazy loading config for ${businessId}:`, error);
+      throw error;
+    }
   }
 
   /**

@@ -309,7 +309,7 @@ class RealtimeWebSocketService extends EventEmitter {
               },
               reason: {
                 type: 'string',
-                description: 'Reason for calling (e.g., fence repair, new installation, emergency)'
+                description: 'Reason for calling (e.g., fence repair, new installation, gate maintenance, general inquiry)'
               },
               urgency: {
                 type: 'string',
@@ -525,11 +525,14 @@ class RealtimeWebSocketService extends EventEmitter {
             sessionData.openaiWs.send(JSON.stringify({
               type: 'response.cancel'
             }));
+            sessionData.isResponding = false;
+            sessionData.activeResponseId = null;
           } catch (error) {
             console.log('⚠️ [RealtimeWS] Cancel failed (response may have completed):', error.message);
+            // Still reset state even if cancel failed
+            sessionData.isResponding = false;
+            sessionData.activeResponseId = null;
           }
-          sessionData.isResponding = false;
-          sessionData.activeResponseId = null;
         }
 
         // 3. Suppress any in-flight audio chunks arriving after interruption
@@ -560,6 +563,35 @@ class RealtimeWebSocketService extends EventEmitter {
         
         // FALLBACK: Check if transcription contains name information and OpenAI didn't call update_user_info
         await this.checkForMissedNameInfo(sessionData, event.transcript);
+        break;
+
+      case 'conversation.item.input_audio_transcription.failed':
+        console.log('❌ [RealtimeWS] Transcription failed:', event.error);
+        this.sendToClient(sessionData, {
+          type: 'transcript_error',
+          error: event.error
+        });
+        
+        // Proactively inject a clarification message to prevent emergency default
+        // We need to do this BEFORE OpenAI generates its response
+        try {
+          const clarificationMessage = {
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [{
+                type: 'input_text',
+                text: '[AUDIO_UNCLEAR] - Please ask the customer to repeat what they said. Do not guess or make up any information.'
+              }]
+            }
+          };
+          
+          console.log('🔄 [RealtimeWS] Injecting clarification message to prevent emergency default and hallucination');
+          sessionData.openaiWs.send(JSON.stringify(clarificationMessage));
+        } catch (error) {
+          console.error('❌ [RealtimeWS] Error injecting clarification message:', error);
+        }
         break;
 
       case 'response.audio.delta':
@@ -620,6 +652,15 @@ class RealtimeWebSocketService extends EventEmitter {
 
       case 'error':
         console.error('❌ [RealtimeWS] OpenAI error:', event.error);
+        
+        // Filter out expected cancellation errors (these are normal during interruptions)
+        if (event.error.code === 'response_cancel_not_active' || 
+            event.error.code === 'conversation_already_has_active_response') {
+          console.log('ℹ️ [RealtimeWS] Ignoring expected error:', event.error.code);
+          break;
+        }
+        
+        // Send other errors to client
         this.sendToClient(sessionData, {
           type: 'error',
           error: event.error.message
