@@ -106,20 +106,23 @@ class TwilioBridgeService {
       // 2) μ-law decode -> Int16Array (PCM16 8k)
       const pcm8k = this.decodeMuLawToPCM16(muLawBuf);
 
-      // 3) Upsample 8k -> 24k using high-quality resampler
-      const pcm24k = await this.resamplePcm(pcm8k, 8000, 24000);
+      // 3) Upsample 8k -> 16k (Industry Standard for Whisper)
+      const pcm16k = await this.resamplePcm(pcm8k, 8000, 16000);
 
       // 4) Int16 -> base64
-      const pcm24kBase64 = this.int16ToBase64(pcm24k);
+      const pcm16kBase64 = this.int16ToBase64(pcm16k);
 
       // 5) Send to OpenAI Realtime as input_audio_buffer.append via service
       const sessionData = this.realtimeWSService.sessions.get(entry.sessionId);
       if (sessionData) {
         this.realtimeWSService.handleClientMessage(sessionData, {
           type: 'audio',
-          data: pcm24kBase64
+          data: pcm16kBase64
         });
-        entry.bufferedSamples24k += pcm24k.length;
+        // Note: Renaming this would require finding all usages.
+        // For now, we'll assume it's just a tracking metric and the name isn't critical.
+        // If it affects logic elsewhere, it will need to be refactored.
+        entry.bufferedSamples16k = (entry.bufferedSamples16k || 0) + pcm16k.length;
       }
     } catch (e) {
       // Swallow to keep real-time path resilient
