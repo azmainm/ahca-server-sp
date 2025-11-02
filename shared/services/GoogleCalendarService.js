@@ -10,12 +10,20 @@ class GoogleCalendarService {
     this.initialized = false;
     this.calendarConfig = calendarConfig;
     
+    // Set timezone from calendar config or fallback to env/default
+    if (calendarConfig && calendarConfig.timezone) {
+      this.timezone = calendarConfig.timezone;
+    } else {
+      this.timezone = process.env.DEFAULT_TIMEZONE || 'America/Denver';
+    }
+    
     // Log configuration
     if (calendarConfig) {
       console.log(`🏢 [GoogleCalendarService] Configured for business with calendar ID: ${calendarConfig.calendarId}`);
     } else {
       console.log('⚠️ [GoogleCalendarService] No calendar config provided, will use environment variables');
     }
+    console.log(`🌍 [GoogleCalendarService] Using timezone: ${this.timezone}`);
   }
 
   /**
@@ -105,8 +113,8 @@ class GoogleCalendarService {
       }
 
       // Convert to ISO datetime strings
-      const startDateTime = moment.tz(`${date} ${startTime}`, 'YYYY-MM-DD HH:mm', 'America/Denver').toISOString();
-      const endDateTime = moment.tz(`${date} ${endTime}`, 'YYYY-MM-DD HH:mm', 'America/Denver').toISOString();
+      const startDateTime = moment.tz(`${date} ${startTime}`, 'YYYY-MM-DD HH:mm', this.timezone).toISOString();
+      const endDateTime = moment.tz(`${date} ${endTime}`, 'YYYY-MM-DD HH:mm', this.timezone).toISOString();
 
       console.log('🔍 Checking availability:', { date, startTime, endTime, startDateTime, endDateTime });
 
@@ -156,7 +164,7 @@ class GoogleCalendarService {
       }
 
       // Check if it's a valid business day (Monday-Friday)
-      const dateObj = moment.tz(date, 'YYYY-MM-DD', 'America/Denver');
+      const dateObj = moment.tz(date, 'YYYY-MM-DD', this.timezone);
       const dayOfWeek = dateObj.day(); // 0=Sunday, 1=Monday, ..., 6=Saturday
       
       if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -173,8 +181,8 @@ class GoogleCalendarService {
       
       // Generate all possible 30-minute slots
       const slots = [];
-      let currentTime = moment.tz(`${date} ${businessStart}`, 'YYYY-MM-DD HH:mm', 'America/Denver');
-      const endTime = moment.tz(`${date} ${businessEnd}`, 'YYYY-MM-DD HH:mm', 'America/Denver');
+      let currentTime = moment.tz(`${date} ${businessStart}`, 'YYYY-MM-DD HH:mm', this.timezone);
+      const endTime = moment.tz(`${date} ${businessEnd}`, 'YYYY-MM-DD HH:mm', this.timezone);
 
       while (currentTime.isBefore(endTime)) {
         const slotEnd = currentTime.clone().add(30, 'minutes');
@@ -229,7 +237,7 @@ class GoogleCalendarService {
       console.log(`🔍 Finding next available slot starting from ${startDate}`);
       
       // Use consistent timezone for all operations
-      const searchStart = moment.tz(startDate, 'YYYY-MM-DD', 'America/Denver');
+      const searchStart = moment.tz(startDate, 'YYYY-MM-DD', this.timezone);
       
       for (let i = 0; i < daysToSearch; i++) {
         const searchDate = searchStart.clone().add(i, 'days');
@@ -298,11 +306,11 @@ class GoogleCalendarService {
           `Fencing consultation with ${customerName}.\n\nCustomer Contact: ${customerEmail}\nCustomer Name: ${customerName}\n\nScheduled through SherpaPrompt AI Assistant.\n\nNOTE: Please contact the customer at ${customerEmail} to confirm the appointment.`,
         start: {
           dateTime: startDateTime,
-          timeZone: 'America/Denver', // Colorado timezone
+          timeZone: this.timezone,
         },
         end: {
           dateTime: endDateTime,
-          timeZone: 'America/Denver',
+          timeZone: this.timezone,
         },
         reminders: {
           useDefault: false,
@@ -374,8 +382,8 @@ class GoogleCalendarService {
       console.log('📅 [GoogleCalendar parseDateTime] Input:', { date, time, duration, dateTimeStr });
       
       // Ensure we're working in the correct timezone consistently
-      // Use America/Denver timezone for all operations to match the calendar
-      const startMoment = moment.tz(dateTimeStr, 'YYYY-MM-DD HH:mm', 'America/Denver');
+      // Use configured timezone for all operations to match the calendar
+      const startMoment = moment.tz(dateTimeStr, 'YYYY-MM-DD HH:mm', this.timezone);
       
       if (!startMoment.isValid()) {
         throw new Error(`Invalid date/time format: ${dateTimeStr}`);
@@ -388,7 +396,7 @@ class GoogleCalendarService {
         startLocal: startMoment.format('YYYY-MM-DD HH:mm'),
         endDateTime: endMoment.toISOString(),
         endLocal: endMoment.format('YYYY-MM-DD HH:mm'),
-        timezone: 'America/Denver',
+        timezone: this.timezone,
         startDateTimeWithTZ: startMoment.format(),
         endDateTimeWithTZ: endMoment.format()
       });
@@ -434,7 +442,7 @@ class GoogleCalendarService {
     // Validate that appointment is in the future
     if (details.date && details.time) {
       try {
-        const appointmentMoment = moment.tz(`${details.date} ${details.time}`, 'YYYY-MM-DD HH:mm', 'America/Denver');
+        const appointmentMoment = moment.tz(`${details.date} ${details.time}`, 'YYYY-MM-DD HH:mm', this.timezone);
         if (appointmentMoment.isBefore(moment())) {
           errors.push('Appointment must be scheduled for a future date and time');
         }

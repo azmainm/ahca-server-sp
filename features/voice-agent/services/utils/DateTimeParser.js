@@ -299,6 +299,102 @@ class DateTimeParser {
   }
 
   /**
+   * Parse user's time input into standardized 24-hour format
+   * @param {string} text - User input containing time
+   * @returns {Object} { success: boolean, time: string (HH:mm), display: string } or { success: false }
+   */
+  parseUserTimeInput(text) {
+    const timePatterns = [
+      /(\d{1,2}):(\d{2})\s*(am|pm)/i,  // 3:30 PM
+      /(\d{1,2})\s*(am|pm)/i,          // 3 PM
+      /(\d{1,2}):(\d{2})/,             // 15:30 (24-hour)
+    ];
+    
+    for (const pattern of timePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        let hours, minutes;
+        
+        if (pattern === timePatterns[0]) { // HH:MM AM/PM
+          hours = parseInt(match[1]);
+          minutes = match[2];
+          const meridiem = match[3].toLowerCase();
+          if (meridiem === 'pm' && hours !== 12) hours += 12;
+          if (meridiem === 'am' && hours === 12) hours = 0;
+        } else if (pattern === timePatterns[1]) { // H AM/PM
+          hours = parseInt(match[1]);
+          minutes = '00';
+          const meridiem = match[2].toLowerCase();
+          if (meridiem === 'pm' && hours !== 12) hours += 12;
+          if (meridiem === 'am' && hours === 12) hours = 0;
+        } else if (pattern === timePatterns[2]) { // HH:MM (24-hour)
+          hours = parseInt(match[1]);
+          minutes = match[2];
+        }
+        
+        const time24 = `${hours.toString().padStart(2, '0')}:${minutes}`;
+        const displayHour = hours % 12 || 12;
+        const displayMeridiem = hours >= 12 ? 'PM' : 'AM';
+        const display = `${displayHour}:${minutes} ${displayMeridiem}`;
+        
+        return { success: true, time: time24, display };
+      }
+    }
+    
+    return { success: false };
+  }
+
+  /**
+   * Find nearest available slots to a requested time
+   * @param {string} requestedTime - Time in HH:mm format
+   * @param {Array} availableSlots - Available time slots
+   * @returns {Array} Array of 1-2 nearest slots (before and/or after)
+   */
+  findNearestAvailableSlots(requestedTime, availableSlots) {
+    if (!requestedTime || !availableSlots || availableSlots.length === 0) {
+      return [];
+    }
+    
+    const [reqHours, reqMinutes] = requestedTime.split(':').map(n => parseInt(n));
+    const requestedMinutes = reqHours * 60 + reqMinutes;
+    
+    // Calculate time difference for each slot
+    const slotsWithDiff = availableSlots.map(slot => {
+      const [slotHours, slotMinutes] = slot.start.split(':').map(n => parseInt(n));
+      const slotTotalMinutes = slotHours * 60 + slotMinutes;
+      const diff = slotTotalMinutes - requestedMinutes;
+      
+      return {
+        slot,
+        diff,
+        absDiff: Math.abs(diff)
+      };
+    });
+    
+    // Sort by absolute difference
+    slotsWithDiff.sort((a, b) => a.absDiff - b.absDiff);
+    
+    // Get closest before and after
+    const before = slotsWithDiff.filter(s => s.diff < 0).sort((a, b) => b.diff - a.diff)[0];
+    const after = slotsWithDiff.filter(s => s.diff > 0).sort((a, b) => a.diff - b.diff)[0];
+    
+    // Return up to 2 nearest slots
+    const nearest = [];
+    if (before) nearest.push(before.slot);
+    if (after) nearest.push(after.slot);
+    
+    // If we only have one direction, add the next closest
+    if (nearest.length === 1 && slotsWithDiff.length > 1) {
+      const second = slotsWithDiff[1];
+      if (second && second.slot !== nearest[0]) {
+        nearest.push(second.slot);
+      }
+    }
+    
+    return nearest.slice(0, 2);
+  }
+
+  /**
    * Find selected time slot from user input
    * @param {string} text - User's time selection input
    * @param {Array} availableSlots - Array of available time slots
@@ -386,34 +482,6 @@ class DateTimeParser {
             console.log('✅ [TimeSlotMatcher] Match found by display:', slot);
             return slot;
           }
-        }
-      }
-    }
-    
-    // Try partial matching with display text
-    for (const slot of availableSlots) {
-      const slotDisplay = slot.display.toLowerCase();
-      
-      // Check if input contains key parts of the slot display
-      if (slotDisplay.includes(inputLower) || inputLower.includes(slotDisplay.split(' ')[0])) {
-        return slot;
-      }
-      
-      // Try matching just the hour part
-      const hourMatch = slotDisplay.match(/(\d{1,2})/);
-      const inputHourMatch = inputLower.match(/(\d{1,2})/);
-      
-      if (hourMatch && inputHourMatch && hourMatch[1] === inputHourMatch[1]) {
-        // Also check for AM/PM consistency if present in input
-        const slotHasPM = slotDisplay.includes('pm');
-        const inputHasPM = inputLower.includes('pm') || inputLower.includes('p.m');
-        const inputHasAM = inputLower.includes('am') || inputLower.includes('a.m');
-        
-        if (!inputHasPM && !inputHasAM) {
-          // No meridiem specified, assume it matches if hour matches
-          return slot;
-        } else if ((slotHasPM && inputHasPM) || (!slotHasPM && inputHasAM)) {
-          return slot;
         }
       }
     }

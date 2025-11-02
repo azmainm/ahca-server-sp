@@ -423,6 +423,25 @@ class AppointmentFlowManager {
     const selectedSlot = this.dateTimeParser.findSelectedTimeSlot(text, details.availableSlots);
     
     if (!selectedSlot) {
+      // Try to parse what time the user actually requested
+      const parsedTime = this.dateTimeParser.parseUserTimeInput(text);
+      
+      if (parsedTime.success) {
+        // User requested a specific time that isn't available
+        // Find nearest available slots
+        const nearestSlots = this.dateTimeParser.findNearestAvailableSlots(parsedTime.time, details.availableSlots);
+        
+        if (nearestSlots.length > 0) {
+          const slotsText = nearestSlots.map(slot => slot.display).join(' or ');
+          return {
+            success: true,
+            response: `Sorry, ${parsedTime.display} isn't available. I have ${slotsText}. Which works better for you?`,
+            step: this.steps.COLLECT_TIME
+          };
+        }
+      }
+      
+      // Fallback: couldn't parse time or find alternatives
       const slotsText = details.availableSlots.map(slot => slot.display).join(', ');
       return {
         success: true,
@@ -996,7 +1015,7 @@ class AppointmentFlowManager {
    * @returns {Promise<string>} Extracted service type
    */
   async extractServiceType(text) {
-    const prompts = require('../../../configs/prompt_rules.json');
+    const prompts = require('../../../../configs/prompt_rules.json');
     const cfg = prompts.extractServiceType;
     const serviceExtractionPrompt = `${cfg.systemPrompt}
 
@@ -1065,7 +1084,7 @@ ${cfg.outputFormat}`;
    * @returns {Promise<string|null>} Extracted name
    */
   async extractName(text) {
-    const prompts = require('../../../configs/prompt_rules.json');
+    const prompts = require('../../../../configs/prompt_rules.json');
     const cfg = prompts.extractName;
     const nameExtractionPrompt = `${cfg.systemPrompt} "${text}"
 
@@ -1101,7 +1120,7 @@ ${cfg.outputFormat}`;
    * @returns {Promise<string|null>} Extracted email
    */
   async extractEmail(text) {
-    const prompts = require('../../../configs/prompt_rules.json');
+    const prompts = require('../../../../configs/prompt_rules.json');
     const cfg = prompts.extractEmail;
     const emailExtractionPrompt = `${cfg.systemPrompt} "${text}"
 

@@ -17,7 +17,7 @@ class ConversationStateManager {
     if (!this.sessions.has(sessionId)) {
       this.sessions.set(sessionId, {
         conversationHistory: [],
-        userInfo: { name: null, email: null, collected: true }, // Start with collected=true to allow questions without blocking
+        userInfo: { name: null, email: null, collected: false }, // Start with collected=false to properly collect user info first
         appointmentFlow: { active: false, step: 'none', details: {}, calendarType: null },
         awaitingFollowUp: false,
         createdAt: new Date()

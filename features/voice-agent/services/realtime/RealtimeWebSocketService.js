@@ -811,8 +811,10 @@ class RealtimeWebSocketService extends EventEmitter {
         [steps.SELECT_CALENDAR]: new Set(['set_calendar']),
         [steps.COLLECT_TITLE]: new Set(['set_service']),
         [steps.COLLECT_DATE]: new Set(['set_date']),
-        [steps.COLLECT_TIME]: new Set(['set_time']),
-        [steps.REVIEW]: new Set(['confirm']),
+        // Allow changing the date while choosing time so we can re-check slots
+        [steps.COLLECT_TIME]: new Set(['set_time', 'set_date']),
+        // During review, allow direct changes to date/time so we can re-check slots
+        [steps.REVIEW]: new Set(['confirm', 'set_date', 'set_time', 'set_service']),
         [steps.CONFIRM]: new Set(['confirm']),
         [steps.COLLECT_NAME]: new Set([]),
         [steps.COLLECT_EMAIL]: new Set([]),

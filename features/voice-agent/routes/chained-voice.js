@@ -110,7 +110,12 @@ async function getBusinessServices(sessionId) {
 
     if (businessConfig.features?.appointmentBookingEnabled !== false) {
       if (businessConfig.calendar.provider === 'google' && businessConfig.calendar.google) {
-        businessGoogleCalendarService = GoogleCalendarService.createForBusiness(businessConfig.calendar.google);
+        // Create a combined config with google-specific settings and calendar-level settings like timezone
+        const googleCalendarConfig = {
+          ...businessConfig.calendar.google,
+          timezone: businessConfig.calendar.timezone
+        };
+        businessGoogleCalendarService = GoogleCalendarService.createForBusiness(googleCalendarConfig);
         console.log(`✅ [ChainedVoice] Google Calendar enabled for business: ${businessId}`);
       }
 
