@@ -51,7 +51,7 @@ const userInfoCollector = new UserInfoCollector(openAIService);
 const dateTimeParser = new DateTimeParser();
 const intentClassifier = new IntentClassifier();
 const responseGenerator = new ResponseGenerator(openAIService);
-const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator);
+const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator, businessConfigService, tenantContextManager);
 
 // Multi-tenant service factory
 async function getBusinessServices(sessionId) {

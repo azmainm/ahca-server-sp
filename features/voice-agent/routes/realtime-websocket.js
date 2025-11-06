@@ -42,7 +42,7 @@ const userInfoCollector = new UserInfoCollector(openAIService);
 const dateTimeParser = new DateTimeParser();
 const intentClassifier = new IntentClassifier();
 const responseGenerator = new ResponseGenerator(openAIService);
-const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator);
+const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator, businessConfigService, tenantContextManager);
 
 // Helper functions
 function getCalendarService(calendarType) {

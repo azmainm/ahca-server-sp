@@ -3,10 +3,12 @@
  */
 
 class AppointmentFlowManager {
-  constructor(openAIService, dateTimeParser, responseGenerator) {
+  constructor(openAIService, dateTimeParser, responseGenerator, businessConfigService = null, tenantContextManager = null) {
     this.openAIService = openAIService;
     this.dateTimeParser = dateTimeParser;
     this.responseGenerator = responseGenerator;
+    this.businessConfigService = businessConfigService;
+    this.tenantContextManager = tenantContextManager;
     
     // Appointment flow steps
     this.steps = {
@@ -92,9 +94,10 @@ class AppointmentFlowManager {
    * @param {Object} session - Session object
    * @param {string} text - User input
    * @param {Function} getCalendarService - Function to get calendar service
+   * @param {string} sessionId - Session identifier (optional, for timezone lookup)
    * @returns {Promise<Object>} Processing result
    */
-  async processFlow(session, text, getCalendarService) {
+  async processFlow(session, text, getCalendarService, sessionId = null) {
     const { step, details } = session.appointmentFlow;
 
     try {
@@ -106,13 +109,13 @@ class AppointmentFlowManager {
           return await this.handleServiceCollection(session, text);
           
         case this.steps.COLLECT_DATE:
-          return await this.handleDateCollection(session, text, getCalendarService);
+          return await this.handleDateCollection(session, text, getCalendarService, sessionId);
           
         case this.steps.COLLECT_TIME:
           return await this.handleTimeCollection(session, text);
           
         case this.steps.REVIEW:
-          return await this.handleReview(session, text, getCalendarService);
+          return await this.handleReview(session, text, getCalendarService, sessionId);
           
         case this.steps.COLLECT_NAME:
           return await this.handleNameCollection(session, text);
@@ -213,9 +216,10 @@ class AppointmentFlowManager {
    * @param {Object} session - Session object
    * @param {string} text - User input
    * @param {Function} getCalendarService - Function to get calendar service
+   * @param {string} sessionId - Session identifier (optional, for timezone lookup)
    * @returns {Promise<Object>} Processing result
    */
-  async handleDateCollection(session, text, getCalendarService) {
+  async handleDateCollection(session, text, getCalendarService, sessionId = null) {
     const lower = (text || '').toLowerCase();
 
     console.log('📅 [DateCollection] Processing date input:', text);
@@ -252,6 +256,21 @@ class AppointmentFlowManager {
         response: "I need the date in this EXACT format: 'October 16, 2025'. Please say the date exactly like that.",
         step: this.steps.COLLECT_DATE
       };
+    }
+
+    // Validate that the date is not in the past
+    if (sessionId) {
+      const timezone = this.getBusinessTimezone(sessionId);
+      console.log('📅 [DateCollection] Business timezone:', timezone);
+      
+      if (this.dateTimeParser.isDateInPast(dateResult.date, timezone)) {
+        console.log('❌ [DateCollection] Date is in the past:', dateResult.date);
+        return {
+          success: true,
+          response: "That date has already passed. Please provide a future date in this EXACT format: 'October 16, 2025'.",
+          step: this.steps.COLLECT_DATE
+        };
+      }
     }
 
     // Check if it's a weekend
@@ -466,9 +485,10 @@ class AppointmentFlowManager {
    * @param {Object} session - Session object
    * @param {string} text - User input
    * @param {Function} getCalendarService - Function to get calendar service
+   * @param {string} sessionId - Session identifier (optional, for timezone lookup)
    * @returns {Promise<Object>} Processing result
    */
-  async handleReview(session, text, getCalendarService) {
+  async handleReview(session, text, getCalendarService, sessionId = null) {
     const { details } = session.appointmentFlow;
     
     console.log('📋 [AppointmentFlow] handleReview - User input:', text);
@@ -476,7 +496,7 @@ class AppointmentFlowManager {
     console.log('📋 [AppointmentFlow] handleReview - Appointment details:', JSON.stringify(details, null, 2));
     
     // Check for direct changes with new values in the same message
-    const directChanges = await this.processDirectChanges(session, text, getCalendarService);
+    const directChanges = await this.processDirectChanges(session, text, getCalendarService, sessionId);
     if (directChanges.hasChanges) {
       console.log('📋 [AppointmentFlow] handleReview - Direct changes detected');
       return directChanges.result;
@@ -518,9 +538,10 @@ class AppointmentFlowManager {
    * @param {Object} session - Session object
    * @param {string} text - User input
    * @param {Function} getCalendarService - Function to get calendar service
+   * @param {string} sessionId - Session identifier (optional, for timezone lookup)
    * @returns {Promise<Object>} Processing result
    */
-  async processDirectChanges(session, text, getCalendarService) {
+  async processDirectChanges(session, text, getCalendarService, sessionId = null) {
     const changesApplied = [];
     const { details } = session.appointmentFlow;
     
@@ -540,6 +561,21 @@ class AppointmentFlowManager {
       const dateResult = this.dateTimeParser.parseDateFromText(newDateText);
       
       if (dateResult.success) {
+        // Validate that the date is not in the past
+        if (sessionId) {
+          const timezone = this.getBusinessTimezone(sessionId);
+          if (this.dateTimeParser.isDateInPast(dateResult.date, timezone)) {
+            return {
+              hasChanges: false,
+              result: {
+                success: true,
+                response: "That date has already passed. Please provide a future date in this EXACT format: 'October 16, 2025'.",
+                step: this.steps.REVIEW
+              }
+            };
+          }
+        }
+
         const calendarService = getCalendarService(session.appointmentFlow.calendarType);
         const slotsResult = await calendarService.findAvailableSlots(dateResult.date);
         
@@ -1202,6 +1238,37 @@ ${cfg.outputFormat}`;
    */
   isFlowActive(session) {
     return session.appointmentFlow && session.appointmentFlow.active;
+  }
+
+  /**
+   * Get business timezone for a session
+   * @param {string} sessionId - Session identifier
+   * @returns {string} Business timezone (defaults to "America/Denver" if not found)
+   */
+  getBusinessTimezone(sessionId) {
+    if (!this.businessConfigService || !this.tenantContextManager) {
+      console.warn('⚠️ [AppointmentFlowManager] Business config services not available, using default timezone');
+      return 'America/Denver';
+    }
+
+    try {
+      const businessId = this.tenantContextManager.getBusinessId(sessionId);
+      if (!businessId) {
+        console.warn('⚠️ [AppointmentFlowManager] No business ID found for session, using default timezone');
+        return 'America/Denver';
+      }
+
+      const businessConfig = this.businessConfigService.getBusinessConfig(businessId);
+      if (!businessConfig || !businessConfig.calendar || !businessConfig.calendar.timezone) {
+        console.warn('⚠️ [AppointmentFlowManager] No timezone in business config, using default timezone');
+        return 'America/Denver';
+      }
+
+      return businessConfig.calendar.timezone;
+    } catch (error) {
+      console.error('❌ [AppointmentFlowManager] Error getting business timezone:', error);
+      return 'America/Denver';
+    }
   }
 
   /**

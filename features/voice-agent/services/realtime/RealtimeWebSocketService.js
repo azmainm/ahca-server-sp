@@ -969,7 +969,8 @@ class RealtimeWebSocketService extends EventEmitter {
       const result = await this.conversationFlowHandler.appointmentFlowManager.processFlow(
         session,
         text,
-        this.conversationFlowHandler.getCalendarService
+        this.conversationFlowHandler.getCalendarService,
+        sessionId
       );
       
       console.log('📋 [Appointment] ProcessFlow result:', JSON.stringify(result, null, 2));
@@ -1125,10 +1126,32 @@ class RealtimeWebSocketService extends EventEmitter {
       if (name) {
         console.log('👤 [UserInfo] Setting name:', name);
         updates.name = name;
+        
+        // If name matches existing name or we're waiting for confirmation, mark as confirmed
+        const existingName = sess?.userInfo?.name;
+        const isWaitingForConfirmation = sess?.userInfo?.waitingForNameConfirmation;
+        
+        // Always mark as confirmed when update_user_info is called UNLESS:
+        // 1. There's an existing confirmed name that's different (name change scenario)
+        // 2. Or if the name is already confirmed
+        const isNameChange = existingName && 
+                             existingName.toLowerCase() !== name.toLowerCase() && 
+                             sess?.userInfo?.nameConfirmed;
+        
+        if (!isNameChange) {
+          // If this is the first time setting the name, or it matches existing, or we're waiting for confirmation
+          // treat it as confirmed (AI is calling this after asking for confirmation)
+          updates.nameConfirmed = true;
+          updates.waitingForNameConfirmation = false;
+          console.log('✅ [UserInfo] Name confirmed via update_user_info function call');
+        } else {
+          // This is a name change - don't auto-confirm, let the normal flow handle it
+          console.log('🔄 [UserInfo] Name change detected, not auto-confirming');
+        }
       }
       
       if (phone) {
-        console.log('👤 [UserInfo] Setting phone:', phone);
+        console.log(' [UserInfo] Setting phone:', phone);
         updates.phone = phone;
       }
       
@@ -1145,16 +1168,24 @@ class RealtimeWebSocketService extends EventEmitter {
       if (email) {
         console.log('👤 [UserInfo] Processing email:', email);
         
-        // Use the email as provided by the user
-        const userEmail = email.toLowerCase().trim();
+        // Normalize the email first (handles spelled-out emails with spaces/dashes and "at"/"dot")
+        const userInfoCollector = this.conversationFlowHandler?.userInfoCollector;
+        let userEmail;
+        if (userInfoCollector && typeof userInfoCollector.normalizeEmail === 'function') {
+          userEmail = userInfoCollector.normalizeEmail(email);
+          console.log('📧 [UserInfo] Normalized email:', { original: email, normalized: userEmail });
+        } else {
+          // Fallback if UserInfoCollector not available
+          userEmail = email.toLowerCase().trim();
+        }
         
-        // Validate email format
+        // Validate email format after normalization
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (emailRegex.test(userEmail)) {
           console.log('✅ [UserInfo] Email format valid');
           updates.email = userEmail;
         } else {
-          console.log('❌ [UserInfo] Invalid email format:', email);
+          console.log('❌ [UserInfo] Invalid email format after normalization:', { original: email, normalized: userEmail });
           return {
             success: false,
             message: 'That email format doesn\'t look right. Could you spell it out for me?'
@@ -1198,10 +1229,52 @@ class RealtimeWebSocketService extends EventEmitter {
       
       console.log('✅ [UserInfo] Updated successfully');
       
+      // Only mention email/name if they were just set and not already confirmed
+      // Check the state BEFORE updates to see if these were already confirmed
+      const emailJustSet = email && !sess?.userInfo?.emailConfirmed;
+      const nameJustSet = name && !sess?.userInfo?.nameConfirmed;
+      const emailAlreadyConfirmed = email && sess?.userInfo?.emailConfirmed;
+      const nameAlreadyConfirmed = name && sess?.userInfo?.nameConfirmed;
+      
+      let message = 'Got it!';
+      let instructions = '';
+      
+      if (nameJustSet) {
+        message += ` I have your name as ${name}.`;
+      }
+      // if (emailJustSet) {
+      //   message += ` And your email as ${email}.`;
+      // }
+      
+      // If email/name were already confirmed, add explicit instructions NOT to repeat them
+      if (emailAlreadyConfirmed || nameAlreadyConfirmed) {
+        instructions = ' CRITICAL INSTRUCTION: The user\'s information has already been confirmed in a previous exchange. Your response should NOT include, repeat, spell out, or mention the email address or name again. Simply acknowledge briefly (like "Got it" or "Perfect") and continue the conversation naturally. Do NOT say the email address back to the user.';
+      }
+      
+      // If nothing was just set or both were already confirmed, keep it simple
+      if (!nameJustSet && !emailJustSet) {
+        if (emailAlreadyConfirmed || nameAlreadyConfirmed) {
+          message = 'Got it.';
+          instructions = ' CRITICAL: Do not repeat or mention the user\'s email address or name in your response. Simply acknowledge and continue the conversation.';
+        } else {
+          message = 'Got it!';
+        }
+      }
+      
       return {
         success: true,
-        message: `Got it! ${name ? `I have your name as ${name}.` : ''} ${email ? `And your email as ${email}.` : ''}`,
-        userInfo: sessionObj.userInfo
+        message: message + instructions,
+        userInfo: {
+          ...sessionObj.userInfo,
+          // Don't include raw email/name in response if already confirmed to avoid model repeating it
+          ...(emailAlreadyConfirmed ? { email: undefined } : {}),
+          ...(nameAlreadyConfirmed ? { name: undefined } : {})
+        },
+        emailConfirmed: sessionObj.userInfo?.emailConfirmed || false,
+        nameConfirmed: sessionObj.userInfo?.nameConfirmed || false,
+        note: emailAlreadyConfirmed || nameAlreadyConfirmed 
+          ? 'IMPORTANT: The email and/or name shown above were already confirmed. Do NOT repeat, spell out, or mention them in your response. Just acknowledge and continue.'
+          : undefined
       };
       
     } catch (error) {

@@ -514,7 +514,8 @@ Does this look good, or would you like to change anything else?`;
     const result = await this.appointmentFlowManager.processFlow(
       session, 
       text, 
-      this.getCalendarService
+      this.getCalendarService,
+      sessionId
     );
 
     return {

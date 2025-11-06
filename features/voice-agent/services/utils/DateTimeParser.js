@@ -2,6 +2,8 @@
  * DateTimeParser - Handles date and time parsing utilities
  */
 
+const moment = require('moment-timezone');
+
 class DateTimeParser {
   constructor() {
     // Month names for parsing (full names)
@@ -530,6 +532,42 @@ class DateTimeParser {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Get current date in a specific timezone
+   * @param {string} timezone - Timezone string (e.g., 'America/Denver')
+   * @returns {string} Current date in YYYY-MM-DD format in the specified timezone
+   */
+  getCurrentDateInTimezone(timezone) {
+    try {
+      const now = moment.tz(timezone);
+      return now.format('YYYY-MM-DD');
+    } catch (error) {
+      console.error('❌ [DateTimeParser] Error getting current date in timezone:', error);
+      // Fallback to system timezone
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = (today.getMonth() + 1).toString().padStart(2, '0');
+      const day = today.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
+  /**
+   * Check if a date is in the past compared to current date in a specific timezone
+   * @param {string} dateString - Date in YYYY-MM-DD format
+   * @param {string} timezone - Timezone string (e.g., 'America/Denver')
+   * @returns {boolean} True if date is in the past
+   */
+  isDateInPast(dateString, timezone) {
+    try {
+      const currentDate = this.getCurrentDateInTimezone(timezone);
+      return dateString < currentDate;
+    } catch (error) {
+      console.error('❌ [DateTimeParser] Error checking if date is in past:', error);
+      return false;
     }
   }
 }
