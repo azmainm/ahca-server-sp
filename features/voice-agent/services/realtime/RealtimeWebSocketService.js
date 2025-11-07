@@ -139,7 +139,8 @@ class RealtimeWebSocketService extends EventEmitter {
         activeResponseId: null,  // Track active response ID for cancellation
         suppressAudio: false, // Drop any in-flight audio after interruption until next response starts
         createdAt: Date.now(),
-        hasBufferedAudio: false
+        hasBufferedAudio: false,
+        pendingClose: false // Track if session should be closed after current response completes
       };
       
       this.sessions.set(sessionId, sessionData);
@@ -317,6 +318,15 @@ class RealtimeWebSocketService extends EventEmitter {
               }
             }
           }
+        },
+        {
+          type: 'function',
+          name: 'end_conversation',
+          description: 'End the conversation ONLY after you have asked "Is there anything else I can help you with?" or similar, and the user confirms they are done (e.g., says "no", "that\'s all", "nothing else", "I\'m good", "no thanks", etc.). IMPORTANT: Always ask if they need anything else first before calling this function. Do NOT call this function if the user just says "thanks" or "goodbye" without first asking if they need anything else.',
+          parameters: {
+            type: 'object',
+            properties: {}
+          }
         }
       ];
     }
@@ -388,6 +398,15 @@ class RealtimeWebSocketService extends EventEmitter {
               description: 'User\'s email address'
             }
           }
+        }
+      },
+      {
+        type: 'function',
+        name: 'end_conversation',
+        description: 'End the conversation ONLY after you have asked "Is there anything else I can help you with?" or similar, and the user confirms they are done (e.g., says "no", "that\'s all", "nothing else", "I\'m good", "no thanks", etc.). IMPORTANT: Always ask if they need anything else first before calling this function. Do NOT call this function if the user just says "thanks" or "goodbye" without first asking if they need anything else.',
+        parameters: {
+          type: 'object',
+          properties: {}
         }
       }
     ];
@@ -648,6 +667,18 @@ class RealtimeWebSocketService extends EventEmitter {
         this.sendToClient(sessionData, {
           type: 'response_done'
         });
+        
+        // Check if session is marked for closing (after goodbye message)
+        if (sessionData.pendingClose) {
+          console.log('👋 [RealtimeWS] Session marked for closing, scheduling close after delay');
+          sessionData.pendingClose = false; // Clear flag immediately to prevent duplicate closes
+          
+          // Schedule session close after delay to allow goodbye audio to finish playing
+          setTimeout(() => {
+            console.log('👋 [RealtimeWS] Closing session after goodbye:', sessionId);
+            this.closeSession(sessionId);
+          }, 4500); // 4.5 second delay to ensure audio finishes
+        }
         break;
 
       case 'error':
@@ -701,6 +732,10 @@ class RealtimeWebSocketService extends EventEmitter {
           result = await this.handleUserInfo(sessionId, args);
           break;
           
+        case 'end_conversation':
+          result = await this.handleEndConversation(sessionId, args);
+          break;
+          
         default:
           result = { error: `Unknown function: ${name}` };
       }
@@ -721,6 +756,7 @@ class RealtimeWebSocketService extends EventEmitter {
       
       // Prompt the model to produce a follow-up response immediately
       // Without this, the Realtime API may wait for the next user turn
+      // For end_conversation, we still trigger a response so the AI can say goodbye
       try {
         const continueResponse = {
           type: 'response.create',
@@ -1287,6 +1323,51 @@ class RealtimeWebSocketService extends EventEmitter {
   }
 
   /**
+   * Handle end conversation function
+   */
+  async handleEndConversation(sessionId, args) {
+    try {
+      console.log('👋 [EndConversation] Ending conversation for session:', sessionId);
+      
+      const sessionData = this.sessions.get(sessionId);
+      if (!sessionData) {
+        return {
+          success: false,
+          error: 'Session not found'
+        };
+      }
+      
+      // Mark session for closing after response completes
+      sessionData.pendingClose = true;
+      
+      // Get user's name for personalization
+      const session = this.stateManager.getSession(sessionId);
+      const userName = session?.userInfo?.name || 'there';
+      
+      console.log('👋 [EndConversation] Session marked for closing, user:', userName);
+      
+      // Return direct instruction for the agent to say goodbye
+      // Format it as a clear instruction that the AI will follow
+      const goodbyeMessage = userName !== 'there' 
+        ? `Thanks for calling, ${userName}! Have a great day!`
+        : `Thanks for calling! Have a great day!`;
+      
+      return {
+        success: true,
+        conversationEnding: true,
+        message: `The user wants to end the conversation. Say this goodbye message now: "${goodbyeMessage}" Then the conversation will end. Do not ask any questions or say anything else - just say the goodbye message.`
+      };
+      
+    } catch (error) {
+      console.error('❌ [EndConversation] Error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
    * Send message to client
    */
   sendToClient(sessionData, message) {
@@ -1306,12 +1387,27 @@ class RealtimeWebSocketService extends EventEmitter {
     if (sessionData) {
       console.log('🗑️ [RealtimeWS] Closing session:', sessionId);
       
-      // Get session data before cleanup
+      // Get session data before cleanup (needed for email/cleanup tasks)
       const session = this.stateManager.getSession(sessionId);
+      const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
       
+      // Remove from sessions first to prevent close handler from triggering duplicate cleanup
+      this.sessions.delete(sessionId);
+      
+      // Close WebSocket connections immediately - user experience is complete
+      // Close client connection
+      if (sessionData.clientWs && sessionData.clientWs.readyState === WebSocket.OPEN) {
+        sessionData.clientWs.close();
+      }
+      
+      // Close OpenAI connection
+      if (sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {
+        sessionData.openaiWs.close();
+      }
+      
+      // Now do cleanup tasks (email, state cleanup) - these can happen after connections are closed
       // Send conversation summary email
       // Only send if user info was collected or if it's Superior Fencing (fixed email)
-      const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
       if (session && (session.userInfo?.collected || businessId === 'superior-fencing')) {
         await this.conversationFlowHandler.sendConversationSummary(sessionId, session)
           .catch(error => {
@@ -1419,18 +1515,10 @@ class RealtimeWebSocketService extends EventEmitter {
       
       console.log('📱 [SMS] SMS summaries temporarily disabled - awaiting Twilio verification');
       
-      // Close OpenAI connection
-      if (sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {
-        sessionData.openaiWs.close();
-      }
-      
-      // Remove from sessions
-      this.sessions.delete(sessionId);
-      
       // Cleanup conversation state
       this.stateManager.deleteSession(sessionId);
       
-      // Clean up tenant context (moved here to ensure email sending works)
+      // Clean up tenant context
       if (this.tenantContextManager) {
         this.tenantContextManager.removeTenantContext(sessionId);
         console.log(`🗑️ [RealtimeWS] Cleaned up tenant context for session: ${sessionId}`);
