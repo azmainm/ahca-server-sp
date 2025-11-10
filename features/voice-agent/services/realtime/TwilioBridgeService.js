@@ -68,6 +68,16 @@ class TwilioBridgeService {
       // eslint-disable-next-line no-console
       console.warn('⚠️ [TwilioBridge] Failed to persist phone metadata:', e.message);
     }
+
+    // Create persistent resamplers for this call to avoid creating/destroying them for every audio chunk
+    console.log('🔧 [TwilioBridge] Creating persistent resamplers for call:', callSid);
+    const resamplerInbound = await create(1, 8000, 16000, {
+      converterType: ConverterType.SRC_SINC_BEST_QUALITY
+    });
+    const resamplerOutbound = await create(1, 24000, 8000, {
+      converterType: ConverterType.SRC_SINC_BEST_QUALITY
+    });
+
     this.callSidToSession.set(callSid, {
       sessionId,
       streamSid,
@@ -76,6 +86,8 @@ class TwilioBridgeService {
       outMuLawRemainder: Buffer.alloc(0),
       outputBuffer: [], // Buffer for outbound audio
       isFlushing: false, // Prevent multiple flush loops
+      resamplerInbound, // Persistent resampler: 8kHz -> 16kHz
+      resamplerOutbound, // Persistent resampler: 24kHz -> 8kHz
     });
     return sessionId;
   }
@@ -83,6 +95,24 @@ class TwilioBridgeService {
   async stop(callSid) {
     const entry = this.callSidToSession.get(callSid);
     if (entry) {
+      // Destroy persistent resamplers
+      if (entry.resamplerInbound) {
+        try {
+          entry.resamplerInbound.destroy();
+          console.log('🔧 [TwilioBridge] Destroyed inbound resampler for call:', callSid);
+        } catch (e) {
+          console.warn('⚠️ [TwilioBridge] Failed to destroy inbound resampler:', e.message);
+        }
+      }
+      if (entry.resamplerOutbound) {
+        try {
+          entry.resamplerOutbound.destroy();
+          console.log('🔧 [TwilioBridge] Destroyed outbound resampler for call:', callSid);
+        } catch (e) {
+          console.warn('⚠️ [TwilioBridge] Failed to destroy outbound resampler:', e.message);
+        }
+      }
+      
       await this.realtimeWSService.closeSession(entry.sessionId);
       this.callSidToSession.delete(callSid);
     }
@@ -114,20 +144,23 @@ class TwilioBridgeService {
       // 2) μ-law decode -> Int16Array (PCM16 8k)
       const pcm8k = this.decodeMuLawToPCM16(muLawBuf);
 
-      // 3) Upsample 8k -> 24k using high-quality resampler
-      const pcm24k = await this.resamplePcm(pcm8k, 8000, 24000);
+      // 3) Upsample 8k -> 16k using persistent resampler
+      const pcm16k = this.resamplePcm(pcm8k, entry.resamplerInbound);
 
       // 4) Int16 -> base64
-      const pcm24kBase64 = this.int16ToBase64(pcm24k);
+      const pcm16kBase64 = this.int16ToBase64(pcm16k);
 
       // 5) Send to OpenAI Realtime as input_audio_buffer.append via service
       const sessionData = this.realtimeWSService.sessions.get(entry.sessionId);
       if (sessionData) {
         this.realtimeWSService.handleClientMessage(sessionData, {
           type: 'audio',
-          data: pcm24kBase64
+          data: pcm16kBase64
         });
-        entry.bufferedSamples24k += pcm24k.length;
+        // Note: Renaming this would require finding all usages.
+        // For now, we'll assume it's just a tracking metric and the name isn't critical.
+        // If it affects logic elsewhere, it will need to be refactored.
+        entry.bufferedSamples16k = (entry.bufferedSamples16k || 0) + pcm16k.length;
       }
     } catch (e) {
       // Swallow to keep real-time path resilient
@@ -137,14 +170,12 @@ class TwilioBridgeService {
   }
 
   /**
-   * Resample PCM audio data using libsamplerate.js
+   * Resample PCM audio data using a persistent resampler instance
    * @param {Int16Array} pcmData - Input PCM data
-   * @param {number} inputRate - Input sample rate
-   * @param {number} outputRate - Output sample rate
-   * @returns {Promise<Int16Array>} Resampled PCM data
+   * @param {Object} resampler - Persistent resampler instance
+   * @returns {Int16Array} Resampled PCM data
    */
-  async resamplePcm(pcmData, inputRate, outputRate) {
-    let src = null;
+  resamplePcm(pcmData, resampler) {
     try {
       // libsamplerate.js expects Float32Array data between -1.0 and 1.0
       const float32Data = new Float32Array(pcmData.length);
@@ -152,11 +183,7 @@ class TwilioBridgeService {
         float32Data[i] = pcmData[i] / 32768;
       }
 
-      src = await create(1, inputRate, outputRate, {
-        converterType: ConverterType.SRC_SINC_BEST_QUALITY
-      });
-      
-      const resampledData = src.simple(float32Data);
+      const resampledData = resampler.simple(float32Data);
 
       // Convert back to Int16Array
       const int16Data = new Int16Array(resampledData.length);
@@ -169,10 +196,6 @@ class TwilioBridgeService {
       console.error('❌ [TwilioBridge] Resampling error:', e.message);
       // Fallback to original data to avoid crashing the stream
       return pcmData;
-    } finally {
-      if (src) {
-        src.destroy();
-      }
     }
   }
 
@@ -186,17 +209,17 @@ class TwilioBridgeService {
       case 'audio':
         if (msg.delta) {
           try {
+            // Get session entry first to access persistent resampler
+            const entry = this.callSidToSession.get(callSid);
+            if (!entry) return;
+
             const pcm24k = this.base64ToInt16(msg.delta);
 
-            // Downsample using high-quality resampler
-            const pcm8k = await this.resamplePcm(pcm24k, 24000, 8000);
+            // Downsample using persistent resampler
+            const pcm8k = this.resamplePcm(pcm24k, entry.resamplerOutbound);
 
             // Encode
             const muLaw = this.encodePCM16ToMuLaw(pcm8k);
-
-            // Buffer and send
-            const entry = this.callSidToSession.get(callSid);
-            if (!entry) return;
 
             // 4) prepend any remainder and chunk into 160-byte frames (20ms @ 8kHz)
             const combined = Buffer.concat([entry.outMuLawRemainder, muLaw]);

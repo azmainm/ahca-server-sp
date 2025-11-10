@@ -187,8 +187,7 @@ class SuperiorFencingHandler {
    * @returns {string} Greeting message
    */
   getGreeting() {
-    const timeOfDay = this.getTimeOfDay();
-    return `Thanks for calling Superior Fence and Construction, I'm Mason, the AI assistant, and this call may be recorded. What are you calling about ${timeOfDay}? If this is an emergency that will require an after hours visit to your location please press the pound key and I'll forward the call to our on call personnel.`;
+    return `Hi there, I'm Mason, Superior Fence & Construction's virtual assistant. If this is an emergency, please press the pound key now to reach our on-call team. Parts of this call may be recorded so we can better understand your needs and improve our service. To get started, what are you calling about today?`;
   }
 
   /**
