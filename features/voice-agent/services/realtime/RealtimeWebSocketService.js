@@ -1387,6 +1387,16 @@ class RealtimeWebSocketService extends EventEmitter {
     if (sessionData) {
       console.log('🗑️ [RealtimeWS] Closing session:', sessionId);
       
+      // If this is a Twilio call, hang up the call legs
+      if (sessionData.twilioCallSid && this.bridgeService) {
+        console.log(`📞 [RealtimeWS] Session is a Twilio call (${sessionData.twilioCallSid}), instructing bridge to hang up.`);
+        // Don't wait for this to complete to continue cleanup
+        this.bridgeService.hangupCall(sessionData.twilioCallSid).catch(e => {
+          // eslint-disable-next-line no-console
+          console.error(`❌ [RealtimeWS] Error during hangup instruction for ${sessionData.twilioCallSid}:`, e);
+        });
+      }
+      
       // Get session data before cleanup (needed for email/cleanup tasks)
       const session = this.stateManager.getSession(sessionId);
       const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
