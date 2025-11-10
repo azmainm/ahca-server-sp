@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const EventEmitter = require('events');
 const { performance } = require('perf_hooks');
 const { create, ConverterType } = require('@alexanderolsen/libsamplerate-js');
+const twilio = require('twilio');
 
 /**
  * TwilioBridgeService (Simplified)
@@ -13,6 +14,13 @@ class TwilioBridgeService {
   constructor(realtimeWSService) {
     this.realtimeWSService = realtimeWSService;
     this.callSidToSession = new Map();
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+      this.twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    } else {
+      this.twilioClient = null;
+      // eslint-disable-next-line no-console
+      console.warn('⚠️ [TwilioBridge] Twilio client not initialized. TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are required for call control features.');
+    }
   }
 
   async start(callSid, twilioWs, streamSid, businessId, fromPhone = null, toPhone = null, baseUrl = null) {
@@ -389,6 +397,35 @@ class TwilioBridgeService {
   base64ToInt16(b64) {
     const buf = Buffer.from(b64, 'base64');
     return new Int16Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 2));
+  }
+
+  /**
+   * Hang up a Twilio call
+   * @param {string} callSid - The SID of the call to hang up
+   */
+  async hangupCall(callSid) {
+    if (!this.twilioClient) {
+      // eslint-disable-next-line no-console
+      console.error('❌ [TwilioBridge] Cannot hang up call - Twilio client not initialized.');
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line no-console
+      console.log(`📞 [TwilioBridge] Hanging up call: ${callSid}`);
+      await this.twilioClient.calls(callSid).update({ status: 'completed' });
+      // eslint-disable-next-line no-console
+      console.log(`✅ [TwilioBridge] Call hung up successfully: ${callSid}`);
+    } catch (error) {
+      // It's possible the call is already completed, which is not a critical error.
+      if (error.status === 404) {
+        // eslint-disable-next-line no-console
+        console.warn(`⚠️ [TwilioBridge] Call already ended or not found: ${callSid}`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(`❌ [TwilioBridge] Error hanging up call ${callSid}:`, error);
+      }
+    }
   }
 
   /**

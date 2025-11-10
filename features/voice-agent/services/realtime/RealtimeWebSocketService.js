@@ -139,7 +139,8 @@ class RealtimeWebSocketService extends EventEmitter {
         activeResponseId: null,  // Track active response ID for cancellation
         suppressAudio: false, // Drop any in-flight audio after interruption until next response starts
         createdAt: Date.now(),
-        hasBufferedAudio: false
+        hasBufferedAudio: false,
+        pendingClose: false // Track if session should be closed after current response completes
       };
       
       this.sessions.set(sessionId, sessionData);
@@ -317,6 +318,15 @@ class RealtimeWebSocketService extends EventEmitter {
               }
             }
           }
+        },
+        {
+          type: 'function',
+          name: 'end_conversation',
+          description: 'End the conversation ONLY after you have asked "Is there anything else I can help you with?" or similar, and the user confirms they are done (e.g., says "no", "that\'s all", "nothing else", "I\'m good", "no thanks", etc.). IMPORTANT: Always ask if they need anything else first before calling this function. Do NOT call this function if the user just says "thanks" or "goodbye" without first asking if they need anything else.',
+          parameters: {
+            type: 'object',
+            properties: {}
+          }
         }
       ];
     }
@@ -388,6 +398,15 @@ class RealtimeWebSocketService extends EventEmitter {
               description: 'User\'s email address'
             }
           }
+        }
+      },
+      {
+        type: 'function',
+        name: 'end_conversation',
+        description: 'End the conversation ONLY after you have asked "Is there anything else I can help you with?" or similar, and the user confirms they are done (e.g., says "no", "that\'s all", "nothing else", "I\'m good", "no thanks", etc.). IMPORTANT: Always ask if they need anything else first before calling this function. Do NOT call this function if the user just says "thanks" or "goodbye" without first asking if they need anything else.',
+        parameters: {
+          type: 'object',
+          properties: {}
         }
       }
     ];
@@ -648,6 +667,18 @@ class RealtimeWebSocketService extends EventEmitter {
         this.sendToClient(sessionData, {
           type: 'response_done'
         });
+        
+        // Check if session is marked for closing (after goodbye message)
+        if (sessionData.pendingClose) {
+          console.log('👋 [RealtimeWS] Session marked for closing, scheduling close after delay');
+          sessionData.pendingClose = false; // Clear flag immediately to prevent duplicate closes
+          
+          // Schedule session close after delay to allow goodbye audio to finish playing
+          setTimeout(() => {
+            console.log('👋 [RealtimeWS] Closing session after goodbye:', sessionId);
+            this.closeSession(sessionId);
+          }, 4500); // 4.5 second delay to ensure audio finishes
+        }
         break;
 
       case 'error':
@@ -701,6 +732,10 @@ class RealtimeWebSocketService extends EventEmitter {
           result = await this.handleUserInfo(sessionId, args);
           break;
           
+        case 'end_conversation':
+          result = await this.handleEndConversation(sessionId, args);
+          break;
+          
         default:
           result = { error: `Unknown function: ${name}` };
       }
@@ -721,6 +756,7 @@ class RealtimeWebSocketService extends EventEmitter {
       
       // Prompt the model to produce a follow-up response immediately
       // Without this, the Realtime API may wait for the next user turn
+      // For end_conversation, we still trigger a response so the AI can say goodbye
       try {
         const continueResponse = {
           type: 'response.create',
@@ -811,8 +847,10 @@ class RealtimeWebSocketService extends EventEmitter {
         [steps.SELECT_CALENDAR]: new Set(['set_calendar']),
         [steps.COLLECT_TITLE]: new Set(['set_service']),
         [steps.COLLECT_DATE]: new Set(['set_date']),
-        [steps.COLLECT_TIME]: new Set(['set_time']),
-        [steps.REVIEW]: new Set(['confirm']),
+        // Allow changing the date while choosing time so we can re-check slots
+        [steps.COLLECT_TIME]: new Set(['set_time', 'set_date']),
+        // During review, allow direct changes to date/time so we can re-check slots
+        [steps.REVIEW]: new Set(['confirm', 'set_date', 'set_time', 'set_service']),
         [steps.CONFIRM]: new Set(['confirm']),
         [steps.COLLECT_NAME]: new Set([]),
         [steps.COLLECT_EMAIL]: new Set([]),
@@ -967,7 +1005,8 @@ class RealtimeWebSocketService extends EventEmitter {
       const result = await this.conversationFlowHandler.appointmentFlowManager.processFlow(
         session,
         text,
-        this.conversationFlowHandler.getCalendarService
+        this.conversationFlowHandler.getCalendarService,
+        sessionId
       );
       
       console.log('📋 [Appointment] ProcessFlow result:', JSON.stringify(result, null, 2));
@@ -1123,10 +1162,32 @@ class RealtimeWebSocketService extends EventEmitter {
       if (name) {
         console.log('👤 [UserInfo] Setting name:', name);
         updates.name = name;
+        
+        // If name matches existing name or we're waiting for confirmation, mark as confirmed
+        const existingName = sess?.userInfo?.name;
+        const isWaitingForConfirmation = sess?.userInfo?.waitingForNameConfirmation;
+        
+        // Always mark as confirmed when update_user_info is called UNLESS:
+        // 1. There's an existing confirmed name that's different (name change scenario)
+        // 2. Or if the name is already confirmed
+        const isNameChange = existingName && 
+                             existingName.toLowerCase() !== name.toLowerCase() && 
+                             sess?.userInfo?.nameConfirmed;
+        
+        if (!isNameChange) {
+          // If this is the first time setting the name, or it matches existing, or we're waiting for confirmation
+          // treat it as confirmed (AI is calling this after asking for confirmation)
+          updates.nameConfirmed = true;
+          updates.waitingForNameConfirmation = false;
+          console.log('✅ [UserInfo] Name confirmed via update_user_info function call');
+        } else {
+          // This is a name change - don't auto-confirm, let the normal flow handle it
+          console.log('🔄 [UserInfo] Name change detected, not auto-confirming');
+        }
       }
       
       if (phone) {
-        console.log('👤 [UserInfo] Setting phone:', phone);
+        console.log(' [UserInfo] Setting phone:', phone);
         updates.phone = phone;
       }
       
@@ -1143,16 +1204,24 @@ class RealtimeWebSocketService extends EventEmitter {
       if (email) {
         console.log('👤 [UserInfo] Processing email:', email);
         
-        // Use the email as provided by the user
-        const userEmail = email.toLowerCase().trim();
+        // Normalize the email first (handles spelled-out emails with spaces/dashes and "at"/"dot")
+        const userInfoCollector = this.conversationFlowHandler?.userInfoCollector;
+        let userEmail;
+        if (userInfoCollector && typeof userInfoCollector.normalizeEmail === 'function') {
+          userEmail = userInfoCollector.normalizeEmail(email);
+          console.log('📧 [UserInfo] Normalized email:', { original: email, normalized: userEmail });
+        } else {
+          // Fallback if UserInfoCollector not available
+          userEmail = email.toLowerCase().trim();
+        }
         
-        // Validate email format
+        // Validate email format after normalization
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (emailRegex.test(userEmail)) {
           console.log('✅ [UserInfo] Email format valid');
           updates.email = userEmail;
         } else {
-          console.log('❌ [UserInfo] Invalid email format:', email);
+          console.log('❌ [UserInfo] Invalid email format after normalization:', { original: email, normalized: userEmail });
           return {
             success: false,
             message: 'That email format doesn\'t look right. Could you spell it out for me?'
@@ -1196,14 +1265,101 @@ class RealtimeWebSocketService extends EventEmitter {
       
       console.log('✅ [UserInfo] Updated successfully');
       
+      // Only mention email/name if they were just set and not already confirmed
+      // Check the state BEFORE updates to see if these were already confirmed
+      const emailJustSet = email && !sess?.userInfo?.emailConfirmed;
+      const nameJustSet = name && !sess?.userInfo?.nameConfirmed;
+      const emailAlreadyConfirmed = email && sess?.userInfo?.emailConfirmed;
+      const nameAlreadyConfirmed = name && sess?.userInfo?.nameConfirmed;
+      
+      let message = 'Got it!';
+      let instructions = '';
+      
+      if (nameJustSet) {
+        message += ` I have your name as ${name}.`;
+      }
+      // if (emailJustSet) {
+      //   message += ` And your email as ${email}.`;
+      // }
+      
+      // If email/name were already confirmed, add explicit instructions NOT to repeat them
+      if (emailAlreadyConfirmed || nameAlreadyConfirmed) {
+        instructions = ' CRITICAL INSTRUCTION: The user\'s information has already been confirmed in a previous exchange. Your response should NOT include, repeat, spell out, or mention the email address or name again. Simply acknowledge briefly (like "Got it" or "Perfect") and continue the conversation naturally. Do NOT say the email address back to the user.';
+      }
+      
+      // If nothing was just set or both were already confirmed, keep it simple
+      if (!nameJustSet && !emailJustSet) {
+        if (emailAlreadyConfirmed || nameAlreadyConfirmed) {
+          message = 'Got it.';
+          instructions = ' CRITICAL: Do not repeat or mention the user\'s email address or name in your response. Simply acknowledge and continue the conversation.';
+        } else {
+          message = 'Got it!';
+        }
+      }
+      
       return {
         success: true,
-        message: `Got it! ${name ? `I have your name as ${name}.` : ''} ${email ? `And your email as ${email}.` : ''}`,
-        userInfo: sessionObj.userInfo
+        message: message + instructions,
+        userInfo: {
+          ...sessionObj.userInfo,
+          // Don't include raw email/name in response if already confirmed to avoid model repeating it
+          ...(emailAlreadyConfirmed ? { email: undefined } : {}),
+          ...(nameAlreadyConfirmed ? { name: undefined } : {})
+        },
+        emailConfirmed: sessionObj.userInfo?.emailConfirmed || false,
+        nameConfirmed: sessionObj.userInfo?.nameConfirmed || false,
+        note: emailAlreadyConfirmed || nameAlreadyConfirmed 
+          ? 'IMPORTANT: The email and/or name shown above were already confirmed. Do NOT repeat, spell out, or mention them in your response. Just acknowledge and continue.'
+          : undefined
       };
       
     } catch (error) {
       console.error('❌ [UserInfo] Error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Handle end conversation function
+   */
+  async handleEndConversation(sessionId, args) {
+    try {
+      console.log('👋 [EndConversation] Ending conversation for session:', sessionId);
+      
+      const sessionData = this.sessions.get(sessionId);
+      if (!sessionData) {
+        return {
+          success: false,
+          error: 'Session not found'
+        };
+      }
+      
+      // Mark session for closing after response completes
+      sessionData.pendingClose = true;
+      
+      // Get user's name for personalization
+      const session = this.stateManager.getSession(sessionId);
+      const userName = session?.userInfo?.name || 'there';
+      
+      console.log('👋 [EndConversation] Session marked for closing, user:', userName);
+      
+      // Return direct instruction for the agent to say goodbye
+      // Format it as a clear instruction that the AI will follow
+      const goodbyeMessage = userName !== 'there' 
+        ? `Thanks for calling, ${userName}! Have a great day!`
+        : `Thanks for calling! Have a great day!`;
+      
+      return {
+        success: true,
+        conversationEnding: true,
+        message: `The user wants to end the conversation. Say this goodbye message now: "${goodbyeMessage}" Then the conversation will end. Do not ask any questions or say anything else - just say the goodbye message.`
+      };
+      
+    } catch (error) {
+      console.error('❌ [EndConversation] Error:', error);
       return {
         success: false,
         error: error.message
@@ -1231,12 +1387,37 @@ class RealtimeWebSocketService extends EventEmitter {
     if (sessionData) {
       console.log('🗑️ [RealtimeWS] Closing session:', sessionId);
       
-      // Get session data before cleanup
-      const session = this.stateManager.getSession(sessionId);
+      // If this is a Twilio call, hang up the call legs
+      if (sessionData.twilioCallSid && this.bridgeService) {
+        console.log(`📞 [RealtimeWS] Session is a Twilio call (${sessionData.twilioCallSid}), instructing bridge to hang up.`);
+        // Don't wait for this to complete to continue cleanup
+        this.bridgeService.hangupCall(sessionData.twilioCallSid).catch(e => {
+          // eslint-disable-next-line no-console
+          console.error(`❌ [RealtimeWS] Error during hangup instruction for ${sessionData.twilioCallSid}:`, e);
+        });
+      }
       
+      // Get session data before cleanup (needed for email/cleanup tasks)
+      const session = this.stateManager.getSession(sessionId);
+      const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
+      
+      // Remove from sessions first to prevent close handler from triggering duplicate cleanup
+      this.sessions.delete(sessionId);
+      
+      // Close WebSocket connections immediately - user experience is complete
+      // Close client connection
+      if (sessionData.clientWs && sessionData.clientWs.readyState === WebSocket.OPEN) {
+        sessionData.clientWs.close();
+      }
+      
+      // Close OpenAI connection
+      if (sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {
+        sessionData.openaiWs.close();
+      }
+      
+      // Now do cleanup tasks (email, state cleanup) - these can happen after connections are closed
       // Send conversation summary email
       // Only send if user info was collected or if it's Superior Fencing (fixed email)
-      const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
       if (session && (session.userInfo?.collected || businessId === 'superior-fencing')) {
         await this.conversationFlowHandler.sendConversationSummary(sessionId, session)
           .catch(error => {
@@ -1344,18 +1525,10 @@ class RealtimeWebSocketService extends EventEmitter {
       
       console.log('📱 [SMS] SMS summaries temporarily disabled - awaiting Twilio verification');
       
-      // Close OpenAI connection
-      if (sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {
-        sessionData.openaiWs.close();
-      }
-      
-      // Remove from sessions
-      this.sessions.delete(sessionId);
-      
       // Cleanup conversation state
       this.stateManager.deleteSession(sessionId);
       
-      // Clean up tenant context (moved here to ensure email sending works)
+      // Clean up tenant context
       if (this.tenantContextManager) {
         this.tenantContextManager.removeTenantContext(sessionId);
         console.log(`🗑️ [RealtimeWS] Cleaned up tenant context for session: ${sessionId}`);

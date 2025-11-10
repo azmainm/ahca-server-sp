@@ -51,7 +51,7 @@ const userInfoCollector = new UserInfoCollector(openAIService);
 const dateTimeParser = new DateTimeParser();
 const intentClassifier = new IntentClassifier();
 const responseGenerator = new ResponseGenerator(openAIService);
-const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator);
+const appointmentFlowManager = new AppointmentFlowManager(openAIService, dateTimeParser, responseGenerator, businessConfigService, tenantContextManager);
 
 // Multi-tenant service factory
 async function getBusinessServices(sessionId) {
@@ -110,7 +110,12 @@ async function getBusinessServices(sessionId) {
 
     if (businessConfig.features?.appointmentBookingEnabled !== false) {
       if (businessConfig.calendar.provider === 'google' && businessConfig.calendar.google) {
-        businessGoogleCalendarService = GoogleCalendarService.createForBusiness(businessConfig.calendar.google);
+        // Create a combined config with google-specific settings and calendar-level settings like timezone
+        const googleCalendarConfig = {
+          ...businessConfig.calendar.google,
+          timezone: businessConfig.calendar.timezone
+        };
+        businessGoogleCalendarService = GoogleCalendarService.createForBusiness(googleCalendarConfig);
         console.log(`✅ [ChainedVoice] Google Calendar enabled for business: ${businessId}`);
       }
 
