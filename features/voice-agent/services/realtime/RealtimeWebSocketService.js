@@ -295,26 +295,69 @@ class RealtimeWebSocketService extends EventEmitter {
       return [
         {
           type: 'function',
+          name: 'validate_phone_number',
+          description: `CRITICAL: ALWAYS call this function first when customer provides a phone number. 
+
+This function returns JSON like:
+- Valid: {"valid": true, "cleaned_phone": "646 248 2011", "message": "..."}
+- Invalid: {"valid": false, "error": "invalid_country_code", "message": "Please provide a US phone number. If you included a country code, it must be +1 or 1."}
+
+INSTRUCTIONS:
+1. Call this function with the raw phone number
+2. Parse the result JSON
+3. If valid===true: Say "Thanks — I have your phone number as [cleaned_phone]. Is that correct?"
+4. If valid===false: Say EXACTLY what's in the "message" field. DO NOT say "couldn't hear" - the phone was heard fine, it just failed validation.
+
+EXAMPLES:
+- Result: {"valid":false,"message":"Please provide a US phone number. If you included a country code, it must be +1 or 1."}
+  YOU SAY: "Please provide a US phone number. If you included a country code, it must be +1 or 1."
+  
+- Result: {"valid":false,"message":"The area code cannot start with 0 or 1. Please provide your phone number again."}
+  YOU SAY: "The area code cannot start with 0 or 1. Please provide your phone number again."`,
+          parameters: {
+            type: 'object',
+            properties: {
+              raw_phone: {
+                type: 'string',
+                description: 'The phone number as spoken by the customer (can include +1, spaces, dashes, etc.)'
+              }
+            },
+            required: ['raw_phone']
+          }
+        },
+        {
+          type: 'function',
           name: 'update_user_info',
-          description: 'Update customer information (name, phone, reason for call, urgency). Call this when customer provides their name, phone number, reason for calling, or urgency preference.',
+          description: `CRITICAL: Call this function to SAVE customer information. You MUST call this function at these specific times:
+
+1. IMMEDIATELY after customer confirms their name (e.g., says "yes", "correct", "that's right")
+   - Call: update_user_info with name AND reason (if you have it)
+
+2. IMMEDIATELY after customer confirms their phone number 
+   - Call: update_user_info with name, phone (use cleaned_phone from validation), AND reason
+   - This is the FINAL save - all information collection is complete
+
+3. Before final confirmation summary - call update_user_info to ensure all info is saved
+
+FLOW EXAMPLE:
+- Customer says "yes" to name → call update_user_info({name: "...", reason: "..."})
+- Customer says "yes" to phone → call update_user_info({name: "...", phone: "...", reason: "..."}) - DONE!
+
+Without calling this function, the information is NOT saved and will NOT appear in emails/summaries!`,
           parameters: {
             type: 'object',
             properties: {
               name: {
                 type: 'string',
-                description: 'Customer name'
+                description: 'Customer name (confirmed by customer)'
               },
               phone: {
                 type: 'string', 
-                description: 'Customer phone number'
+                description: 'Customer phone number - MUST be the cleaned_phone from validate_phone_number result'
               },
               reason: {
                 type: 'string',
-                description: 'Reason for calling (e.g., fence repair, new installation, gate maintenance, general inquiry)'
-              },
-              urgency: {
-                type: 'string',
-                description: 'Callback urgency preference: "call back asap" for urgent/next business day, or "call anytime" for no rush'
+                description: 'Reason for calling (e.g., fence repair, new fence installation, gate work, estimate)'
               }
             }
           }
@@ -601,7 +644,7 @@ class RealtimeWebSocketService extends EventEmitter {
               role: 'user',
               content: [{
                 type: 'input_text',
-                text: '[AUDIO_UNCLEAR] - Please ask the customer to repeat what they said. Do not guess or make up any information.'
+                text: '[AUDIO_UNCLEAR] - You did not hear anything. Do NOT make up, guess, or assume ANY information. Do NOT use example names like Alex, David, Sarah. Do NOT use example phone numbers like 123-456-7890. Do NOT call validate_phone_number with made-up data. Simply respond: "I\'m sorry, I couldn\'t hear that clearly. Could you please repeat [what you were asking for]?"'
               }]
             }
           };
@@ -728,6 +771,10 @@ class RealtimeWebSocketService extends EventEmitter {
           result = await this.handleAppointment(sessionId, args);
           break;
           
+        case 'validate_phone_number':
+          result = await this.handlePhoneValidation(sessionId, args);
+          break;
+          
         case 'update_user_info':
           result = await this.handleUserInfo(sessionId, args);
           break;
@@ -753,6 +800,7 @@ class RealtimeWebSocketService extends EventEmitter {
       openaiWs.send(JSON.stringify(functionOutput));
       
       console.log('✅ [RealtimeWS] Function result sent:', name);
+      console.log('📤 [RealtimeWS] Function output:', JSON.stringify(result, null, 2));
       
       // Prompt the model to produce a follow-up response immediately
       // Without this, the Realtime API may wait for the next user turn
@@ -1146,12 +1194,126 @@ class RealtimeWebSocketService extends EventEmitter {
   }
 
   /**
+   * Handle phone number validation function
+   * Validates phone number according to North American Numbering Plan (NANP) rules
+   */
+  async handlePhoneValidation(sessionId, args) {
+    try {
+      const { raw_phone } = args;
+      console.log('📞 [PhoneValidation] Validating phone number:', raw_phone);
+      
+      if (!raw_phone) {
+        return {
+          valid: false,
+          error: 'no_phone_provided',
+          message: 'No phone number was provided.'
+        };
+      }
+      
+      // Extract only digits from the input
+      const digitsOnly = raw_phone.replace(/\D/g, '');
+      console.log('📞 [PhoneValidation] Extracted digits:', digitsOnly);
+      
+      // Check if it has letters (non-digit characters that aren't common separators)
+      const hasLetters = /[a-zA-Z]/.test(raw_phone);
+      if (hasLetters) {
+        console.log('❌ [PhoneValidation] Contains letters');
+        return {
+          valid: false,
+          error: 'contains_letters',
+          message: 'The phone number contains letters. Please provide only numbers.'
+        };
+      }
+      
+      // Check for country code and validate it
+      let phoneDigits = digitsOnly;
+      
+      // If 11+ digits, check if it starts with a valid country code
+      if (digitsOnly.length >= 11) {
+        const possibleCountryCode = digitsOnly.substring(0, digitsOnly.length - 10);
+        console.log('📞 [PhoneValidation] Detected possible country code:', possibleCountryCode);
+        
+        // Only accept country code '1' (US)
+        if (possibleCountryCode === '1') {
+          phoneDigits = digitsOnly.substring(1);
+          console.log('📞 [PhoneValidation] Valid country code +1, remaining:', phoneDigits);
+        } else {
+          console.log('❌ [PhoneValidation] Invalid country code:', possibleCountryCode);
+          return {
+            valid: false,
+            error: 'invalid_country_code',
+            message: 'Please provide a US phone number. If you included a country code, it must be +1 or 1.'
+          };
+        }
+      }
+      
+      // Check if it's exactly 10 digits
+      if (phoneDigits.length !== 10) {
+        console.log('❌ [PhoneValidation] Invalid length:', phoneDigits.length);
+        return {
+          valid: false,
+          error: 'invalid_length',
+          length: phoneDigits.length,
+          message: `Phone numbers must be exactly 10 digits. You provided ${phoneDigits.length} digits.`
+        };
+      }
+      
+      // Extract area code (first 3 digits) and exchange code (next 3 digits)
+      const areaCode = phoneDigits.substring(0, 3);
+      const exchangeCode = phoneDigits.substring(3, 6);
+      const subscriberNumber = phoneDigits.substring(6, 10);
+      
+      // Rule 4: First digit of area code cannot be 0 or 1
+      const areaCodeFirstDigit = areaCode.charAt(0);
+      if (areaCodeFirstDigit === '0' || areaCodeFirstDigit === '1') {
+        console.log('❌ [PhoneValidation] Invalid area code first digit:', areaCodeFirstDigit);
+        return {
+          valid: false,
+          error: 'invalid_area_code',
+          message: `The area code ${areaCode} is not valid. The first digit of an area code cannot be 0 or 1.`
+        };
+      }
+      
+      // Rule 5: First digit of exchange code cannot be 0 or 1
+      const exchangeCodeFirstDigit = exchangeCode.charAt(0);
+      if (exchangeCodeFirstDigit === '0' || exchangeCodeFirstDigit === '1') {
+        console.log('❌ [PhoneValidation] Invalid exchange code first digit:', exchangeCodeFirstDigit);
+        return {
+          valid: false,
+          error: 'invalid_exchange_code',
+          message: `The exchange code ${exchangeCode} is not valid. The first digit of an exchange code cannot be 0 or 1.`
+        };
+      }
+      
+      // Format the phone number for confirmation: (XXX) XXX-XXXX
+      const formattedPhone = `${areaCode} ${exchangeCode} ${subscriberNumber}`;
+      
+      console.log('✅ [PhoneValidation] Valid phone number:', formattedPhone);
+      
+      return {
+        valid: true,
+        cleaned_phone: formattedPhone,
+        original: raw_phone,
+        message: `Phone number ${formattedPhone} is valid.`
+      };
+      
+    } catch (error) {
+      console.error('❌ [PhoneValidation] Validation error:', error);
+      return {
+        valid: false,
+        error: 'validation_error',
+        message: 'There was an error validating the phone number. Please try again.'
+      };
+    }
+  }
+
+  /**
    * Handle user info update function
    */
   async handleUserInfo(sessionId, args) {
     try {
-      const { name, email, phone, reason, urgency } = args;
-      console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email, phone, reason, urgency });
+      const { name, email, phone, reason } = args;
+      console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email, phone, reason });
       console.log('👤 [UserInfo] Session ID:', sessionId);
       
       const sess = this.stateManager.getSession(sessionId);
@@ -1194,11 +1356,6 @@ class RealtimeWebSocketService extends EventEmitter {
       if (reason) {
         console.log('👤 [UserInfo] Setting reason:', reason);
         updates.reason = reason;
-      }
-      
-      if (urgency) {
-        console.log('👤 [UserInfo] Setting urgency:', urgency);
-        updates.urgency = urgency;
       }
       
       if (email) {
