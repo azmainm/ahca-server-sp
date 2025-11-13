@@ -296,7 +296,24 @@ class RealtimeWebSocketService extends EventEmitter {
         {
           type: 'function',
           name: 'validate_phone_number',
-          description: 'CRITICAL: ALWAYS call this function first when customer provides a phone number. This validates the phone number before storing it. Returns a JSON object with "valid" (boolean), "message" (string), and "cleaned_phone" (string if valid). If valid=false, you MUST use the "message" field from the result as your response to the customer. DO NOT say "I couldn\'t hear clearly" for validation failures - use the message field.',
+          description: `CRITICAL: ALWAYS call this function first when customer provides a phone number. 
+
+This function returns JSON like:
+- Valid: {"valid": true, "cleaned_phone": "646 248 2011", "message": "..."}
+- Invalid: {"valid": false, "error": "invalid_country_code", "message": "Please provide a US phone number. If you included a country code, it must be +1 or 1."}
+
+INSTRUCTIONS:
+1. Call this function with the raw phone number
+2. Parse the result JSON
+3. If valid===true: Say "Thanks — I have your phone number as [cleaned_phone]. Is that correct?"
+4. If valid===false: Say EXACTLY what's in the "message" field. DO NOT say "couldn't hear" - the phone was heard fine, it just failed validation.
+
+EXAMPLES:
+- Result: {"valid":false,"message":"Please provide a US phone number. If you included a country code, it must be +1 or 1."}
+  YOU SAY: "Please provide a US phone number. If you included a country code, it must be +1 or 1."
+  
+- Result: {"valid":false,"message":"The area code cannot start with 0 or 1. Please provide your phone number again."}
+  YOU SAY: "The area code cannot start with 0 or 1. Please provide your phone number again."`,
           parameters: {
             type: 'object',
             properties: {
@@ -772,6 +789,7 @@ class RealtimeWebSocketService extends EventEmitter {
       openaiWs.send(JSON.stringify(functionOutput));
       
       console.log('✅ [RealtimeWS] Function result sent:', name);
+      console.log('📤 [RealtimeWS] Function output:', JSON.stringify(result, null, 2));
       
       // Prompt the model to produce a follow-up response immediately
       // Without this, the Realtime API may wait for the next user turn
