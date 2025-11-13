@@ -450,7 +450,7 @@ Call Details
       `.trim();
 
       const emailResult = await this.emailService.sendEmail(
-        'doug@sherpaprompt.com', // TODO: Change to Superior Fencing's email when ready
+        'azmain@sherpaprompt.com', // TODO: Change to Superior Fencing's email when ready
         subject,
         textContent,
         htmlContent

@@ -295,8 +295,23 @@ class RealtimeWebSocketService extends EventEmitter {
       return [
         {
           type: 'function',
+          name: 'validate_phone_number',
+          description: 'CRITICAL: ALWAYS call this function first when customer provides a phone number. This validates the phone number before storing it. Call this with the raw phone number as the customer spoke it, and it will return whether valid and the cleaned version to confirm with customer.',
+          parameters: {
+            type: 'object',
+            properties: {
+              raw_phone: {
+                type: 'string',
+                description: 'The phone number as spoken by the customer (can include +1, spaces, dashes, etc.)'
+              }
+            },
+            required: ['raw_phone']
+          }
+        },
+        {
+          type: 'function',
           name: 'update_user_info',
-          description: 'Update customer information (name, phone, reason for call, urgency). Call this when customer provides their name, phone number, reason for calling, or urgency preference.',
+          description: 'Update customer information (name, phone, reason for call, urgency). IMPORTANT: For phone numbers, ONLY call this AFTER validate_phone_number returns valid=true. Use the cleaned phone number from validation.',
           parameters: {
             type: 'object',
             properties: {
@@ -306,7 +321,7 @@ class RealtimeWebSocketService extends EventEmitter {
               },
               phone: {
                 type: 'string', 
-                description: 'Customer phone number'
+                description: 'Customer phone number (MUST be validated first with validate_phone_number)'
               },
               reason: {
                 type: 'string',
@@ -728,6 +743,10 @@ class RealtimeWebSocketService extends EventEmitter {
           result = await this.handleAppointment(sessionId, args);
           break;
           
+        case 'validate_phone_number':
+          result = await this.handlePhoneValidation(sessionId, args);
+          break;
+          
         case 'update_user_info':
           result = await this.handleUserInfo(sessionId, args);
           break;
@@ -1142,6 +1161,120 @@ class RealtimeWebSocketService extends EventEmitter {
       } catch (error) {
         console.warn('⚠️ [RealtimeWS] FALLBACK: Failed to sync with OpenAI:', error.message);
       }
+    }
+  }
+
+  /**
+   * Handle phone number validation function
+   * Validates phone number according to North American Numbering Plan (NANP) rules
+   */
+  async handlePhoneValidation(sessionId, args) {
+    try {
+      const { raw_phone } = args;
+      console.log('📞 [PhoneValidation] Validating phone number:', raw_phone);
+      
+      if (!raw_phone) {
+        return {
+          valid: false,
+          error: 'no_phone_provided',
+          message: 'No phone number was provided.'
+        };
+      }
+      
+      // Extract only digits from the input
+      const digitsOnly = raw_phone.replace(/\D/g, '');
+      console.log('📞 [PhoneValidation] Extracted digits:', digitsOnly);
+      
+      // Check if it has letters (non-digit characters that aren't common separators)
+      const hasLetters = /[a-zA-Z]/.test(raw_phone);
+      if (hasLetters) {
+        console.log('❌ [PhoneValidation] Contains letters');
+        return {
+          valid: false,
+          error: 'contains_letters',
+          message: 'The phone number contains letters. Please provide only numbers.'
+        };
+      }
+      
+      // Check for country code and validate it
+      let phoneDigits = digitsOnly;
+      
+      // If 11+ digits, check if it starts with a valid country code
+      if (digitsOnly.length >= 11) {
+        const possibleCountryCode = digitsOnly.substring(0, digitsOnly.length - 10);
+        console.log('📞 [PhoneValidation] Detected possible country code:', possibleCountryCode);
+        
+        // Only accept country code '1' (US)
+        if (possibleCountryCode === '1') {
+          phoneDigits = digitsOnly.substring(1);
+          console.log('📞 [PhoneValidation] Valid country code +1, remaining:', phoneDigits);
+        } else {
+          console.log('❌ [PhoneValidation] Invalid country code:', possibleCountryCode);
+          return {
+            valid: false,
+            error: 'invalid_country_code',
+            message: 'Please provide a US phone number. If you included a country code, it must be +1 or 1.'
+          };
+        }
+      }
+      
+      // Check if it's exactly 10 digits
+      if (phoneDigits.length !== 10) {
+        console.log('❌ [PhoneValidation] Invalid length:', phoneDigits.length);
+        return {
+          valid: false,
+          error: 'invalid_length',
+          length: phoneDigits.length,
+          message: `Phone numbers must be exactly 10 digits. You provided ${phoneDigits.length} digits.`
+        };
+      }
+      
+      // Extract area code (first 3 digits) and exchange code (next 3 digits)
+      const areaCode = phoneDigits.substring(0, 3);
+      const exchangeCode = phoneDigits.substring(3, 6);
+      const subscriberNumber = phoneDigits.substring(6, 10);
+      
+      // Rule 4: First digit of area code cannot be 0 or 1
+      const areaCodeFirstDigit = areaCode.charAt(0);
+      if (areaCodeFirstDigit === '0' || areaCodeFirstDigit === '1') {
+        console.log('❌ [PhoneValidation] Invalid area code first digit:', areaCodeFirstDigit);
+        return {
+          valid: false,
+          error: 'invalid_area_code',
+          message: `The area code ${areaCode} is not valid. The first digit of an area code cannot be 0 or 1.`
+        };
+      }
+      
+      // Rule 5: First digit of exchange code cannot be 0 or 1
+      const exchangeCodeFirstDigit = exchangeCode.charAt(0);
+      if (exchangeCodeFirstDigit === '0' || exchangeCodeFirstDigit === '1') {
+        console.log('❌ [PhoneValidation] Invalid exchange code first digit:', exchangeCodeFirstDigit);
+        return {
+          valid: false,
+          error: 'invalid_exchange_code',
+          message: `The exchange code ${exchangeCode} is not valid. The first digit of an exchange code cannot be 0 or 1.`
+        };
+      }
+      
+      // Format the phone number for confirmation: (XXX) XXX-XXXX
+      const formattedPhone = `${areaCode} ${exchangeCode} ${subscriberNumber}`;
+      
+      console.log('✅ [PhoneValidation] Valid phone number:', formattedPhone);
+      
+      return {
+        valid: true,
+        cleaned_phone: formattedPhone,
+        original: raw_phone,
+        message: `Phone number ${formattedPhone} is valid.`
+      };
+      
+    } catch (error) {
+      console.error('❌ [PhoneValidation] Validation error:', error);
+      return {
+        valid: false,
+        error: 'validation_error',
+        message: 'There was an error validating the phone number. Please try again.'
+      };
     }
   }
 
