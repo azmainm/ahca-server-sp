@@ -328,25 +328,43 @@ EXAMPLES:
         {
           type: 'function',
           name: 'update_user_info',
-          description: 'Update customer information (name, phone, reason for call, urgency). IMPORTANT: For phone numbers, ONLY call this AFTER validate_phone_number returns valid=true. Use the cleaned phone number from validation.',
+          description: `CRITICAL: Call this function to SAVE customer information. You MUST call this function at these specific times:
+
+1. IMMEDIATELY after customer confirms their name (e.g., says "yes", "correct", "that's right")
+   - Call: update_user_info with name AND reason (if you have it)
+
+2. IMMEDIATELY after customer confirms their phone number 
+   - Call: update_user_info with name, phone (use cleaned_phone from validation), AND reason
+
+3. IMMEDIATELY after collecting urgency preference
+   - Call: update_user_info with name, phone, reason, AND urgency
+
+4. Before final confirmation summary - call update_user_info to ensure all info is saved
+
+FLOW EXAMPLE:
+- Customer says "yes" to name → call update_user_info({name: "...", reason: "..."})
+- Customer says "yes" to phone → call update_user_info({name: "...", phone: "...", reason: "..."})
+- Customer provides urgency → call update_user_info({name: "...", phone: "...", reason: "...", urgency: "..."})
+
+Without calling this function, the information is NOT saved and will NOT appear in emails/summaries!`,
           parameters: {
             type: 'object',
             properties: {
               name: {
                 type: 'string',
-                description: 'Customer name'
+                description: 'Customer name (confirmed by customer)'
               },
               phone: {
                 type: 'string', 
-                description: 'Customer phone number (MUST be validated first with validate_phone_number)'
+                description: 'Customer phone number - MUST be the cleaned_phone from validate_phone_number result'
               },
               reason: {
                 type: 'string',
-                description: 'Reason for calling (e.g., fence repair, new installation, gate maintenance, general inquiry)'
+                description: 'Reason for calling (e.g., fence repair, new fence installation, gate work, estimate)'
               },
               urgency: {
                 type: 'string',
-                description: 'Callback urgency preference: "call back asap" for urgent/next business day, or "call anytime" for no rush'
+                description: 'Urgency: "call back asap" for next business day OR "call anytime" for no rush'
               }
             }
           }
