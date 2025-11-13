@@ -296,7 +296,7 @@ class RealtimeWebSocketService extends EventEmitter {
         {
           type: 'function',
           name: 'validate_phone_number',
-          description: 'CRITICAL: ALWAYS call this function first when customer provides a phone number. This validates the phone number before storing it. Call this with the raw phone number as the customer spoke it, and it will return whether valid and the cleaned version to confirm with customer.',
+          description: 'CRITICAL: ALWAYS call this function first when customer provides a phone number. This validates the phone number before storing it. Returns a JSON object with "valid" (boolean), "message" (string), and "cleaned_phone" (string if valid). If valid=false, you MUST use the "message" field from the result as your response to the customer. DO NOT say "I couldn\'t hear clearly" for validation failures - use the message field.',
           parameters: {
             type: 'object',
             properties: {
@@ -616,7 +616,7 @@ class RealtimeWebSocketService extends EventEmitter {
               role: 'user',
               content: [{
                 type: 'input_text',
-                text: '[AUDIO_UNCLEAR] - Please ask the customer to repeat what they said. Do not guess or make up any information.'
+                text: '[AUDIO_UNCLEAR] - You did not hear anything. Do NOT make up, guess, or assume ANY information. Do NOT use example names like Alex, David, Sarah. Do NOT use example phone numbers like 123-456-7890. Do NOT call validate_phone_number with made-up data. Simply respond: "I\'m sorry, I couldn\'t hear that clearly. Could you please repeat [what you were asking for]?"'
               }]
             }
           };
