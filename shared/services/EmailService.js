@@ -755,17 +755,6 @@ Guidelines:
           // Method 2: Extract from conversation history
           customerReason = this.extractReasonFromHistory(conversationHistory) || 'General inquiry';
         }
-        
-        // Try multiple methods to get urgency
-        let customerUrgency = 'call back asap';
-        
-        // Method 1: Check if urgency is in userInfo (from function calls)
-        if (userInfo && userInfo.urgency) {
-          customerUrgency = userInfo.urgency;
-        } else {
-          // Method 2: Extract from conversation history
-          customerUrgency = this.extractUrgencyFromHistory(conversationHistory) || 'call back asap';
-        }
 
         const htmlContent = `
 <!DOCTYPE html>
@@ -795,7 +784,6 @@ Guidelines:
             <li><strong>Name:</strong> ${customerName}</li>
             <li><strong>Phone:</strong> ${customerPhone}</li>
             <li><strong>Reason:</strong> ${customerReason}</li>
-            <li><strong>Urgency:</strong> ${customerUrgency}</li>
         </ul>
     </div>
 </body>
@@ -811,7 +799,6 @@ Call Details
 • Name: ${customerName}
 • Phone: ${customerPhone}
 • Reason: ${customerReason}
-• Urgency: ${customerUrgency}
         `.trim();
 
         // Use Mailchimp Marketing API for Superior Fencing

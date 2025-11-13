@@ -335,16 +335,13 @@ EXAMPLES:
 
 2. IMMEDIATELY after customer confirms their phone number 
    - Call: update_user_info with name, phone (use cleaned_phone from validation), AND reason
+   - This is the FINAL save - all information collection is complete
 
-3. IMMEDIATELY after collecting urgency preference
-   - Call: update_user_info with name, phone, reason, AND urgency
-
-4. Before final confirmation summary - call update_user_info to ensure all info is saved
+3. Before final confirmation summary - call update_user_info to ensure all info is saved
 
 FLOW EXAMPLE:
 - Customer says "yes" to name → call update_user_info({name: "...", reason: "..."})
-- Customer says "yes" to phone → call update_user_info({name: "...", phone: "...", reason: "..."})
-- Customer provides urgency → call update_user_info({name: "...", phone: "...", reason: "...", urgency: "..."})
+- Customer says "yes" to phone → call update_user_info({name: "...", phone: "...", reason: "..."}) - DONE!
 
 Without calling this function, the information is NOT saved and will NOT appear in emails/summaries!`,
           parameters: {
@@ -361,10 +358,6 @@ Without calling this function, the information is NOT saved and will NOT appear 
               reason: {
                 type: 'string',
                 description: 'Reason for calling (e.g., fence repair, new fence installation, gate work, estimate)'
-              },
-              urgency: {
-                type: 'string',
-                description: 'Urgency: "call back asap" for next business day OR "call anytime" for no rush'
               }
             }
           }
@@ -1319,8 +1312,8 @@ Without calling this function, the information is NOT saved and will NOT appear 
    */
   async handleUserInfo(sessionId, args) {
     try {
-      const { name, email, phone, reason, urgency } = args;
-      console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email, phone, reason, urgency });
+      const { name, email, phone, reason } = args;
+      console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email, phone, reason });
       console.log('👤 [UserInfo] Session ID:', sessionId);
       
       const sess = this.stateManager.getSession(sessionId);
@@ -1363,11 +1356,6 @@ Without calling this function, the information is NOT saved and will NOT appear 
       if (reason) {
         console.log('👤 [UserInfo] Setting reason:', reason);
         updates.reason = reason;
-      }
-      
-      if (urgency) {
-        console.log('👤 [UserInfo] Setting urgency:', urgency);
-        updates.urgency = urgency;
       }
       
       if (email) {
