@@ -224,7 +224,7 @@ class RealtimeWebSocketService extends EventEmitter {
       session: {
         modalities: ['text', 'audio'],
         instructions: this.getSystemPrompt(sessionData.sessionId),
-        voice: 'echo',
+        voice: 'ash',  
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
         input_audio_transcription: {
@@ -232,7 +232,7 @@ class RealtimeWebSocketService extends EventEmitter {
         },
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.3,
+          threshold: 0.4,  // Increased from 0.3 to reduce background noise sensitivity (range: 0.0-1.0, higher = less sensitive)
           prefix_padding_ms: 100,
           silence_duration_ms: 700,
           create_response: true,  // Enable automatic response creation (semantic VAD)
@@ -709,7 +709,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
                 session: {
                   turn_detection: {
                     type: 'server_vad',
-                    threshold: 0.3,
+                    threshold: 0.4,  // Higher threshold = less sensitive to background noise
                     prefix_padding_ms: 100,
                     silence_duration_ms: 700,
                     create_response: true,
@@ -847,7 +847,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
                 session: {
                   turn_detection: {
                     type: 'server_vad',
-                    threshold: 0.3,
+                    threshold: 0.4,  // Higher threshold = less sensitive to background noise
                     prefix_padding_ms: 100,
                     silence_duration_ms: 700,
                     create_response: true,
@@ -872,7 +872,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
               session: {
                 turn_detection: {
                   type: 'server_vad',
-                  threshold: 0.3,
+                  threshold: 0.4,  // Higher threshold = less sensitive to background noise
                   prefix_padding_ms: 100,
                   silence_duration_ms: 700,
                   create_response: true,
