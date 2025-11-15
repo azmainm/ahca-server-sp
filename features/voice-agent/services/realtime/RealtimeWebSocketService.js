@@ -128,6 +128,23 @@ class RealtimeWebSocketService extends EventEmitter {
         }
       );
 
+      // Get business-specific configuration for interruption handling
+      let allowInterruptions = true; // Default: allow interruptions (backward compatible)
+      try {
+        if (this.tenantContextManager && this.businessConfigService) {
+          const businessId = this.tenantContextManager.getBusinessId(sessionId);
+          if (businessId) {
+            const businessConfig = this.businessConfigService.getBusinessConfig(businessId);
+            if (businessConfig?.features?.allowInterruptions !== undefined) {
+              allowInterruptions = businessConfig.features.allowInterruptions;
+              console.log(`🔧 [RealtimeWS] Interruption mode for ${businessId}: ${allowInterruptions ? 'ENABLED' : 'DISABLED (turn-based)'}`);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ [RealtimeWS] Failed to read allowInterruptions config, using default (true):', error.message);
+      }
+
       // Store session
       const sessionData = {
         sessionId,
@@ -138,9 +155,13 @@ class RealtimeWebSocketService extends EventEmitter {
         isResponding: false,  // Track if AI is currently responding
         activeResponseId: null,  // Track active response ID for cancellation
         suppressAudio: false, // Drop any in-flight audio after interruption until next response starts
+        allowInterruptions: allowInterruptions, // Configurable interruption behavior (native OpenAI)
         createdAt: Date.now(),
         hasBufferedAudio: false,
-        pendingClose: false // Track if session should be closed after current response completes
+        pendingClose: false, // Track if session should be closed after current response completes
+        isUserTurn: false, // Track if it's the user's turn to speak
+        inCooldown: false, // Track if the session is in a post-response cooldown
+        isInitialGreeting: true // Use a longer cooldown for the initial greeting
       };
       
       this.sessions.set(sessionId, sessionData);
@@ -196,14 +217,14 @@ class RealtimeWebSocketService extends EventEmitter {
    * Configure Realtime API session with tools and settings
    */
   async configureSession(sessionData) {
-    const { openaiWs } = sessionData;
+    const { openaiWs, allowInterruptions } = sessionData;
     
     const config = {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
         instructions: this.getSystemPrompt(sessionData.sessionId),
-        voice: 'echo',
+        voice: 'ash',  
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
         input_audio_transcription: {
@@ -211,11 +232,11 @@ class RealtimeWebSocketService extends EventEmitter {
         },
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.3,
-          prefix_padding_ms: 100,
+          threshold: 0.4,
+          prefix_padding_ms: 300,
           silence_duration_ms: 700,
-          create_response: true,  // Enable automatic response creation (semantic VAD)
-          interrupt_response: true  // Allow interruptions
+          create_response: true,        // Auto-respond when user finishes speaking
+          interrupt_response: allowInterruptions  // false = turn-based, true = allow interruptions
         },
         tools: this.defineTools(sessionData.sessionId),
         tool_choice: 'auto',
@@ -224,6 +245,7 @@ class RealtimeWebSocketService extends EventEmitter {
     };
 
     console.log('⚙️ [RealtimeWS] Configuring session with', config.session.tools.length, 'tools');
+    console.log(`⚙️ [RealtimeWS] Interruption handling: ${allowInterruptions ? 'ENABLED' : 'DISABLED (turn-based mode)'}`);
     openaiWs.send(JSON.stringify(config));
   }
 
@@ -515,13 +537,24 @@ Without calling this function, the information is NOT saved and will NOT appear 
   }
 
   /**
-   * Handle messages from client
+   * Main message handler for communications from the client (browser/app)
    */
   async handleClientMessage(sessionData, message) {
-    const { openaiWs, sessionId } = sessionData;
+    const { openaiWs, sessionId, isResponding, allowInterruptions, inCooldown } = sessionData;
 
     switch (message.type) {
       case 'audio':
+        // Turn-based mode: DROP audio when agent is speaking OR during post-response cooldown
+        if (!allowInterruptions && (isResponding || inCooldown)) {
+          // Log every 50th dropped packet to show it's working without spam
+          if (!sessionData._dropCount) sessionData._dropCount = 0;
+          sessionData._dropCount++;
+          if (sessionData._dropCount % 50 === 0) {
+            console.log(`🚫 [RealtimeWS] Dropped ${sessionData._dropCount} audio packets during agent speech or cooldown`);
+          }
+          return; // Silently drop - don't send to OpenAI
+        }
+        
         // Forward audio to OpenAI
         if (openaiWs.readyState === WebSocket.OPEN) {
           openaiWs.send(JSON.stringify({
@@ -541,7 +574,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
         break;
 
       case 'response.cancel':
-        // Cancel current response (for interruptions)
+        // Cancel current response (for interruptions when enabled)
         if (openaiWs.readyState === WebSocket.OPEN) {
           openaiWs.send(JSON.stringify({
             type: 'response.cancel'
@@ -569,36 +602,65 @@ Without calling this function, the information is NOT saved and will NOT appear 
         console.log('✅ [RealtimeWS] Session updated');
         break;
 
+      case 'conversation.item.created':
+        // Just log - no need to delete items since create_response is dynamically toggled
+        // Items from interruptions will exist in conversation history but won't trigger responses
+        break;
+
       case 'input_audio_buffer.speech_started':
         console.log('🎤 [RealtimeWS] Speech started:', sessionId);
 
-        // --- BARGE-IN LOGIC ---
-        // 1. Instantly clear any buffered AI audio in the bridge to prevent it from reaching Twilio
-        if (this.bridgeService && sessionData.twilioCallSid) {
-          console.log(`[RealtimeWS] Clearing output buffer on bridge for call SID: ${sessionData.twilioCallSid}`);
-          this.bridgeService.clearOutputBuffer(sessionData.twilioCallSid);
-        }
-        
-        // 2. Cancel any ongoing AI response (user is interrupting)
-        // Only send cancel if we have an active response (not just finished)
-        if (sessionData.isResponding && sessionData.activeResponseId) {
-          console.log('🛑 [RealtimeWS] User interrupted - canceling AI response:', sessionData.activeResponseId);
+        // In turn-based mode, re-enable create_response at the start of the user's turn
+        if (!sessionData.allowInterruptions && sessionData.isUserTurn) {
+          console.log('▶️ [RealtimeWS] User has started speaking, re-enabling create_response.');
+          sessionData.isUserTurn = false; // Only do this once per turn
           try {
             sessionData.openaiWs.send(JSON.stringify({
-              type: 'response.cancel'
+              type: 'session.update',
+              session: {
+                turn_detection: {
+                  type: 'server_vad',
+                  threshold: 0.4,
+                  prefix_padding_ms: 300,
+                  silence_duration_ms: 700,
+                  create_response: true,
+                  interrupt_response: false
+                }
+              }
             }));
-            sessionData.isResponding = false;
-            sessionData.activeResponseId = null;
           } catch (error) {
-            console.log('⚠️ [RealtimeWS] Cancel failed (response may have completed):', error.message);
-            // Still reset state even if cancel failed
-            sessionData.isResponding = false;
-            sessionData.activeResponseId = null;
+            console.error('❌ [RealtimeWS] Failed to re-enable create_response on speech_started:', error);
           }
         }
 
-        // 3. Suppress any in-flight audio chunks arriving after interruption
-        sessionData.suppressAudio = true;
+        // BARGE-IN LOGIC: Only active when interruptions are enabled
+        // When interrupt_response=false (turn-based), OpenAI ignores user speech during agent responses
+        if (sessionData.allowInterruptions && sessionData.isResponding) {
+          // 1. Clear any buffered AI audio in the bridge to prevent it from reaching Twilio
+          if (this.bridgeService && sessionData.twilioCallSid) {
+            console.log(`[RealtimeWS] Clearing output buffer on bridge for call SID: ${sessionData.twilioCallSid}`);
+            this.bridgeService.clearOutputBuffer(sessionData.twilioCallSid);
+          }
+          
+          // 2. Cancel ongoing AI response (user is interrupting)
+          if (sessionData.activeResponseId) {
+            console.log('🛑 [RealtimeWS] User interrupted - canceling AI response:', sessionData.activeResponseId);
+            try {
+              sessionData.openaiWs.send(JSON.stringify({
+                type: 'response.cancel'
+              }));
+              sessionData.isResponding = false;
+              sessionData.activeResponseId = null;
+            } catch (error) {
+              console.log('⚠️ [RealtimeWS] Cancel failed (response may have completed):', error.message);
+              sessionData.isResponding = false;
+              sessionData.activeResponseId = null;
+            }
+          }
+
+          // 3. Suppress in-flight audio chunks arriving after interruption
+          sessionData.suppressAudio = true;
+        }
         
         this.sendToClient(sessionData, {
           type: 'speech_started'
@@ -607,6 +669,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
 
       case 'input_audio_buffer.speech_stopped':
         console.log('🔇 [RealtimeWS] Speech stopped:', sessionId);
+        
         this.sendToClient(sessionData, {
           type: 'speech_stopped'
         });
@@ -623,55 +686,63 @@ Without calling this function, the information is NOT saved and will NOT appear 
         // Add to conversation history
         this.stateManager.addMessage(sessionId, 'user', event.transcript);
         
-        // FALLBACK: Check if transcription contains name information and OpenAI didn't call update_user_info
-        await this.checkForMissedNameInfo(sessionData, event.transcript);
         break;
 
       case 'conversation.item.input_audio_transcription.failed':
-        console.log('❌ [RealtimeWS] Transcription failed:', event.error);
+        console.log('❌ [RealtimeWS] Transcription failed (OpenAI API issue):', event.error);
         this.sendToClient(sessionData, {
           type: 'transcript_error',
           error: event.error
         });
-        
-        // Proactively inject a clarification message to prevent emergency default
-        // We need to do this BEFORE OpenAI generates its response
-        try {
-          const clarificationMessage = {
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [{
-                type: 'input_text',
-                text: '[AUDIO_UNCLEAR] - You did not hear anything. Do NOT make up, guess, or assume ANY information. Do NOT use example names like Alex, David, Sarah. Do NOT use example phone numbers like 123-456-7890. Do NOT call validate_phone_number with made-up data. Simply respond: "I\'m sorry, I couldn\'t hear that clearly. Could you please repeat [what you were asking for]?"'
-              }]
-            }
-          };
+        break;
+
+      case 'response.created':
+        // Response is being created - disable create_response NOW (before audio starts)
+        // This prevents queued interruptions from triggering responses
+        if (!sessionData.allowInterruptions && !sessionData.isResponding) {
+          sessionData.isResponding = true;  // Mark as responding immediately
           
-          console.log('🔄 [RealtimeWS] Injecting clarification message to prevent emergency default and hallucination');
-          sessionData.openaiWs.send(JSON.stringify(clarificationMessage));
-        } catch (error) {
-          console.error('❌ [RealtimeWS] Error injecting clarification message:', error);
+          console.log('🔇 [RealtimeWS] Response created - disabling create_response');
+          try {
+            sessionData.openaiWs.send(JSON.stringify({
+              type: 'session.update',
+              session: {
+                turn_detection: {
+                  type: 'server_vad',
+                  threshold: 0.4,
+                  prefix_padding_ms: 300,
+                  silence_duration_ms: 700,
+                  create_response: false,  // Disable auto-response during agent speech
+                  interrupt_response: false
+                }
+              }
+            }));
+            
+            // CRITICAL: Clear any audio buffered BEFORE response.created fired
+            // This prevents interruption audio from being transcribed later
+            console.log('🗑️ [RealtimeWS] Clearing pre-response audio buffer');
+            sessionData.openaiWs.send(JSON.stringify({
+              type: 'input_audio_buffer.clear'
+            }));
+          } catch (error) {
+            console.error('❌ [RealtimeWS] Failed to disable create_response or clear buffer:', error);
+          }
         }
         break;
 
       case 'response.audio.delta':
         // Forward audio chunks to client
-        // First audio of a new response unsuppresses playback
-        if (!sessionData.isResponding) {
-          sessionData.suppressAudio = false;
-        }
-        sessionData.isResponding = true;  // Track that AI is responding
-        sessionData.activeResponseId = event.response_id || 'active';  // Track active response
+        // Unsuppress audio when agent starts speaking (for interruption mode)
+        sessionData.suppressAudio = false;
         
-        // Drop audio if suppression is active (post-interruption residuals)
-        if (!sessionData.suppressAudio) {
-          this.sendToClient(sessionData, {
-            type: 'audio',
-            delta: event.delta
-          });
-        }
+        // Track active response ID for interruption handling
+        sessionData.activeResponseId = event.response_id || 'active';
+        
+        // Forward audio to client
+        this.sendToClient(sessionData, {
+          type: 'audio',
+          delta: event.delta
+        });
         break;
 
       case 'response.audio_transcript.delta':
@@ -702,11 +773,56 @@ Without calling this function, the information is NOT saved and will NOT appear 
         await this.handleFunctionCall(sessionData, event);
         break;
 
+      case 'response.cancelled':
+        // Response was cancelled (likely due to transcription failure)
+        // State should already be reset by the cancellation handler
+        // Just log it for visibility
+        break;
+
       case 'response.done':
         console.log('✅ [RealtimeWS] Response completed');
-        sessionData.isResponding = false;  // AI finished responding
-        sessionData.activeResponseId = null;  // Clear active response ID
-        sessionData.suppressAudio = false; // Clear suppression at end of response
+        
+        // Log dropped packet count if any
+        if (sessionData._dropCount > 0) {
+          console.log(`✅ [RealtimeWS] Agent finished - dropped ${sessionData._dropCount} interruption packets total`);
+          sessionData._dropCount = 0; // Reset counter
+        }
+        
+        sessionData.isResponding = false;
+        sessionData.activeResponseId = null;
+        sessionData.suppressAudio = false;
+        
+        // In turn-based mode, start a cooldown before allowing the user to speak.
+        // This prevents residual interruption audio from being detected as a new turn.
+        if (!sessionData.allowInterruptions) {
+          const cooldownMs = sessionData.isInitialGreeting ? 12000 : 1000;
+          console.log(`⏱️ [RealtimeWS] Agent finished. Starting ${cooldownMs}ms cooldown before user turn.`);
+
+          // Unset the flag after the first greeting
+          if (sessionData.isInitialGreeting) {
+            sessionData.isInitialGreeting = false;
+          }
+          
+          sessionData.inCooldown = true;
+          sessionData.isUserTurn = false;
+
+          setTimeout(() => {
+            console.log('👤 [RealtimeWS] Cooldown finished. It is now the user\'s turn.');
+            sessionData.inCooldown = false;
+            sessionData.isUserTurn = true;
+            
+            // Final buffer clear to remove any audio that arrived during cooldown
+            try {
+              if (sessionData.openaiWs.readyState === WebSocket.OPEN) {
+                console.log('🗑️ [RealtimeWS] Clearing buffer after cooldown.');
+                sessionData.openaiWs.send(JSON.stringify({ type: 'input_audio_buffer.clear' }));
+              }
+            } catch (error) {
+              console.error('❌ [RealtimeWS] Failed to clear buffer after cooldown:', error);
+            }
+          }, cooldownMs);
+        }
+        
         this.sendToClient(sessionData, {
           type: 'response_done'
         });
@@ -1100,96 +1216,6 @@ Without calling this function, the information is NOT saved and will NOT appear 
         error: error.message,
         message: 'Sorry, I had trouble processing that. Could you try again?'
       };
-    }
-  }
-
-  /**
-   * Check for missed name/email information in transcription
-   * Fallback mechanism when OpenAI doesn't call update_user_info
-   */
-  async checkForMissedNameInfo(sessionData, transcript) {
-    const { sessionId } = sessionData;
-    const session = this.stateManager.getSession(sessionId);
-    
-    let foundName = null;
-    let foundEmail = null;
-    
-    // Check for name patterns (only if we don't already have a name)
-    if (!session.userInfo.name) {
-      const namePatterns = [
-        /my name is ([a-zA-Z\s]+)/i,
-        /i'm ([a-zA-Z\s]+)/i,
-        /call me ([a-zA-Z\s]+)/i,
-        /i am ([a-zA-Z\s]+)/i
-      ];
-      
-      for (const pattern of namePatterns) {
-        const match = transcript.match(pattern);
-        if (match) {
-          const extractedName = match[1].trim();
-          
-          // Avoid common false positives
-          const falsePositives = ['good', 'fine', 'okay', 'ready', 'here', 'listening', 'interested', 'looking', 'done', 'back'];
-          if (!falsePositives.includes(extractedName.toLowerCase()) && extractedName.length > 1) {
-            foundName = extractedName;
-            console.log('🔍 [RealtimeWS] FALLBACK: Detected missed name in transcription:', extractedName);
-            break;
-          }
-        }
-      }
-    }
-    
-    // Check for email patterns (only if we don't already have an email)
-    if (!session.userInfo.email) {
-      const emailPatterns = [
-        /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
-        /my email is ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
-        /email.*is ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
-      ];
-      
-      for (const pattern of emailPatterns) {
-        const match = transcript.match(pattern);
-        if (match) {
-          const extractedEmail = match[1] || match[0];
-          if (extractedEmail.includes('@') && extractedEmail.includes('.')) {
-            // Use the email as transcribed by OpenAI
-            foundEmail = extractedEmail.toLowerCase().trim();
-            console.log('🔍 [RealtimeWS] FALLBACK: Detected missed email in transcription:', foundEmail);
-            break;
-          }
-        }
-      }
-    }
-    
-    // If we found name or email, trigger the update
-    if (foundName || foundEmail) {
-      console.log('🔍 [RealtimeWS] Original transcript:', transcript);
-      
-      const updates = {};
-      if (foundName) updates.name = foundName;
-      if (foundEmail) updates.email = foundEmail;
-      
-      // Manually trigger the user info update
-      await this.handleUserInfo(sessionId, updates);
-      
-      // Also send a manual function call to OpenAI to keep it in sync
-      try {
-        const functionOutput = {
-          type: 'conversation.item.create',
-          item: {
-            type: 'function_call_output',
-            call_id: 'fallback_' + Date.now(),
-            output: JSON.stringify({ 
-              success: true, 
-              message: `${foundName ? `Name set to ${foundName}` : ''}${foundName && foundEmail ? ', ' : ''}${foundEmail ? `Email set to ${foundEmail}` : ''}` 
-            })
-          }
-        };
-        sessionData.openaiWs.send(JSON.stringify(functionOutput));
-        console.log('✅ [RealtimeWS] FALLBACK: Sent manual function result to OpenAI');
-      } catch (error) {
-        console.warn('⚠️ [RealtimeWS] FALLBACK: Failed to sync with OpenAI:', error.message);
-      }
     }
   }
 
@@ -1747,4 +1773,5 @@ Without calling this function, the information is NOT saved and will NOT appear 
 }
 
 module.exports = { RealtimeWebSocketService };
+
 
