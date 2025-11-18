@@ -187,7 +187,7 @@ class SuperiorFencingHandler {
    * @returns {string} Greeting message
    */
   getGreeting() {
-    return `Hi there, I'm Mason, Superior Fence & Construction's virtual assistant. If this is an emergency, please press the pound key now to reach our on-call team. Parts of this call may be recorded so we can better understand your needs and improve our service. To get started, what are you calling about today?`;
+    return `Hi there, I'm Sam, Superior Fence & Construction's virtual assistant. If this is an emergency, please press the pound key now to reach our on-call team. Parts of this call may be recorded so we can better understand your needs and improve our service. To get started, what are you calling about today?`;
   }
 
   /**

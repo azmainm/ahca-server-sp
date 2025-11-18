@@ -203,7 +203,7 @@ class RealtimeWebSocketService extends EventEmitter {
       session: {
         modalities: ['text', 'audio'],
         instructions: this.getSystemPrompt(sessionData.sessionId),
-        voice: 'echo',
+        voice: 'ash',
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',
         input_audio_transcription: {
