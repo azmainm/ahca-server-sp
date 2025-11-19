@@ -6,6 +6,7 @@
 const mailchimp = require('@mailchimp/mailchimp_transactional');
 const fetch = require('node-fetch');
 const { Resend } = require('resend');
+const { ConfidentialClientApplication } = require('@azure/msal-node');
 
 class EmailService {
   constructor(emailConfig = null) {
@@ -13,6 +14,8 @@ class EmailService {
     this.resend = null;
     this.initialized = false;
     this.resendInitialized = false;
+    this.microsoftGraphInitialized = false;
+    this.msalClient = null;
     this.emailConfig = emailConfig;
     
     // Log configuration
@@ -51,6 +54,15 @@ class EmailService {
       throw new Error('Mailchimp provider requires apiKey in email config');
     }
     
+    if (emailConfig.provider === 'microsoft-graph') {
+      const requiredMsFields = ['tenantId', 'clientId', 'clientSecret', 'senderEmail'];
+      for (const field of requiredMsFields) {
+        if (!emailConfig[field]) {
+          throw new Error(`Microsoft Graph provider requires ${field} in email config`);
+        }
+      }
+    }
+    
     return new EmailService(emailConfig);
   }
 
@@ -73,7 +85,31 @@ class EmailService {
   initWithBusinessConfig() {
     const config = this.emailConfig;
     
-    if (config.provider === 'resend') {
+    if (config.provider === 'microsoft-graph') {
+      // Initialize Microsoft Graph with Azure AD
+      try {
+        const msalConfig = {
+          auth: {
+            clientId: config.clientId,
+            authority: `https://login.microsoftonline.com/${config.tenantId}`,
+            clientSecret: config.clientSecret
+          }
+        };
+        
+        this.msalClient = new ConfidentialClientApplication(msalConfig);
+        this.microsoftGraphConfig = {
+          senderEmail: config.senderEmail,
+          fromName: config.fromName
+        };
+        this.microsoftGraphInitialized = true;
+        console.log(`✅ [EmailService] Microsoft Graph initialized for business`);
+        console.log(`   📧 Sender Email: ${config.senderEmail}`);
+        console.log(`   🔑 Client ID: ${config.clientId.substring(0, 8)}...`);
+        console.log(`   🏢 Tenant ID: ${config.tenantId.substring(0, 8)}...`);
+      } catch (error) {
+        console.error('❌ [EmailService] Failed to initialize Microsoft Graph client with business config:', error);
+      }
+    } else if (config.provider === 'resend') {
       try {
         this.resend = new Resend(config.apiKey);
         this.resendInitialized = true;
@@ -150,7 +186,7 @@ class EmailService {
    * Check if email service is ready
    */
   isReady() {
-    return this.mailchimpMarketingInitialized;
+    return this.microsoftGraphInitialized || this.mailchimpMarketingInitialized || this.resendInitialized || this.initialized;
   }
 
   /**
@@ -696,6 +732,110 @@ Guidelines:
   }
 
   /**
+   * Send email via Microsoft Graph API
+   * @param {Object} userInfo - User information
+   * @param {string} htmlContent - HTML email content
+   * @param {string} textContent - Plain text email content
+   * @param {string} customSubject - Custom subject line (optional)
+   * @returns {Promise<Object>} Result of email sending
+   */
+  async sendViaMicrosoftGraph(userInfo, htmlContent, textContent, customSubject = null) {
+    try {
+      if (!this.microsoftGraphInitialized) {
+        return { success: false, error: 'Microsoft Graph not initialized' };
+      }
+
+      const userName = userInfo.name || 'Valued Customer';
+      const fromEmail = this.microsoftGraphConfig.senderEmail;
+      const fromName = this.microsoftGraphConfig.fromName || '4Trades.ai';
+      const subject = customSubject || 'New Customer Inquiry';
+
+      console.log('📧 [EmailService] Sending email via Microsoft Graph API...');
+      console.log(`   📧 From: ${fromName} <${fromEmail}>`);
+      console.log(`   📧 To: ${userInfo.email}`);
+      console.log(`   📧 Subject: ${subject}`);
+
+      // Step 1: Get OAuth2 access token
+      const tokenRequest = {
+        scopes: ['https://graph.microsoft.com/.default']
+      };
+
+      const authResponse = await this.msalClient.acquireTokenByClientCredential(tokenRequest);
+      
+      if (!authResponse || !authResponse.accessToken) {
+        console.error('❌ [EmailService] Failed to acquire access token');
+        return { success: false, error: 'Failed to acquire access token' };
+      }
+
+      console.log('✅ [EmailService] Access token acquired');
+
+      // Step 2: Prepare email message
+      // Note: With application permissions, the email is sent from the user in the endpoint URL
+      // We cannot override the "from" address when using application permissions
+      const message = {
+        message: {
+          subject: subject,
+          body: {
+            contentType: 'HTML',
+            content: htmlContent
+          },
+          toRecipients: [
+            {
+              emailAddress: {
+                address: userInfo.email,
+                name: userName
+              }
+            }
+          ]
+        },
+        saveToSentItems: 'true'
+      };
+
+      // Step 3: Send email via Microsoft Graph API
+      // Email will be sent from the account specified in the endpoint
+      const graphEndpoint = `https://graph.microsoft.com/v1.0/users/${fromEmail}/sendMail`;
+      
+      const response = await fetch(graphEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authResponse.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(message)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [EmailService] Microsoft Graph API error:', response.status, errorText);
+        return { 
+          success: false, 
+          error: `Microsoft Graph API error: ${response.status} - ${errorText}` 
+        };
+      }
+
+      console.log('✅ [EmailService] Email sent successfully via Microsoft Graph!');
+      console.log('📧 [EmailService] Email sent to:', userInfo.email);
+      console.log('📧 [EmailService] Subject:', subject);
+
+      return {
+        success: true,
+        messageId: `msg-${Date.now()}`,
+        status: 'sent',
+        email: userInfo.email,
+        provider: 'microsoft-graph',
+        note: 'Email sent via Microsoft Graph API'
+      };
+
+    } catch (error) {
+      console.error('❌ [EmailService] Error sending via Microsoft Graph:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send via Microsoft Graph' 
+      };
+    }
+  }
+
+  /**
    * Send conversation summary email to user
    * @param {Object} userInfo - User information (name, email)
    * @param {Array} conversationHistory - Conversation messages
@@ -801,11 +941,17 @@ Call Details
 • Reason: ${customerReason}
         `.trim();
 
-        // Use Mailchimp Marketing API for Superior Fencing
-        if (this.mailchimpMarketingInitialized) {
-          console.log('📧 [EmailService] Using Mailchimp Marketing API for Superior Fencing');
-          return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
+        // Use Microsoft Graph API for Superior Fencing
+        if (this.microsoftGraphInitialized) {
+          console.log('📧 [EmailService] Using Microsoft Graph API for Superior Fencing');
+          return await this.sendViaMicrosoftGraph(userInfo, htmlContent, textContent);
         }
+
+        // Note: Mailchimp Marketing is disabled - keeping code for future use but not using it
+        // if (this.mailchimpMarketingInitialized) {
+        //   console.log('📧 [EmailService] Using Mailchimp Marketing API for Superior Fencing (disabled)');
+        //   return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
+        // }
 
         console.error('❌ [EmailService] No email providers available for Superior Fencing');
         return { success: false, error: 'No email providers available' };
@@ -922,11 +1068,17 @@ Best regards,
 ${companyName}
       `.trim();
 
-      // Use Mailchimp Marketing API as the only email provider
-      if (this.mailchimpMarketingInitialized) {
-        console.log('📧 [EmailService] Using Mailchimp Marketing API');
-        return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
+      // Use Microsoft Graph as the primary email provider
+      if (this.microsoftGraphInitialized) {
+        console.log('📧 [EmailService] Using Microsoft Graph API');
+        return await this.sendViaMicrosoftGraph(userInfo, htmlContent, textContent);
       }
+
+      // Note: Mailchimp Marketing is disabled - keeping code for future use but not using it
+      // if (this.mailchimpMarketingInitialized) {
+      //   console.log('📧 [EmailService] Using Mailchimp Marketing API (disabled)');
+      //   return await this.sendViaMailchimpMarketing(userInfo, htmlContent, textContent);
+      // }
 
       // Note: Resend is disabled - keeping code for future use but not using it
       // if (this.resendInitialized) {
@@ -1039,10 +1191,33 @@ ${companyName}
     }
 
     const results = {
+      microsoftGraph: { available: false, working: false },
       resend: { available: false, working: false },
       mailchimp: { available: false, working: false },
       mailchimpMarketing: { available: false, working: false }
     };
+
+    // Test Microsoft Graph
+    if (this.microsoftGraphInitialized) {
+      results.microsoftGraph.available = true;
+      try {
+        const tokenRequest = {
+          scopes: ['https://graph.microsoft.com/.default']
+        };
+        const authResponse = await this.msalClient.acquireTokenByClientCredential(tokenRequest);
+        
+        if (authResponse && authResponse.accessToken) {
+          console.log('✅ [EmailService] Microsoft Graph connection test successful');
+          results.microsoftGraph.working = true;
+          results.microsoftGraph.tokenExpiry = authResponse.expiresOn;
+        } else {
+          throw new Error('Failed to acquire access token');
+        }
+      } catch (error) {
+        console.error('❌ [EmailService] Microsoft Graph connection test failed:', error);
+        results.microsoftGraph.error = error.message;
+      }
+    }
 
     // Test Resend
     if (this.resendInitialized) {
@@ -1097,8 +1272,11 @@ ${companyName}
       }
     }
 
-    const hasWorkingProvider = results.mailchimpMarketing.working;
-    const primaryProvider = results.mailchimpMarketing.working ? 'Mailchimp Marketing' : 'None';
+    const hasWorkingProvider = results.microsoftGraph.working || results.mailchimpMarketing.working || results.resend.working || results.mailchimp.working;
+    const primaryProvider = results.microsoftGraph.working ? 'Microsoft Graph' : 
+                           results.mailchimpMarketing.working ? 'Mailchimp Marketing' : 
+                           results.resend.working ? 'Resend' :
+                           results.mailchimp.working ? 'Mailchimp Transactional' : 'None';
 
     return { 
       success: hasWorkingProvider, 

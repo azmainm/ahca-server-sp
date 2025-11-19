@@ -23,10 +23,13 @@
     }
   },
   "email": {
-    "provider": "resend",
-    "apiKey": "${BUSINESS_SHERPAPROMPT_EMAIL_API_KEY}",
-    "fromEmail": "scout@sherpaprompt.com",
-    "fromName": "SherpaPrompt Support"
+    "provider": "microsoft-graph",
+    "tenantId": "${BUSINESS_SHERPAPROMPT_TENANT_ID}",
+    "clientId": "${BUSINESS_SHERPAPROMPT_CLIENT_ID}",
+    "clientSecret": "${BUSINESS_SHERPAPROMPT_CLIENT_SECRET}",
+    "senderEmail": "${BUSINESS_SHERPAPROMPT_SENDER_EMAIL}",
+    "fromEmail": "noreply@4trades.ai",
+    "fromName": "4Trades.ai"
   },
   "sms": {
     "enabled": true,
