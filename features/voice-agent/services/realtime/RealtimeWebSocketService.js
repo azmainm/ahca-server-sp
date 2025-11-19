@@ -198,11 +198,14 @@ class RealtimeWebSocketService extends EventEmitter {
   async configureSession(sessionData) {
     const { openaiWs } = sessionData;
     
+    const systemPrompt = this.getSystemPrompt(sessionData.sessionId);
+    console.log('📝 [RealtimeWS] System prompt loaded (first 150 chars):', systemPrompt.substring(0, 150));
+    
     const config = {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
-        instructions: this.getSystemPrompt(sessionData.sessionId),
+        instructions: systemPrompt,
         voice: 'ash',
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',

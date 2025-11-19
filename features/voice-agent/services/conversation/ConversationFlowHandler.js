@@ -702,6 +702,34 @@ Does this look good, or would you like to change anything else?`;
       const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
       console.log('📧 [Email] Business ID for session:', businessId);
 
+      // Get business-specific email service if available
+      let emailServiceToUse = this.emailService;
+      
+      console.log(`🔍 [Email] Debug - businessId: ${businessId}`);
+      console.log(`🔍 [Email] Debug - has businessConfigService: ${!!this.businessConfigService}`);
+      
+      if (businessId && this.businessConfigService) {
+        try {
+          const businessConfig = this.businessConfigService.getBusinessConfig(businessId);
+          console.log(`🔍 [Email] Debug - businessConfig found: ${!!businessConfig}`);
+          console.log(`🔍 [Email] Debug - businessConfig.email: ${JSON.stringify(businessConfig?.email)}`);
+          
+                if (businessConfig && businessConfig.email) {
+                  // Create business-specific email service with resolved config
+                  const { EmailService } = require('../../../../shared/services/EmailService');
+                  emailServiceToUse = EmailService.createForBusiness(businessConfig.email);
+                  console.log(`📧 [Email] Using business-specific email service for: ${businessId}`);
+                } else {
+                  console.warn(`⚠️ [Email] No email config in business config for: ${businessId}`);
+                }
+        } catch (error) {
+          console.warn('⚠️ [Email] Failed to create business-specific email service, using default:', error.message);
+          console.error(error);
+        }
+      } else {
+        console.warn(`⚠️ [Email] Cannot create business-specific service - businessId: ${businessId}, hasConfigService: ${!!this.businessConfigService}`);
+      }
+
       // Handle Superior Fencing with fixed email
       if (businessId === 'superior-fencing') {
         console.log('📧 [Email] Using fixed email for Superior Fencing');
@@ -723,8 +751,8 @@ Does this look good, or would you like to change anything else?`;
 
         console.log('📧 [Email] Sending Superior Fencing summary to fixed email:', fixedUserInfo.email);
         
-        // Send the email with fixed recipient
-        const emailResult = await this.emailService.sendConversationSummary(
+        // Send the email with business-specific email service
+        const emailResult = await emailServiceToUse.sendConversationSummary(
           fixedUserInfo,
           session.conversationHistory,
           session.lastAppointment,
@@ -768,8 +796,8 @@ Does this look good, or would you like to change anything else?`;
 
       console.log('📧 [Email] Using current user info for email:', currentUserInfo);
 
-      // Send the email with the current user info
-      const emailResult = await this.emailService.sendConversationSummary(
+      // Send the email with the business-specific email service
+      const emailResult = await emailServiceToUse.sendConversationSummary(
         currentUserInfo,
         session.conversationHistory,
         session.lastAppointment,
