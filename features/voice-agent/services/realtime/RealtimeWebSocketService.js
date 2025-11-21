@@ -11,11 +11,11 @@ class RealtimeWebSocketService extends EventEmitter {
   constructor(conversationFlowHandler, openAIService, stateManager, businessConfigService = null, tenantContextManager = null, smsService = null) {
     super();
     this.apiKey = process.env.OPENAI_API_KEY_CALL_AGENT;
-    
+
     if (!this.apiKey) {
       throw new Error('OPENAI_API_KEY_CALL_AGENT environment variable is required');
     }
-    
+
     // Service dependencies
     this.conversationFlowHandler = conversationFlowHandler;
     this.openAIService = openAIService;
@@ -24,10 +24,10 @@ class RealtimeWebSocketService extends EventEmitter {
     this.tenantContextManager = tenantContextManager;
     this.smsService = smsService;
     this.bridgeService = null; // To be injected post-instantiation
-    
+
     // Active sessions: sessionId -> { clientWs, openaiWs, state }
     this.sessions = new Map();
-    
+
     // Default system prompt (fallback)
     try {
       const prompts = require('../../../configs/prompt_rules.json');
@@ -54,21 +54,21 @@ class RealtimeWebSocketService extends EventEmitter {
       if (this.tenantContextManager && this.businessConfigService) {
         const businessId = this.tenantContextManager.getBusinessId(sessionId);
         console.log(`🔍 [RealtimeWS] Getting system prompt for business: ${businessId}`);
-        
+
         if (businessId) {
           const businessConfig = this.businessConfigService.getBusinessConfig(businessId);
           if (businessConfig) {
             // Try to load business-specific prompt rules
             const fs = require('fs');
             const path = require('path');
-                   const promptPath = path.join(__dirname, `../../../../configs/businesses/${businessId}/prompt_rules.json`);
-            
+            const promptPath = path.join(__dirname, `../../../../configs/businesses/${businessId}/prompt_rules.json`);
+
             console.log(`🔍 [RealtimeWS] Looking for prompt file at: ${promptPath}`);
-            
+
             if (fs.existsSync(promptPath)) {
               const businessPrompts = JSON.parse(fs.readFileSync(promptPath, 'utf8'));
               console.log(`🔍 [RealtimeWS] Loaded prompt file, checking realtimeSystem.full...`);
-              
+
               if (businessPrompts.realtimeSystem?.full) {
                 console.log(`✅ [RealtimeWS] Using business-specific prompt for: ${businessId}`);
                 console.log(`📝 [RealtimeWS] Prompt preview: ${businessPrompts.realtimeSystem.full.substring(0, 100)}...`);
@@ -91,7 +91,7 @@ class RealtimeWebSocketService extends EventEmitter {
     } catch (error) {
       console.warn('⚠️ [RealtimeWS] Failed to load business-specific prompt, using default:', error.message);
     }
-    
+
     // Fallback to default prompt
     console.log('📝 [RealtimeWS] Using default system prompt');
     return this.DEFAULT_SYSTEM_PROMPT;
@@ -103,7 +103,7 @@ class RealtimeWebSocketService extends EventEmitter {
   async createSession(clientWs, sessionId, metadata = {}) {
     try {
       console.log('🎯 [RealtimeWS] Creating new session:', sessionId);
-      
+
       // Ensure business configuration service is initialized (Twilio path may bypass route init)
       try {
         if (this.businessConfigService && !this.businessConfigService.isInitialized()) {
@@ -116,7 +116,7 @@ class RealtimeWebSocketService extends EventEmitter {
 
       // Create conversation session in state manager
       this.stateManager.getSession(sessionId);
-      
+
       // Create WebSocket connection to OpenAI Realtime API
       const openaiWs = new WebSocket(
         'wss://api.openai.com/v1/realtime?model=gpt-realtime-mini',
@@ -142,28 +142,28 @@ class RealtimeWebSocketService extends EventEmitter {
         hasBufferedAudio: false,
         pendingClose: false // Track if session should be closed after current response completes
       };
-      
+
       this.sessions.set(sessionId, sessionData);
 
       // Set up OpenAI WebSocket handlers
       this.setupOpenAIHandlers(sessionData);
-      
+
       // Set up client WebSocket handlers
       this.setupClientHandlers(sessionData);
 
       // Wait for connection
       await this.waitForConnection(sessionData);
-      
+
       // Configure session with function tools
       await this.configureSession(sessionData);
-      
+
       // Trigger automatic initial greeting
       await this.triggerInitialGreeting(sessionData);
-      
+
       console.log('✅ [RealtimeWS] Session created successfully:', sessionId);
-      
+
       return { success: true, sessionId };
-      
+
     } catch (error) {
       console.error('❌ [RealtimeWS] Failed to create session:', error);
       throw error;
@@ -197,26 +197,26 @@ class RealtimeWebSocketService extends EventEmitter {
    */
   async configureSession(sessionData) {
     const { openaiWs } = sessionData;
-    
+
     const systemPrompt = this.getSystemPrompt(sessionData.sessionId);
     console.log('📝 [RealtimeWS] System prompt loaded (first 150 chars):', systemPrompt.substring(0, 150));
-    
+
     const config = {
       type: 'session.update',
       session: {
         modalities: ['text', 'audio'],
         instructions: systemPrompt,
         voice: 'ash',
-        input_audio_format: 'pcm16',
-        output_audio_format: 'pcm16',
+        input_audio_format: 'g711_ulaw',
+        output_audio_format: 'g711_ulaw',
         input_audio_transcription: {
           model: 'whisper-1'
         },
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.3,
-          prefix_padding_ms: 100,
-          silence_duration_ms: 700,
+          threshold: 0.6,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 1000,
           create_response: true,  // Enable automatic response creation (semantic VAD)
           interrupt_response: true  // Allow interruptions
         },
@@ -235,12 +235,12 @@ class RealtimeWebSocketService extends EventEmitter {
    */
   async triggerInitialGreeting(sessionData) {
     const { openaiWs } = sessionData;
-    
+
     console.log('🎤 [RealtimeWS] Triggering automatic initial greeting');
-    
+
     // Add a small delay to ensure session configuration is processed
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Add a conversation item to simulate the start of conversation
     // This will trigger the LLM to use its opening behavior from system prompt
     const startConversation = {
@@ -256,9 +256,9 @@ class RealtimeWebSocketService extends EventEmitter {
         ]
       }
     };
-    
+
     openaiWs.send(JSON.stringify(startConversation));
-    
+
     // Now trigger a response which should use the opening behavior
     const initialResponse = {
       type: 'response.create',
@@ -266,7 +266,7 @@ class RealtimeWebSocketService extends EventEmitter {
         modalities: ['audio', 'text']
       }
     };
-    
+
     openaiWs.send(JSON.stringify(initialResponse));
     console.log('✅ [RealtimeWS] Initial greeting triggered');
   }
@@ -278,7 +278,7 @@ class RealtimeWebSocketService extends EventEmitter {
     // Get business-specific configuration
     let businessId = null;
     let businessConfig = null;
-    
+
     try {
       if (this.tenantContextManager && this.businessConfigService) {
         businessId = this.tenantContextManager.getBusinessId(sessionId);
@@ -289,9 +289,9 @@ class RealtimeWebSocketService extends EventEmitter {
     } catch (error) {
       console.warn('⚠️ [RealtimeWS] Error getting business config for tools:', error.message);
     }
-    
+
     console.log(`🔧 [RealtimeWS] Defining tools for business: ${businessId}`);
-    
+
     // Superior Fencing has limited tools (no RAG, no appointment booking)
     if (businessId === 'superior-fencing') {
       console.log(`🔧 [RealtimeWS] Using Superior Fencing tools (basic info collection only)`);
@@ -355,7 +355,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
                 description: 'Customer name (confirmed by customer)'
               },
               phone: {
-                type: 'string', 
+                type: 'string',
                 description: 'Customer phone number - MUST be the cleaned_phone from validate_phone_number result'
               },
               reason: {
@@ -376,7 +376,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
         }
       ];
     }
-    
+
     // SherpaPrompt gets full tools (RAG + appointment booking)
     console.log(`🔧 [RealtimeWS] Using SherpaPrompt tools (full feature set)`);
     return [
@@ -581,7 +581,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           console.log(`[RealtimeWS] Clearing output buffer on bridge for call SID: ${sessionData.twilioCallSid}`);
           this.bridgeService.clearOutputBuffer(sessionData.twilioCallSid);
         }
-        
+
         // 2. Cancel any ongoing AI response (user is interrupting)
         // Only send cancel if we have an active response (not just finished)
         if (sessionData.isResponding && sessionData.activeResponseId) {
@@ -602,7 +602,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
 
         // 3. Suppress any in-flight audio chunks arriving after interruption
         sessionData.suppressAudio = true;
-        
+
         this.sendToClient(sessionData, {
           type: 'speech_started'
         });
@@ -622,10 +622,10 @@ Without calling this function, the information is NOT saved and will NOT appear 
           text: event.transcript,
           role: 'user'
         });
-        
+
         // Add to conversation history
         this.stateManager.addMessage(sessionId, 'user', event.transcript);
-        
+
         // FALLBACK: Check if transcription contains name information and OpenAI didn't call update_user_info
         await this.checkForMissedNameInfo(sessionData, event.transcript);
         break;
@@ -636,7 +636,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           type: 'transcript_error',
           error: event.error
         });
-        
+
         // Proactively inject a clarification message to prevent emergency default
         // We need to do this BEFORE OpenAI generates its response
         try {
@@ -651,7 +651,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
               }]
             }
           };
-          
+
           console.log('🔄 [RealtimeWS] Injecting clarification message to prevent emergency default and hallucination');
           sessionData.openaiWs.send(JSON.stringify(clarificationMessage));
         } catch (error) {
@@ -667,7 +667,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
         }
         sessionData.isResponding = true;  // Track that AI is responding
         sessionData.activeResponseId = event.response_id || 'active';  // Track active response
-        
+
         // Drop audio if suppression is active (post-interruption residuals)
         if (!sessionData.suppressAudio) {
           this.sendToClient(sessionData, {
@@ -693,7 +693,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           text: event.transcript,
           role: 'assistant'
         });
-        
+
         // Add to conversation history
         this.stateManager.addMessage(sessionId, 'assistant', event.transcript);
         break;
@@ -713,12 +713,12 @@ Without calling this function, the information is NOT saved and will NOT appear 
         this.sendToClient(sessionData, {
           type: 'response_done'
         });
-        
+
         // Check if session is marked for closing (after goodbye message)
         if (sessionData.pendingClose) {
           console.log('👋 [RealtimeWS] Session marked for closing, scheduling close after delay');
           sessionData.pendingClose = false; // Clear flag immediately to prevent duplicate closes
-          
+
           // Schedule session close after delay to allow goodbye audio to finish playing
           setTimeout(() => {
             console.log('👋 [RealtimeWS] Closing session after goodbye:', sessionId);
@@ -729,14 +729,14 @@ Without calling this function, the information is NOT saved and will NOT appear 
 
       case 'error':
         console.error('❌ [RealtimeWS] OpenAI error:', event.error);
-        
+
         // Filter out expected cancellation errors (these are normal during interruptions)
-        if (event.error.code === 'response_cancel_not_active' || 
-            event.error.code === 'conversation_already_has_active_response') {
+        if (event.error.code === 'response_cancel_not_active' ||
+          event.error.code === 'conversation_already_has_active_response') {
           console.log('ℹ️ [RealtimeWS] Ignoring expected error:', event.error.code);
           break;
         }
-        
+
         // Send other errors to client
         this.sendToClient(sessionData, {
           type: 'error',
@@ -758,38 +758,38 @@ Without calling this function, the information is NOT saved and will NOT appear 
   async handleFunctionCall(sessionData, functionCallEvent) {
     const { openaiWs, sessionId } = sessionData;
     const { call_id, name, arguments: argsStr } = functionCallEvent;
-    
+
     try {
       const args = JSON.parse(argsStr);
       console.log('🔧 [RealtimeWS] Executing function:', name, 'with args:', args);
-      
+
       let result;
-      
+
       switch (name) {
         case 'search_knowledge_base':
           result = await this.handleKnowledgeSearch(sessionId, args);
           break;
-          
+
         case 'schedule_appointment':
           result = await this.handleAppointment(sessionId, args);
           break;
-          
+
         case 'validate_phone_number':
           result = await this.handlePhoneValidation(sessionId, args);
           break;
-          
+
         case 'update_user_info':
           result = await this.handleUserInfo(sessionId, args);
           break;
-          
+
         case 'end_conversation':
           result = await this.handleEndConversation(sessionId, args);
           break;
-          
+
         default:
           result = { error: `Unknown function: ${name}` };
       }
-      
+
       // Send function result back to OpenAI
       const functionOutput = {
         type: 'conversation.item.create',
@@ -799,12 +799,12 @@ Without calling this function, the information is NOT saved and will NOT appear 
           output: JSON.stringify(result)
         }
       };
-      
+
       openaiWs.send(JSON.stringify(functionOutput));
-      
+
       console.log('✅ [RealtimeWS] Function result sent:', name);
       console.log('📤 [RealtimeWS] Function output:', JSON.stringify(result, null, 2));
-      
+
       // Prompt the model to produce a follow-up response immediately
       // Without this, the Realtime API may wait for the next user turn
       // For end_conversation, we still trigger a response so the AI can say goodbye
@@ -819,10 +819,10 @@ Without calling this function, the information is NOT saved and will NOT appear 
       } catch (e) {
         console.warn('⚠️ [RealtimeWS] Failed to request follow-up response:', e.message);
       }
-      
+
     } catch (error) {
       console.error('❌ [RealtimeWS] Function execution error:', error);
-      
+
       // Send error back to OpenAI
       openaiWs.send(JSON.stringify({
         type: 'conversation.item.create',
@@ -832,7 +832,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           output: JSON.stringify({ error: error.message })
         }
       }));
-      
+
     }
   }
 
@@ -843,22 +843,22 @@ Without calling this function, the information is NOT saved and will NOT appear 
     try {
       const { query } = args;
       console.log('🔍 [Knowledge] Searching for:', query);
-      
+
       // Extract search terms
       const searchTerms = this.conversationFlowHandler.extractSearchTerms(query);
-      
+
       // Search knowledge base
       const searchResults = await this.conversationFlowHandler.embeddingService.searchSimilarContent(
         searchTerms.length > 0 ? searchTerms.join(' ') : query,
         5
       );
-      
+
       if (searchResults && searchResults.length > 0) {
         // Format context
         const context = this.conversationFlowHandler.sherpaPromptRAG.formatContext(searchResults);
-        
+
         console.log('📚 [Knowledge] Found', searchResults.length, 'relevant results');
-        
+
         return {
           success: true,
           context: context,
@@ -888,7 +888,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
     try {
       const { action } = args;
       console.log('📅 [Appointment] Action:', action, 'Args:', args);
-      
+
       const session = this.stateManager.getSession(sessionId);
       const steps = this.conversationFlowHandler.appointmentFlowManager.steps;
       const currentStep = this.conversationFlowHandler.appointmentFlowManager.getCurrentStep(session);
@@ -949,43 +949,43 @@ Without calling this function, the information is NOT saved and will NOT appear 
           nextActionHint: Array.from(allowed)[0] || 'confirm'
         };
       }
-      
+
       // Initialize appointment flow if starting
       if (action === 'start') {
         const initResult = this.conversationFlowHandler.appointmentFlowManager.initializeFlow(session);
-        
+
         // Send appointment info to client
         this.sendToClient(this.sessions.get(sessionId), {
           type: 'appointment_started'
         });
-        
+
         return {
           success: true,
           message: initResult.response,
           needsMoreInfo: true
         };
       }
-      
+
       // Process appointment flow based on action
       let text = '';
-      
+
       if (action === 'set_calendar') {
         text = args.calendar_type;
       } else if (action === 'set_service') {
         text = args.service;
       } else if (action === 'set_date') {
         text = args.date;
-        
+
         // CRITICAL FIX: When changing date, ALWAYS clear old date/time/slots to force fresh lookup
         if (session.appointmentFlow && session.appointmentFlow.active) {
           const currentStep = session.appointmentFlow.step;
           console.log('🔧 [Appointment] Date change detected in step:', currentStep);
           console.log('🔧 [Appointment] Current details before clear:', JSON.stringify(session.appointmentFlow.details, null, 2));
-          
+
           // If we have existing date/time (user is changing date), clear them
           if (session.appointmentFlow.details && (session.appointmentFlow.details.date || session.appointmentFlow.details.time)) {
             console.log('🔧 [Appointment] Clearing old date/time/slots to force fresh lookup');
-            
+
             // Preserve only title, clear everything else
             const title = session.appointmentFlow.details?.title;
             const titleDisplay = session.appointmentFlow.details?.titleDisplay;
@@ -993,7 +993,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
               ...(title && { title }),
               ...(titleDisplay && { titleDisplay })
             };
-            
+
             // Reset to COLLECT_DATE step to force slot checking
             session.appointmentFlow.step = this.conversationFlowHandler.appointmentFlowManager.steps.COLLECT_DATE;
             console.log('🔧 [Appointment] Reset to COLLECT_DATE, details now:', JSON.stringify(session.appointmentFlow.details, null, 2));
@@ -1014,22 +1014,22 @@ Without calling this function, the information is NOT saved and will NOT appear 
       } else if (action === 'confirm') {
         console.log('🔧 [Appointment] CONFIRM action triggered');
         text = 'yes';
-        
+
         // CRITICAL FIX: When confirming appointment, validate details and ensure proper step
         if (session.appointmentFlow && session.appointmentFlow.active) {
           const details = session.appointmentFlow.details || {};
           const currentStep = session.appointmentFlow.step;
-          
+
           console.log('🔧 [Appointment] Current step:', currentStep);
           console.log('🔧 [Appointment] Current details:', JSON.stringify(details, null, 2));
           console.log('🔧 [Appointment] User info:', JSON.stringify(session.userInfo, null, 2));
           console.log('🔧 [Appointment] Calendar type:', session.appointmentFlow.calendarType);
-          
+
           // Validate we have ALL required information
-          const hasAllInfo = details.title && details.date && details.time && 
-                            session.userInfo.name && session.userInfo.email &&
-                            session.appointmentFlow.calendarType;
-          
+          const hasAllInfo = details.title && details.date && details.time &&
+            session.userInfo.name && session.userInfo.email &&
+            session.appointmentFlow.calendarType;
+
           if (!hasAllInfo) {
             console.log('❌ [Appointment] Missing required details:', {
               title: !!details.title,
@@ -1045,13 +1045,13 @@ Without calling this function, the information is NOT saved and will NOT appear 
               needsMoreInfo: true
             };
           }
-          
+
           // Set step to REVIEW to ensure confirmation flow works properly
           console.log('✅ [Appointment] All details present - setting step to REVIEW for confirmation');
           session.appointmentFlow.step = this.conversationFlowHandler.appointmentFlowManager.steps.REVIEW;
         }
       }
-      
+
       console.log('🔄 [Appointment] Calling appointmentFlowManager.processFlow with text:', text);
       const result = await this.conversationFlowHandler.appointmentFlowManager.processFlow(
         session,
@@ -1059,15 +1059,15 @@ Without calling this function, the information is NOT saved and will NOT appear 
         this.conversationFlowHandler.getCalendarService,
         sessionId
       );
-      
+
       console.log('📋 [Appointment] ProcessFlow result:', JSON.stringify(result, null, 2));
-      
+
       // Check if appointment was completed
       if (result.calendarLink || result.appointmentCreated) {
         console.log('✅ [Appointment] Appointment creation detected');
         console.log('🔗 [Appointment] Calendar link:', result.calendarLink);
         console.log('📅 [Appointment] Appointment details:', JSON.stringify(result.appointmentDetails, null, 2));
-        
+
         // Send to client
         const clientSession = this.sessions.get(sessionId);
         if (clientSession && clientSession.clientWs) {
@@ -1080,7 +1080,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
         } else {
           console.error('❌ [Appointment] No client WebSocket found for session:', sessionId);
         }
-        
+
         // Avoid speaking the raw calendar link in model response
         return {
           success: true,
@@ -1088,14 +1088,14 @@ Without calling this function, the information is NOT saved and will NOT appear 
           completed: true
         };
       }
-      
+
       console.log('📋 [Appointment] Continuing appointment flow, no completion detected');
       return {
         success: true,
         message: result.response,
         needsMoreInfo: !result.appointmentDetails
       };
-      
+
     } catch (error) {
       console.error('❌ [Appointment] Error:', error);
       return {
@@ -1113,10 +1113,10 @@ Without calling this function, the information is NOT saved and will NOT appear 
   async checkForMissedNameInfo(sessionData, transcript) {
     const { sessionId } = sessionData;
     const session = this.stateManager.getSession(sessionId);
-    
+
     let foundName = null;
     let foundEmail = null;
-    
+
     // Check for name patterns (only if we don't already have a name)
     if (!session.userInfo.name) {
       const namePatterns = [
@@ -1125,12 +1125,12 @@ Without calling this function, the information is NOT saved and will NOT appear 
         /call me ([a-zA-Z\s]+)/i,
         /i am ([a-zA-Z\s]+)/i
       ];
-      
+
       for (const pattern of namePatterns) {
         const match = transcript.match(pattern);
         if (match) {
           const extractedName = match[1].trim();
-          
+
           // Avoid common false positives
           const falsePositives = ['good', 'fine', 'okay', 'ready', 'here', 'listening', 'interested', 'looking', 'done', 'back'];
           if (!falsePositives.includes(extractedName.toLowerCase()) && extractedName.length > 1) {
@@ -1141,7 +1141,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
         }
       }
     }
-    
+
     // Check for email patterns (only if we don't already have an email)
     if (!session.userInfo.email) {
       const emailPatterns = [
@@ -1149,7 +1149,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
         /my email is ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i,
         /email.*is ([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
       ];
-      
+
       for (const pattern of emailPatterns) {
         const match = transcript.match(pattern);
         if (match) {
@@ -1163,18 +1163,18 @@ Without calling this function, the information is NOT saved and will NOT appear 
         }
       }
     }
-    
+
     // If we found name or email, trigger the update
     if (foundName || foundEmail) {
       console.log('🔍 [RealtimeWS] Original transcript:', transcript);
-      
+
       const updates = {};
       if (foundName) updates.name = foundName;
       if (foundEmail) updates.email = foundEmail;
-      
+
       // Manually trigger the user info update
       await this.handleUserInfo(sessionId, updates);
-      
+
       // Also send a manual function call to OpenAI to keep it in sync
       try {
         const functionOutput = {
@@ -1182,9 +1182,9 @@ Without calling this function, the information is NOT saved and will NOT appear 
           item: {
             type: 'function_call_output',
             call_id: 'fallback_' + Date.now(),
-            output: JSON.stringify({ 
-              success: true, 
-              message: `${foundName ? `Name set to ${foundName}` : ''}${foundName && foundEmail ? ', ' : ''}${foundEmail ? `Email set to ${foundEmail}` : ''}` 
+            output: JSON.stringify({
+              success: true,
+              message: `${foundName ? `Name set to ${foundName}` : ''}${foundName && foundEmail ? ', ' : ''}${foundEmail ? `Email set to ${foundEmail}` : ''}`
             })
           }
         };
@@ -1204,7 +1204,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
     try {
       const { raw_phone } = args;
       console.log('📞 [PhoneValidation] Validating phone number:', raw_phone);
-      
+
       if (!raw_phone) {
         return {
           valid: false,
@@ -1212,11 +1212,11 @@ Without calling this function, the information is NOT saved and will NOT appear 
           message: 'No phone number was provided.'
         };
       }
-      
+
       // Extract only digits from the input
       const digitsOnly = raw_phone.replace(/\D/g, '');
       console.log('📞 [PhoneValidation] Extracted digits:', digitsOnly);
-      
+
       // Check if it has letters (non-digit characters that aren't common separators)
       const hasLetters = /[a-zA-Z]/.test(raw_phone);
       if (hasLetters) {
@@ -1227,15 +1227,15 @@ Without calling this function, the information is NOT saved and will NOT appear 
           message: 'The phone number contains letters. Please provide only numbers.'
         };
       }
-      
+
       // Check for country code and validate it
       let phoneDigits = digitsOnly;
-      
+
       // If 11+ digits, check if it starts with a valid country code
       if (digitsOnly.length >= 11) {
         const possibleCountryCode = digitsOnly.substring(0, digitsOnly.length - 10);
         console.log('📞 [PhoneValidation] Detected possible country code:', possibleCountryCode);
-        
+
         // Only accept country code '1' (US)
         if (possibleCountryCode === '1') {
           phoneDigits = digitsOnly.substring(1);
@@ -1249,7 +1249,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           };
         }
       }
-      
+
       // Check if it's exactly 10 digits
       if (phoneDigits.length !== 10) {
         console.log('❌ [PhoneValidation] Invalid length:', phoneDigits.length);
@@ -1260,12 +1260,12 @@ Without calling this function, the information is NOT saved and will NOT appear 
           message: `Phone numbers must be exactly 10 digits. You provided ${phoneDigits.length} digits.`
         };
       }
-      
+
       // Extract area code (first 3 digits) and exchange code (next 3 digits)
       const areaCode = phoneDigits.substring(0, 3);
       const exchangeCode = phoneDigits.substring(3, 6);
       const subscriberNumber = phoneDigits.substring(6, 10);
-      
+
       // Rule 4: First digit of area code cannot be 0 or 1
       const areaCodeFirstDigit = areaCode.charAt(0);
       if (areaCodeFirstDigit === '0' || areaCodeFirstDigit === '1') {
@@ -1276,7 +1276,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           message: `The area code ${areaCode} is not valid. The first digit of an area code cannot be 0 or 1.`
         };
       }
-      
+
       // Rule 5: First digit of exchange code cannot be 0 or 1
       const exchangeCodeFirstDigit = exchangeCode.charAt(0);
       if (exchangeCodeFirstDigit === '0' || exchangeCodeFirstDigit === '1') {
@@ -1287,19 +1287,19 @@ Without calling this function, the information is NOT saved and will NOT appear 
           message: `The exchange code ${exchangeCode} is not valid. The first digit of an exchange code cannot be 0 or 1.`
         };
       }
-      
+
       // Format the phone number for confirmation: (XXX) XXX-XXXX
       const formattedPhone = `${areaCode} ${exchangeCode} ${subscriberNumber}`;
-      
+
       console.log('✅ [PhoneValidation] Valid phone number:', formattedPhone);
-      
+
       return {
         valid: true,
         cleaned_phone: formattedPhone,
         original: raw_phone,
         message: `Phone number ${formattedPhone} is valid.`
       };
-      
+
     } catch (error) {
       console.error('❌ [PhoneValidation] Validation error:', error);
       return {
@@ -1318,27 +1318,27 @@ Without calling this function, the information is NOT saved and will NOT appear 
       const { name, email, phone, reason } = args;
       console.log('🚀 [UserInfo] FUNCTION CALLED - Updating:', { name, email, phone, reason });
       console.log('👤 [UserInfo] Session ID:', sessionId);
-      
+
       const sess = this.stateManager.getSession(sessionId);
       console.log('👤 [UserInfo] Current session user info:', JSON.stringify(sess.userInfo, null, 2));
-      
+
       const updates = {};
-      
+
       if (name) {
         console.log('👤 [UserInfo] Setting name:', name);
         updates.name = name;
-        
+
         // If name matches existing name or we're waiting for confirmation, mark as confirmed
         const existingName = sess?.userInfo?.name;
         const isWaitingForConfirmation = sess?.userInfo?.waitingForNameConfirmation;
-        
+
         // Always mark as confirmed when update_user_info is called UNLESS:
         // 1. There's an existing confirmed name that's different (name change scenario)
         // 2. Or if the name is already confirmed
-        const isNameChange = existingName && 
-                             existingName.toLowerCase() !== name.toLowerCase() && 
-                             sess?.userInfo?.nameConfirmed;
-        
+        const isNameChange = existingName &&
+          existingName.toLowerCase() !== name.toLowerCase() &&
+          sess?.userInfo?.nameConfirmed;
+
         if (!isNameChange) {
           // If this is the first time setting the name, or it matches existing, or we're waiting for confirmation
           // treat it as confirmed (AI is calling this after asking for confirmation)
@@ -1350,20 +1350,20 @@ Without calling this function, the information is NOT saved and will NOT appear 
           console.log('🔄 [UserInfo] Name change detected, not auto-confirming');
         }
       }
-      
+
       if (phone) {
         console.log(' [UserInfo] Setting phone:', phone);
         updates.phone = phone;
       }
-      
+
       if (reason) {
         console.log('👤 [UserInfo] Setting reason:', reason);
         updates.reason = reason;
       }
-      
+
       if (email) {
         console.log('👤 [UserInfo] Processing email:', email);
-        
+
         // Normalize the email first (handles spelled-out emails with spaces/dashes and "at"/"dot")
         const userInfoCollector = this.conversationFlowHandler?.userInfoCollector;
         let userEmail;
@@ -1374,7 +1374,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           // Fallback if UserInfoCollector not available
           userEmail = email.toLowerCase().trim();
         }
-        
+
         // Validate email format after normalization
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (emailRegex.test(userEmail)) {
@@ -1388,15 +1388,15 @@ Without calling this function, the information is NOT saved and will NOT appear 
           };
         }
       }
-      
+
       console.log('👤 [UserInfo] Applying updates:', updates);
       // Update user info
       this.stateManager.updateUserInfo(sessionId, updates);
-      
+
       // If in scheduling flow and email set, proceed to calendar selection
       const sessionObj = this.stateManager.getSession(sessionId);
       console.log('👤 [UserInfo] Updated session user info:', JSON.stringify(sessionObj.userInfo, null, 2));
-      
+
       if (sessionObj.appointmentFlow && sessionObj.appointmentFlow.active && updates.email) {
         console.log('📅 [UserInfo] In appointment flow, proceeding to calendar selection');
         const flow = sessionObj.appointmentFlow;
@@ -1408,45 +1408,45 @@ Without calling this function, the information is NOT saved and will NOT appear 
           userInfo: sessionObj.userInfo
         };
       }
-      
+
       // Check if collection is complete
       const userInfo = sessionObj.userInfo;
       if (userInfo.name && userInfo.email && !userInfo.collected) {
         console.log('✅ [UserInfo] Collection complete, marking as collected');
         this.stateManager.updateUserInfo(sessionId, { collected: true });
       }
-      
+
       // Send update to client
       console.log('📤 [UserInfo] Sending user_info_updated to client');
       this.sendToClient(this.sessions.get(sessionId), {
         type: 'user_info_updated',
         userInfo: sessionObj.userInfo
       });
-      
+
       console.log('✅ [UserInfo] Updated successfully');
-      
+
       // Only mention email/name if they were just set and not already confirmed
       // Check the state BEFORE updates to see if these were already confirmed
       const emailJustSet = email && !sess?.userInfo?.emailConfirmed;
       const nameJustSet = name && !sess?.userInfo?.nameConfirmed;
       const emailAlreadyConfirmed = email && sess?.userInfo?.emailConfirmed;
       const nameAlreadyConfirmed = name && sess?.userInfo?.nameConfirmed;
-      
+
       let message = 'Got it!';
       let instructions = '';
-      
+
       if (nameJustSet) {
         message += ` I have your name as ${name}.`;
       }
       // if (emailJustSet) {
       //   message += ` And your email as ${email}.`;
       // }
-      
+
       // If email/name were already confirmed, add explicit instructions NOT to repeat them
       if (emailAlreadyConfirmed || nameAlreadyConfirmed) {
         instructions = ' CRITICAL INSTRUCTION: The user\'s information has already been confirmed in a previous exchange. Your response should NOT include, repeat, spell out, or mention the email address or name again. Simply acknowledge briefly (like "Got it" or "Perfect") and continue the conversation naturally. Do NOT say the email address back to the user.';
       }
-      
+
       // If nothing was just set or both were already confirmed, keep it simple
       if (!nameJustSet && !emailJustSet) {
         if (emailAlreadyConfirmed || nameAlreadyConfirmed) {
@@ -1456,7 +1456,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
           message = 'Got it!';
         }
       }
-      
+
       return {
         success: true,
         message: message + instructions,
@@ -1468,11 +1468,11 @@ Without calling this function, the information is NOT saved and will NOT appear 
         },
         emailConfirmed: sessionObj.userInfo?.emailConfirmed || false,
         nameConfirmed: sessionObj.userInfo?.nameConfirmed || false,
-        note: emailAlreadyConfirmed || nameAlreadyConfirmed 
+        note: emailAlreadyConfirmed || nameAlreadyConfirmed
           ? 'IMPORTANT: The email and/or name shown above were already confirmed. Do NOT repeat, spell out, or mention them in your response. Just acknowledge and continue.'
           : undefined
       };
-      
+
     } catch (error) {
       console.error('❌ [UserInfo] Error:', error);
       return {
@@ -1488,7 +1488,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
   async handleEndConversation(sessionId, args) {
     try {
       console.log('👋 [EndConversation] Ending conversation for session:', sessionId);
-      
+
       const sessionData = this.sessions.get(sessionId);
       if (!sessionData) {
         return {
@@ -1496,28 +1496,28 @@ Without calling this function, the information is NOT saved and will NOT appear 
           error: 'Session not found'
         };
       }
-      
+
       // Mark session for closing after response completes
       sessionData.pendingClose = true;
-      
+
       // Get user's name for personalization
       const session = this.stateManager.getSession(sessionId);
       const userName = session?.userInfo?.name || 'there';
-      
+
       console.log('👋 [EndConversation] Session marked for closing, user:', userName);
-      
+
       // Return direct instruction for the agent to say goodbye
       // Format it as a clear instruction that the AI will follow
-      const goodbyeMessage = userName !== 'there' 
+      const goodbyeMessage = userName !== 'there'
         ? `Thanks for calling, ${userName}! Have a great day!`
         : `Thanks for calling! Have a great day!`;
-      
+
       return {
         success: true,
         conversationEnding: true,
         message: `The user wants to end the conversation. Say this goodbye message now: "${goodbyeMessage}" Then the conversation will end. Do not ask any questions or say anything else - just say the goodbye message.`
       };
-      
+
     } catch (error) {
       console.error('❌ [EndConversation] Error:', error);
       return {
@@ -1532,7 +1532,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
    */
   sendToClient(sessionData, message) {
     const { clientWs } = sessionData;
-    
+
     if (clientWs.readyState === WebSocket.OPEN) {
       clientWs.send(JSON.stringify(message));
     }
@@ -1543,10 +1543,10 @@ Without calling this function, the information is NOT saved and will NOT appear 
    */
   async closeSession(sessionId) {
     const sessionData = this.sessions.get(sessionId);
-    
+
     if (sessionData) {
       console.log('🗑️ [RealtimeWS] Closing session:', sessionId);
-      
+
       // If this is a Twilio call, hang up the call legs
       if (sessionData.twilioCallSid && this.bridgeService) {
         console.log(`📞 [RealtimeWS] Session is a Twilio call (${sessionData.twilioCallSid}), instructing bridge to hang up.`);
@@ -1556,25 +1556,25 @@ Without calling this function, the information is NOT saved and will NOT appear 
           console.error(`❌ [RealtimeWS] Error during hangup instruction for ${sessionData.twilioCallSid}:`, e);
         });
       }
-      
+
       // Get session data before cleanup (needed for email/cleanup tasks)
       const session = this.stateManager.getSession(sessionId);
       const businessId = this.tenantContextManager ? this.tenantContextManager.getBusinessId(sessionId) : null;
-      
+
       // Remove from sessions first to prevent close handler from triggering duplicate cleanup
       this.sessions.delete(sessionId);
-      
+
       // Close WebSocket connections immediately - user experience is complete
       // Close client connection
       if (sessionData.clientWs && sessionData.clientWs.readyState === WebSocket.OPEN) {
         sessionData.clientWs.close();
       }
-      
+
       // Close OpenAI connection
       if (sessionData.openaiWs && sessionData.openaiWs.readyState === WebSocket.OPEN) {
         sessionData.openaiWs.close();
       }
-      
+
       // Now do cleanup tasks (email, state cleanup) - these can happen after connections are closed
       // Send conversation summary email
       // Only send if user info was collected or if it's Superior Fencing (fixed email)
@@ -1592,7 +1592,7 @@ Without calling this function, the information is NOT saved and will NOT appear 
       // Reason: Twilio is verifying business - SMS will be unavailable temporarily
       // TO RE-ENABLE: Uncomment the entire block below once Twilio verification is complete
       // ============================================================================
-      
+
       /* DISABLED - UNCOMMENT WHEN READY TO RE-ENABLE SMS
       // Send conversation summary SMS (caller + admins)
       try {
@@ -1682,18 +1682,18 @@ Without calling this function, the information is NOT saved and will NOT appear 
         console.warn('⚠️ [SMS] Unexpected SMS error:', e.message);
       }
       END DISABLED SMS SECTION */
-      
+
       console.log('📱 [SMS] SMS summaries temporarily disabled - awaiting Twilio verification');
-      
+
       // Cleanup conversation state
       this.stateManager.deleteSession(sessionId);
-      
+
       // Clean up tenant context
       if (this.tenantContextManager) {
         this.tenantContextManager.removeTenantContext(sessionId);
         console.log(`🗑️ [RealtimeWS] Cleaned up tenant context for session: ${sessionId}`);
       }
-      
+
       console.log('✅ [RealtimeWS] Session closed:', sessionId);
     }
   }
@@ -1703,13 +1703,13 @@ Without calling this function, the information is NOT saved and will NOT appear 
    */
   getSessionStatus(sessionId) {
     const sessionData = this.sessions.get(sessionId);
-    
+
     if (!sessionData) {
       return { exists: false };
     }
-    
+
     const session = this.stateManager.getSession(sessionId);
-    
+
     return {
       exists: true,
       isConnected: sessionData.isConnected,
